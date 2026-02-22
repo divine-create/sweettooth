@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SweetTooth - Diagnostic Tools</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #e0e0e0;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .header h1 {
+            color: #4CAF50;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #aaa;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            border-left: 4px solid #4CAF50;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.2);
+            border-left-color: #45a049;
+        }
+        
+        .card h2 {
+            color: #4CAF50;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card p {
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 20px;
+            flex: 1;
+        }
+        
+        .card-features {
+            list-style: none;
+            margin: 15px 0;
+            padding: 15px 0;
+            border-top: 1px solid #444;
+            border-bottom: 1px solid #444;
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .card-features li {
+            padding: 4px 0;
+        }
+        
+        .card-features li:before {
+            content: "✓ ";
+            color: #4CAF50;
+            margin-right: 6px;
+        }
+        
+        .card-button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            display: block;
+            text-decoration: none;
+        }
+        
+        .card-button:hover {
+            background: #45a049;
+        }
+        
+        .card-button.secondary {
+            background: #666;
+            margin-top: 10px;
+        }
+        
+        .card-button.secondary:hover {
+            background: #777;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .status.ready {
+            background: #1b3a1b;
+            color: #81c784;
+        }
+        
+        .status.info {
+            background: #1e3a5f;
+            color: #b0d4ff;
+        }
+        
+        .info-section {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 25px;
+            margin-top: 40px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .info-section h3 {
+            color: #2196F3;
+            margin-bottom: 15px;
+        }
+        
+        .info-section ul {
+            list-style-position: inside;
+            color: #aaa;
+            line-height: 1.8;
+        }
+        
+        .info-section li {
+            margin-bottom: 8px;
+        }
+        
+        .quick-links {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .quick-links a {
+            padding: 8px 16px;
+            background: #333;
+            color: #4CAF50;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        
+        .quick-links a:hover {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 SweetTooth Diagnostic Tools</h1>
+            <p>Professional diagnostics for your loading state issues</p>
+        </div>
+
+        <div class="grid">
+            <!-- Main Diagnostic Tool -->
+            <div class="card">
+                <span class="status ready">RECOMMENDED</span>
+                <h2>🎯 Full Diagnostic</h2>
+                <p>Complete system analysis with real-time inspection and component testing</p>
+                <ul class="card-features">
+                    <li>Environment checks</li>
+                    <li>Component analysis</li>
+                    <li>Loading states</li>
+                    <li>Network diagnostics</li>
+                    <li>Live monitoring</li>
+                </ul>
+                <a href="/diagnose.html" class="card-button">Open Diagnostic Tool</a>
+            </div>
+
+            <!-- Quick Diagnostic -->
+            <div class="card">
+                <span class="status info">QUICK CHECK</span>
+                <h2>⚡ Quick Diagnostic</h2>
+                <p>Fast browser-based diagnostic without full analysis</p>
+                <ul class="card-features">
+                    <li>Alpine.js check</li>
+                    <li>Livewire check</li>
+                    <li>Component count</li>
+                    <li>Asset loading</li>
+                </ul>
+                <a href="/diagnostic.html" class="card-button">Open Quick Tool</a>
+            </div>
+
+            <!-- Testing Ground -->
+            <div class="card">
+                <span class="status info">TEST PAGE</span>
+                <h2>🧪 Testing Ground</h2>
+                <p>Dedicated page to test all interactive components</p>
+                <ul class="card-features">
+                    <li>Table testing</li>
+                    <li>Select testing</li>
+                    <li>Modal testing</li>
+                    <li>Form testing</li>
+                </ul>
+                <a href="/" class="card-button">Open Application</a>
+                <button onclick="openAppInNewWindow()" class="card-button secondary">New Window</button>
+            </div>
+
+            <!-- Documentation -->
+            <div class="card">
+                <span class="status info">REFERENCE</span>
+                <h2>📚 Documentation</h2>
+                <p>Complete guides and troubleshooting documentation</p>
+                <ul class="card-features">
+                    <li>Setup guides</li>
+                    <li>Fix procedures</li>
+                    <li>Prevention tips</li>
+                    <li>Troubleshooting</li>
+                </ul>
+                <div class="quick-links">
+                    <a href="javascript:alert('Check project root for LOADING_STATE_RESOLUTION_SUMMARY.md')">Summary</a>
+                    <a href="javascript:alert('Check project root for PLATFORM_WIDE_LOADING_ISSUE_DIAGNOSIS.md')">Diagnosis</a>
+                    <a href="javascript:alert('Check project root for FINAL_LOADING_STATE_SOLUTION.md')">Solution</a>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <span class="status info">UTILITIES</span>
+                <h2>⚙️ Quick Actions</h2>
+                <p>Common tasks and browser operations</p>
+                <ul class="card-features">
+                    <li>Hard refresh browser</li>
+                    <li>Clear cache</li>
+                    <li>Check console</li>
+                    <li>Network inspection</li>
+                </ul>
+                <button onclick="hardRefresh()" class="card-button">Hard Refresh</button>
+                <button onclick="showConsole()" class="card-button secondary">Show Console</button>
+            </div>
+
+            <!-- System Info -->
+            <div class="card">
+                <span class="status info">SYSTEM</span>
+                <h2>ℹ️ System Info</h2>
+                <p>Detailed information about your browser and page setup</p>
+                <ul class="card-features">
+                    <li>Browser details</li>
+                    <li>Performance metrics</li>
+                    <li>Asset details</li>
+                    <li>Loaded libraries</li>
+                </ul>
+                <button onclick="showSystemInfo()" class="card-button">Show System Info</button>
+            </div>
+        </div>
+
+        <!-- Information Section -->
+        <div class="info-section">
+            <h3>Getting Started with Diagnostics</h3>
+            <ul>
+                <li><strong>Step 1:</strong> Click "Open Diagnostic Tool" to run the full diagnostic</li>
+                <li><strong>Step 2:</strong> Click "Run Full Diagnostic" button to analyze your system</li>
+                <li><strong>Step 3:</strong> Review each tab (Environment, Components, Loading States, Network)</li>
+                <li><strong>Step 4:</strong> If you see stuck loaders, check the Console tab for details</li>
+                <li><strong>Step 5:</strong> Open your application in another tab and interact with components</li>
+                <li><strong>Step 6:</strong> Use "Start Live Inspection" to monitor changes in real-time</li>
+            </ul>
+        </div>
+
+        <div class="info-section">
+            <h3>What to Look For</h3>
+            <ul>
+                <li>✅ <strong>Alpine.js:</strong> Should show "Loaded"</li>
+                <li>✅ <strong>Livewire:</strong> Should show "Loaded"</li>
+                <li>✅ <strong>Stuck Loaders:</strong> Should show "0" (none detected)</li>
+                <li>✅ <strong>Components:</strong> Should show the number of interactive elements</li>
+                <li>✅ <strong>Network:</strong> All assets should show as loaded</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function hardRefresh() {
+            if (confirm('This will hard refresh your browser and clear cache. Continue?')) {
+                location.reload(true);
+            }
+        }
+
+        function showConsole() {
+            if (confirm('This will open the browser developer console. Press F12 if it doesn\'t open.')) {
+                console.log('%c=== Browser Console ===', 'color: #4CAF50; font-size: 14px; font-weight: bold;');
+                console.log('%cAlpine.js available:', 'color: #2196F3;', typeof Alpine !== 'undefined' ? '✓ Yes' : '✗ No');
+                console.log('%cLivewire available:', 'color: #2196F3;', typeof Livewire !== 'undefined' ? '✓ Yes' : '✗ No');
+                console.log('%cAlpine components:', 'color: #2196F3;', document.querySelectorAll('[x-data]').length);
+            }
+        }
+
+        function showSystemInfo() {
+            const info = `
+Browser Information:
+  - User Agent: ${navigator.userAgent}
+  - Language: ${navigator.language}
+  - Platform: ${navigator.platform}
+  - Online: ${navigator.onLine}
+  - Cookies Enabled: ${navigator.cookieEnabled}
+
+Page Information:
+  - Title: ${document.title}
+  - URL: ${window.location.href}
+  - Viewport: ${window.innerWidth} × ${window.innerHeight}
+
+Libraries:
+  - Alpine.js: ${typeof Alpine !== 'undefined' ? 'Loaded' : 'Missing'}
+  - Livewire: ${typeof Livewire !== 'undefined' ? 'Loaded' : 'Missing'}
+  - jQuery: ${typeof jQuery !== 'undefined' || typeof $ !== 'undefined' ? 'Loaded' : 'Not required'}
+
+Assets:
+  - Scripts: ${document.querySelectorAll('script[src]').length}
+  - Stylesheets: ${document.querySelectorAll('link[rel="stylesheet"]').length}
+  - Images: ${document.querySelectorAll('img[src]').length}
+
+Components:
+  - Alpine Components: ${document.querySelectorAll('[x-data]').length}
+  - Wire Loading: ${document.querySelectorAll('[wire\\:loading]').length}
+  - Select Dropdowns: ${document.querySelectorAll('[x-data*="tallstackui_select"]').length}
+  - Tables: ${document.querySelectorAll('[x-data*="tallstackui_table"]').length}
+            `;
+            alert(info);
+        }
+
+        function openAppInNewWindow() {
+            window.open(window.location.origin, '_blank');
+        }
+
+        // Show system status on load
+        window.addEventListener('load', () => {
+            console.log('%c✓ SweetTooth Diagnostic Tools Ready', 'color: #4CAF50; font-size: 16px; font-weight: bold;');
+            console.log('Choose a diagnostic tool above to begin testing');
+        });
+    </script>
+</body>
+</html>

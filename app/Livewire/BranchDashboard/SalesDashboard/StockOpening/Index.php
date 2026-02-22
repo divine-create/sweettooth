@@ -1,0 +1,1173 @@
+<?php
+namespace App\Livewire\BranchDashboard\SalesDashboard\StockOpening;
+
+use App\Livewire\BaseComponent;
+use App\Livewire\Concerns\SalesDepartmentContext;
+use App\Models\Department;
+use App\Models\Product;
+use App\Models\ProductDispatch;
+use App\Models\ProductStock;
+use App\Models\ProductType;
+use App\Models\Shift;
+use App\Services\SalesWorkflowService;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
+use Livewire\WithPagination;
+use TallStackUi\Traits\Interactions;
+
+#[Layout('components.layouts.app.branch-dashboard')]
+class Index extends BaseComponent
+{
+    use WithPagination, Interactions, SalesDepartmentContext;
+
+    #[Url(keep: true)]
+    public ?string $b_id = null;
+
+    // Note: salesDeptSlug, branchId, departmentId, departmentName, branchName
+    // are now provided by SalesDepartmentContext trait
+
+    public ?int $quantity = 20;
+    public ?string $search = null;
+    public ?int $filterProductType = null;
+    public ?string $filterStatus = null;
+    public ?string $selectedProductId = null;
+    public array $selectedProductIds = [];
+    public array $productLookupOptions = [];
+
+    // Stock opening data
+    public array $stockOpenings = [];
+    public array $rows = [];
+    public array $unclosedProducts = [];
+    public bool $isVerified = false;
+    public ?string $currentShiftId = null;
+    public string $shiftType = 'morning';
+    public $stockDate;
+    public $availableShifts = [];
+    public $selectedShiftForViewing = null;
+    public array $productTypes = [];
+    public ?string $expectedPreviousClosingDate = null;
+    public ?string $expectedPreviousClosingShift = null;
+
+    public ?ProductStock $selectedStockItem = null;
+    private ?bool $productStocksHasDepartmentColumn = null;
+    private ?array $cachedSalesDepartmentIds = null;
+    private ?string $cachedSalesDepartmentSignature = null;
+
+    // Table headers
+    public array $headers = [
+        ['index' => 'product', 'label' => 'Product'],
+        ['index' => 'yesterday_closing', 'label' => 'Previous Closing', 'collapsible' => true],
+        ['index' => 'today_additions', 'label' => 'Production Sent', 'collapsible' => true],
+        ['index' => 'expected_opening', 'label' => 'Expected Opening', 'collapsible' => true],
+        ['index' => 'actual_opening', 'label' => 'Actual Opening'],
+        ['index' => 'variance', 'label' => 'Variance', 'collapsible' => true],
+        ['index' => 'variance_source', 'label' => 'Variance From', 'collapsible' => true],
+        ['index' => 'production_date', 'label' => 'Production Date', 'collapsible' => true],
+        ['index' => 'shelf_life', 'label' => 'Shelf Life', 'collapsible' => true],
+        ['index' => 'notes', 'label' => 'Notes', 'collapsible' => true],
+        ['index' => 'action', 'label' => 'Action'],
+    ];
+
+    public function updatedSelectedStockItem()
+    {
+        // Intentionally kept for backward compatibility with existing bindings.
+    }
+
+    public function updatedSelectedProductId($value): void
+    {
+        if (! empty($value)) {
+            $this->loadSingleStockData();
+        }
+    }
+
+    public function loadSingleStockData(): void
+    {
+        if (empty($this->selectedProductId)) {
+            return;
+        }
+
+        $productId = (string) $this->selectedProductId;
+        if (! in_array($productId, $this->selectedProductIds, true)) {
+            $this->selectedProductIds[] = $productId;
+        }
+
+        $this->loadStockOpeningData($this->selectedProductIds);
+    }
+
+    protected function getModelClass(): string
+    {
+        return ProductStock::class;
+    }
+
+    protected function getAllSelectableIds(): array
+    {
+        return $this->getFilteredQuery()->pluck('id')->toArray();
+    }
+
+    public function getBranchId()
+    {
+        return $this->b_id ?: $this->branchId ?: request()->query('b_id');
+    }
+
+    public function mount()
+    {
+        $this->mountBase();
+        $this->initializeDepartmentContext(); // Using trait method
+        $this->departmentName = $this->departmentName ?: 'Stock Opening';
+        $this->stockDate = Carbon::today()->format('Y-m-d');
+        $this->loadAvailableShifts();
+        $this->loadCurrentShift();
+        $this->loadStockOpeningData();
+    }
+
+    // loadBranchAndDepartment is now handled by SalesDepartmentContext trait
+
+    /**
+     * Load available shifts for date/shift selection
+     */
+    protected function loadAvailableShifts()
+    {
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+        if (empty($salesDepartmentIds)) {
+            $this->availableShifts = [];
+
+            return;
+        }
+
+        // Get shifts from last 30 days for the sales department
+        $this->availableShifts = Shift::query()
+            ->where('branch_id', $this->getBranchId())
+            ->whereIn('department_id', $salesDepartmentIds)
+            ->where('shift_date', '>=', Carbon::today()->subDays(30))
+            ->orderBy('shift_date', 'desc')
+            ->orderBy('shift_type', 'desc')
+            ->get();
+    }
+
+    /**
+     * When user selects a different shift to view
+     */
+    public function updatedSelectedShiftForViewing($shiftId)
+    {
+        if ($shiftId) {
+            $shift = Shift::find($shiftId);
+            if ($shift) {
+                $this->stockDate = $shift->shift_date->format('Y-m-d');
+                $this->shiftType = $shift->shift_type;
+                $this->currentShiftId = $shiftId;
+                $this->loadStockOpeningData();
+            }
+        }
+    }
+
+    /**
+     * When stock date changes
+     */
+    public function updatedStockDate($value)
+    {
+        $this->loadStockOpeningData();
+    }
+
+    /**
+     * Load current active shift or create new one
+     */
+    protected function loadCurrentShift()
+    {
+        $employee = auth()->user();
+
+        // Get active shift for today
+        $activeShift = Shift::where('employee_id', $employee->id)
+            ->where('shift_date', Carbon::today())
+            ->where('status', 'active')
+            ->first();
+
+        if ($activeShift) {
+            $this->currentShiftId = $activeShift->id;
+            $this->shiftType      = $activeShift->shift_type ?? 'morning';
+        }
+    }
+
+    /**
+     * Load stock opening data only for selected products.
+     *
+     * @param  array<int|string>|null  $productIds
+     */
+    public function loadStockOpeningData(?array $productIds = null): void
+    {
+        $stockDate = Carbon::parse($this->stockDate)->toDateString();
+        $yesterday = Carbon::parse($stockDate)->subDay()->toDateString();
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+        $this->loadProductTypes($salesDepartmentIds);
+        $this->loadProductLookupOptions();
+
+        if (empty($salesDepartmentIds)) {
+            $this->stockOpenings = [];
+            $this->rows = [];
+            $this->unclosedProducts = [];
+            $this->isVerified = false;
+
+            return;
+        }
+
+        $targetProductIds = collect($productIds ?? $this->selectedProductIds)
+            ->filter(static fn ($id): bool => $id !== null && (string) $id !== '')
+            ->map(static fn ($id): string => (string) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($targetProductIds)) {
+            $targetProductIds = $this->resolveDefaultProductIdsForStockOpening($salesDepartmentIds, $stockDate);
+            $this->selectedProductIds = $targetProductIds;
+        }
+
+        if (empty($targetProductIds)) {
+            $this->stockOpenings = [];
+            $this->rows = [];
+            $this->unclosedProducts = [];
+            $this->isVerified = $this->hasVerifiedStockOpening($salesDepartmentIds);
+
+            return;
+        }
+
+        $primarySalesDepartmentId = $this->resolvePrimarySalesDepartmentId($salesDepartmentIds);
+        $hasDepartmentColumn = $this->hasProductStocksDepartmentColumn();
+        $products = Product::query()
+            ->whereIn('id', $targetProductIds)
+            ->active()
+            ->available()
+            ->whereIn('sales_department_id', $salesDepartmentIds)
+            ->select(['id', 'name', 'sku', 'uom_id', 'product_type_id', 'shelf_life_days'])
+            ->with(['unitOfMeasure:id,symbol'])
+            ->orderBy('name')
+            ->get();
+
+        if ($products->isEmpty()) {
+            $this->selectedProductIds = [];
+            $this->stockOpenings = [];
+            $this->rows = [];
+            $this->unclosedProducts = [];
+            $this->isVerified = $this->hasVerifiedStockOpening($salesDepartmentIds);
+
+            return;
+        }
+
+        $productIds = $products->pluck('id')
+            ->map(static fn ($id): string => (string) $id)
+            ->values()
+            ->all();
+        $this->selectedProductIds = $productIds;
+        if ($this->selectedProductId !== null && ! in_array((string) $this->selectedProductId, $productIds, true)) {
+            $this->selectedProductId = null;
+        }
+
+        $stockSelect = [
+            'id',
+            'product_id',
+            'stock_date',
+            'shift_type',
+            'opening_quantity',
+            'closing_quantity',
+            'production_date',
+            'expiry_date',
+            'notes',
+        ];
+        if ($hasDepartmentColumn) {
+            $stockSelect[] = 'department_id';
+        }
+
+        $currentUserId = auth()->id();
+        $todayStocksQuery = ProductStock::query()
+            ->select($stockSelect)
+            ->whereIn('product_id', $productIds)
+            ->where('stock_date', $stockDate)
+            ->where('shift_type', $this->getProductStockShiftType())
+            ->orderBy('product_id');
+
+        if ($hasDepartmentColumn) {
+            $todayStocksQuery->whereIn('department_id', $salesDepartmentIds);
+            if ($primarySalesDepartmentId !== null) {
+                $todayStocksQuery->orderByRaw('department_id = ? DESC', [$primarySalesDepartmentId]);
+            }
+        }
+
+        if ($currentUserId) {
+            $todayStocksQuery->where('verified_by', $currentUserId)
+                ->where('workflow_step', 'opening_verified');
+        }
+
+        $todayStocks = $todayStocksQuery->orderByDesc('id')->get();
+        $todayStockByProduct = $this->buildPreferredStockMap(
+            $todayStocks,
+            $primarySalesDepartmentId,
+            $hasDepartmentColumn
+        );
+        $todayStockIds = $todayStocks->pluck('id')
+            ->filter()
+            ->map(static fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
+        $previousStockByProduct = $this->getPreviousStockByProduct(
+            $productIds,
+            $stockDate,
+            $salesDepartmentIds,
+            $primarySalesDepartmentId,
+            $hasDepartmentColumn,
+            $stockSelect,
+            $todayStockIds
+        );
+
+        $dispatchRows = ProductDispatch::query()
+            ->whereIn('product_id', $productIds)
+            ->whereIn('sales_department_id', $salesDepartmentIds)
+            ->whereIn('status', ['pending_verification', 'accepted', 'received'])
+            ->where(function ($query) use ($stockDate) {
+                $query->whereDate('dispatch_date', $stockDate)
+                    ->orWhereDate('dispatch_time', $stockDate)
+                    ->orWhereDate('received_at', $stockDate);
+            })
+            ->get([
+                'product_id',
+                'status',
+                'quantity',
+                'received_quantity',
+                'dispatch_date',
+                'dispatch_time',
+                'received_at',
+                'created_at',
+            ]);
+        $dispatchRowsByProduct = [];
+        foreach ($dispatchRows as $dispatchRow) {
+            $dispatchRowsByProduct[(string) $dispatchRow->product_id][] = $dispatchRow;
+        }
+
+        $expectedPrevious = $this->getExpectedPreviousShiftContext(
+            $stockDate,
+            $this->getProductStockShiftType()
+        );
+        $this->expectedPreviousClosingDate = $expectedPrevious['date'];
+        $this->expectedPreviousClosingShift = $expectedPrevious['shift'];
+
+        $stockOpenings = [];
+        $unclosedProducts = [];
+
+        foreach ($products as $product) {
+            $productId = (string) $product->id;
+            $previousStock = $previousStockByProduct[$productId] ?? null;
+            $todayStock = $todayStockByProduct[$productId] ?? null;
+            $fallbackClosing = 0.0;
+            $carryForwardSourceDate = null;
+            $carryForwardShiftType = null;
+
+            if ($previousStock !== null) {
+                $fallbackClosing = (float) $previousStock->closing_quantity;
+                $carryForwardSourceDate = $previousStock->stock_date?->format('Y-m-d') ?? null;
+                $carryForwardShiftType = $previousStock->shift_type;
+            }
+
+            if ($previousStock !== null) {
+                $expectedDate = $expectedPrevious['date'];
+                $expectedShift = $expectedPrevious['shift'];
+                $previousDate = $previousStock->stock_date?->format('Y-m-d') ?? null;
+                $previousShift = $previousStock->shift_type ?? null;
+
+                $isExpectedPrevious = $expectedDate !== null && $expectedShift !== null
+                    ? ($previousDate === $expectedDate && $previousShift === $expectedShift)
+                    : true;
+
+                if (! $isExpectedPrevious && (float) $previousStock->closing_quantity > 0) {
+                    $unclosedProducts[] = [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'product_sku' => $product->sku,
+                        'product_uom' => $product->unitOfMeasure?->symbol,
+                        'last_closing' => (float) $previousStock->closing_quantity,
+                        'last_stock_date' => $previousDate,
+                        'last_shift_type' => $previousShift,
+                    ];
+                }
+            }
+
+            $previousDate = $previousStock?->stock_date?->format('Y-m-d');
+            $cutoffTimestamp = $previousDate === $stockDate
+                ? ($previousStock?->created_at ?? null)
+                : null;
+
+            $todayAdditions = 0.0;
+            $dispatchCount = 0;
+            $productDispatches = $dispatchRowsByProduct[$productId] ?? [];
+            foreach ($productDispatches as $dispatchRow) {
+                $dispatchTimestamp = $dispatchRow->received_at
+                    ?? $dispatchRow->dispatch_time
+                    ?? $dispatchRow->created_at;
+                if (! $dispatchTimestamp && $dispatchRow->dispatch_date) {
+                    $dispatchTimestamp = Carbon::parse($dispatchRow->dispatch_date)->startOfDay();
+                }
+                if ($cutoffTimestamp && $dispatchTimestamp && Carbon::parse($dispatchTimestamp)->lte($cutoffTimestamp)) {
+                    continue;
+                }
+
+                $quantity = $dispatchRow->status === 'received'
+                    ? (float) ($dispatchRow->received_quantity ?? $dispatchRow->quantity ?? 0)
+                    : (float) ($dispatchRow->quantity ?? 0);
+
+                $todayAdditions += $quantity;
+                $dispatchCount++;
+            }
+
+            $previousClosing = $previousStock
+                ? (float) $previousStock->closing_quantity
+                : $fallbackClosing;
+            $previousClosingSource = $previousStock
+                ? ($previousStock->stock_date?->format('Y-m-d') ?? $yesterday)
+                : ($carryForwardSourceDate ?? $yesterday);
+            $previousClosingShift = $previousStock
+                ? $previousStock->shift_type
+                : $carryForwardShiftType;
+            $isCarriedForward = ! $previousStock && $fallbackClosing > 0;
+            $expectedOpening = $previousClosing + $todayAdditions;
+            $actualOpening = $todayStock ? $todayStock->opening_quantity : $expectedOpening;
+            $variance = $actualOpening - $expectedOpening;
+
+            $varianceSource = 'None';
+            if ($variance !== 0.0) {
+                $sourceLabel = trim((string) $previousClosingSource . ' ' . (string) $previousClosingShift);
+                $varianceSource = 'Stock count difference vs expected opening (' . ($sourceLabel !== '' ? $sourceLabel : 'previous closing') . ' + production)';
+            }
+
+            $stockOpenings[] = [
+                'product_id'        => $product->id,
+                'product_name'      => $product->name,
+                'product_sku'       => $product->sku,
+                'product_uom'       => $product->unitOfMeasure?->symbol,
+                'yesterday_closing' => $previousClosing,
+                'previous_closing_source' => $previousClosingSource,
+                'previous_closing_shift' => $previousClosingShift,
+                'is_carried_forward' => $isCarriedForward,
+                'today_additions'   => $todayAdditions,
+                'dispatch_count'    => $dispatchCount,
+                'expected_opening'  => $expectedOpening,
+                'actual_opening'    => $actualOpening,
+                'variance'          => $variance,
+                'variance_source'   => $varianceSource,
+                'production_date'   => $todayStock ? $todayStock->production_date?->format('Y-m-d') : Carbon::today()->format('Y-m-d'),
+                'expiry_date'       => $todayStock ? $todayStock->expiry_date?->format('Y-m-d') : null,
+                'shelf_life_days'   => $product->shelf_life_days,
+                'notes'             => $todayStock ? $todayStock->notes : '',
+                'is_saved'          => $todayStock !== null,
+            ];
+        }
+
+        $this->stockOpenings = $stockOpenings;
+        $this->syncRowsFromStockOpenings();
+        $this->unclosedProducts = $unclosedProducts;
+        $this->isVerified = $this->hasVerifiedStockOpening($salesDepartmentIds);
+    }
+
+    /**
+     * @param  Collection<int, ProductStock>  $stocks
+     * @return array<string, ProductStock>
+     */
+    private function buildPreferredStockMap(Collection $stocks, ?int $primarySalesDepartmentId, bool $hasDepartmentColumn): array
+    {
+        $map = [];
+
+        foreach ($stocks as $stock) {
+            $productId = (string) $stock->product_id;
+            if (! isset($map[$productId])) {
+                $map[$productId] = $stock;
+
+                continue;
+            }
+
+            if (! $hasDepartmentColumn || $primarySalesDepartmentId === null) {
+                continue;
+            }
+
+            $existingDate = $map[$productId]->stock_date?->toDateString()
+                ?? (string) ($map[$productId]->stock_date ?? '');
+            $candidateDate = $stock->stock_date?->toDateString()
+                ?? (string) ($stock->stock_date ?? '');
+            if ($existingDate !== '' && $candidateDate !== '' && $existingDate !== $candidateDate) {
+                continue;
+            }
+
+            if ((int) ($map[$productId]->department_id ?? 0) === $primarySalesDepartmentId) {
+                continue;
+            }
+
+            if ((int) ($stock->department_id ?? 0) === $primarySalesDepartmentId) {
+                $map[$productId] = $stock;
+            }
+        }
+
+        return $map;
+    }
+
+    private function getExpectedPreviousShiftContext(string $stockDate, string $currentShiftType): array
+    {
+        $date = Carbon::parse($stockDate)->toDateString();
+
+        return match ($currentShiftType) {
+            'morning' => [
+                'date' => Carbon::parse($date)->subDay()->toDateString(),
+                'shift' => 'night',
+            ],
+            'afternoon' => [
+                'date' => $date,
+                'shift' => 'morning',
+            ],
+            'night' => [
+                'date' => $date,
+                'shift' => 'afternoon',
+            ],
+            default => [
+                'date' => Carbon::parse($date)->subDay()->toDateString(),
+                'shift' => null,
+            ],
+        };
+    }
+
+    /**
+     * @param  array<int, string>  $productIds
+     * @param  array<int>  $salesDepartmentIds
+     * @param  array<int, string>  $stockSelect
+     * @param  array<int>  $excludeStockIds
+     * @return array<string, ProductStock>
+     */
+    private function getPreviousStockByProduct(
+        array $productIds,
+        string $stockDate,
+        array $salesDepartmentIds,
+        ?int $primarySalesDepartmentId,
+        bool $hasDepartmentColumn,
+        array $stockSelect,
+        array $excludeStockIds
+    ): array {
+        if (empty($productIds)) {
+            return [];
+        }
+
+        $shiftOrder = [
+            'morning' => 1,
+            'afternoon' => 2,
+            'night' => 3,
+        ];
+        $currentShiftType = $this->getProductStockShiftType();
+        $currentShiftOrder = $shiftOrder[$currentShiftType] ?? 0;
+
+        $query = ProductStock::query()
+            ->select($stockSelect)
+            ->whereIn('product_id', $productIds)
+            ->where(function ($query) use ($stockDate, $currentShiftOrder): void {
+                $query->where('stock_date', '<', $stockDate);
+
+                if ($currentShiftOrder > 0) {
+                    $query->orWhere(function ($query) use ($stockDate, $currentShiftOrder): void {
+                        $query->where('stock_date', $stockDate)
+                            ->whereRaw("CASE shift_type WHEN 'morning' THEN 1 WHEN 'afternoon' THEN 2 WHEN 'night' THEN 3 ELSE 0 END <= ?", [$currentShiftOrder]);
+                    });
+                }
+            })
+            ->orderByDesc('stock_date')
+            ->orderByRaw("CASE shift_type WHEN 'morning' THEN 1 WHEN 'afternoon' THEN 2 WHEN 'night' THEN 3 ELSE 0 END DESC")
+            ->orderByDesc('id');
+
+        if ($hasDepartmentColumn) {
+            $query->whereIn('department_id', $salesDepartmentIds);
+            if ($primarySalesDepartmentId !== null) {
+                $query->orderByRaw('department_id = ? DESC', [$primarySalesDepartmentId]);
+            }
+        }
+
+        if (! empty($excludeStockIds)) {
+            $query->whereNotIn('id', $excludeStockIds);
+        }
+
+        return $this->buildPreferredStockMap($query->get(), $primarySalesDepartmentId, $hasDepartmentColumn);
+    }
+
+    /**
+     * @param  array<int>  $salesDepartmentIds
+     */
+    private function hasVerifiedStockOpening(array $salesDepartmentIds): bool
+    {
+        if (! $this->currentShiftId || empty($salesDepartmentIds)) {
+            return false;
+        }
+
+        $currentUserId = auth()->id();
+        if (! $currentUserId) {
+            return false;
+        }
+
+        $query = ProductStock::query()
+            ->where('stock_date', $this->stockDate)
+            ->where('shift_type', $this->getProductStockShiftType())
+            ->where('workflow_step', 'opening_verified')
+            ->where('verified_by', $currentUserId);
+
+        if ($this->hasProductStocksDepartmentColumn()) {
+            $query->whereIn('department_id', $salesDepartmentIds);
+        }
+
+        return $query->exists();
+    }
+
+    private function hasProductStocksDepartmentColumn(): bool
+    {
+        if ($this->productStocksHasDepartmentColumn === null) {
+            $this->productStocksHasDepartmentColumn = Schema::hasColumn('product_stocks', 'department_id');
+        }
+
+        return $this->productStocksHasDepartmentColumn;
+    }
+
+    private function syncRowsFromStockOpenings(): void
+    {
+        $this->rows = array_map(static function (array $stock, int $index): object {
+            $stock['index'] = $index;
+
+            return (object) $stock;
+        }, $this->stockOpenings, array_keys($this->stockOpenings));
+    }
+
+    /**
+     * Update actual opening quantity for a product
+     */
+    public function updateActualOpening($productId, $value)
+    {
+        $index = collect($this->stockOpenings)->search(function ($item) use ($productId) {
+            return $item['product_id'] == $productId;
+        });
+
+        if ($index !== false) {
+            $this->stockOpenings[$index]['actual_opening'] = (float) $value;
+            $this->stockOpenings[$index]['variance']       =
+            $this->stockOpenings[$index]['actual_opening'] -
+            $this->stockOpenings[$index]['expected_opening'];
+            $this->syncRowsFromStockOpenings();
+        }
+    }
+
+    /**
+     * Update production date for a product
+     */
+    public function updateProductionDate($productId, $value)
+    {
+        $index = collect($this->stockOpenings)->search(function ($item) use ($productId) {
+            return $item['product_id'] == $productId;
+        });
+
+        if ($index !== false) {
+            $this->stockOpenings[$index]['production_date'] = $value;
+
+            $shelfLifeDays = (int) ($this->stockOpenings[$index]['shelf_life_days'] ?? 0);
+            if ($shelfLifeDays > 0 && ! empty($value)) {
+                $productionDate = Carbon::parse($value);
+                $this->stockOpenings[$index]['expiry_date'] =
+                    $productionDate->copy()->addDays($shelfLifeDays)->format('Y-m-d');
+            }
+
+            $this->syncRowsFromStockOpenings();
+        }
+    }
+
+    /**
+     * Update notes for a product
+     */
+    public function updateNotes($productId, $value)
+    {
+        $index = collect($this->stockOpenings)->search(function ($item) use ($productId) {
+            return $item['product_id'] == $productId;
+        });
+
+        if ($index !== false) {
+            $this->stockOpenings[$index]['notes'] = $value;
+            $this->syncRowsFromStockOpenings();
+        }
+    }
+
+    public function removeProduct($productId): void
+    {
+        $productId = (string) $productId;
+
+        $this->selectedProductIds = array_values(array_filter(
+            $this->selectedProductIds,
+            static fn ($id): bool => (string) $id !== $productId
+        ));
+
+        $this->stockOpenings = array_values(array_filter(
+            $this->stockOpenings,
+            static fn (array $row): bool => (string) $row['product_id'] !== $productId
+        ));
+
+        $this->unclosedProducts = array_values(array_filter(
+            $this->unclosedProducts,
+            static fn (array $row): bool => (string) $row['product_id'] !== $productId
+        ));
+
+        if ((string) ($this->selectedProductId ?? '') === $productId) {
+            $this->selectedProductId = null;
+        }
+
+        $this->syncRowsFromStockOpenings();
+    }
+
+
+    /**
+     * Save all stock openings
+     */
+    public function saveStockOpenings()
+    {
+        if (empty($this->stockOpenings)) {
+            $this->toast()->warning('Select at least one product before saving.')->send();
+
+            return;
+        }
+
+        if (! $this->currentShiftId) {
+            $this->toast()->error('No active shift found. Please clock in first.')->send();
+            return;
+        }
+
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+        $primarySalesDepartmentId = $this->resolvePrimarySalesDepartmentId($salesDepartmentIds);
+        if (empty($salesDepartmentIds) || $primarySalesDepartmentId === null) {
+            $this->toast()->error('Sales department context is missing. Refresh and try again.')->send();
+
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $hasDepartmentColumn = $this->hasProductStocksDepartmentColumn();
+
+            // Get selected product IDs
+            $selectedProductIds = collect($this->stockOpenings)->pluck('product_id')->toArray();
+            
+            // Save selected products with actual values
+            foreach ($this->stockOpenings as $stockOpening) {
+                $yesterdayClosing = (float) ($stockOpening['yesterday_closing'] ?? 0);
+                $todayAdditions = (float) ($stockOpening['today_additions'] ?? 0);
+                $actualOpening = (float) ($stockOpening['actual_opening'] ?? 0);
+
+                // If actual opening already includes some/all additions, only keep the remaining additions
+                // so totals do not double-count production sent.
+                $additionsAlreadyCounted = max(0.0, $actualOpening - $yesterdayClosing);
+                $remainingAdditions = max(0.0, $todayAdditions - $additionsAlreadyCounted);
+
+                // Use shift_id from shifts table (sales department shift)
+                // sales_shift_id can be null since we're using the general shifts table
+                // addition_quantity represents the total quantity yield (approved quantity sent from production)
+                $lookup = [
+                    'product_id'     => $stockOpening['product_id'],
+                    'stock_date'     => $this->stockDate,
+                    'shift_type'     => $this->getProductStockShiftType(),
+                ];
+
+                if ($hasDepartmentColumn) {
+                    $lookup['department_id'] = $primarySalesDepartmentId;
+                }
+
+                ProductStock::updateOrCreate(
+                    $lookup,
+                    [
+                        'sales_shift_id'    => null, // Nullable - we use shifts table instead
+                        'department_id'     => $hasDepartmentColumn
+                            ? $primarySalesDepartmentId
+                            : null,
+                        'opening_quantity'  => $actualOpening,
+                        'addition_quantity' => $remainingAdditions, // prevent double-counting additions
+                        'production_date'   => $stockOpening['production_date'],
+                        'expiry_date'       => $stockOpening['expiry_date'],
+                        'notes'             => $stockOpening['notes'],
+                        'total_available'   => $actualOpening + $remainingAdditions,
+                        'closing_quantity'  => $actualOpening + $remainingAdditions,
+                        'is_workflow_verified' => true,
+                        'verified_at'       => now(),
+                        'verified_by'       => auth()->id() ?? auth()->id(),
+                        'workflow_step'     => 'opening_verified',
+                    ]
+                );
+            }
+
+            // Get tracked products (selected + dispatch-linked + existing stock rows) to find unselected ones.
+            $trackedProductIds = array_values(array_unique(array_merge(
+                array_map(static fn ($id): string => (string) $id, $selectedProductIds),
+                $this->resolveDefaultProductIdsForStockOpening($salesDepartmentIds, $this->stockDate)
+            )));
+
+            $trackedProducts = Product::query()
+                ->active()
+                ->available()
+                ->whereIn('id', $trackedProductIds)
+                ->whereIn('sales_department_id', $salesDepartmentIds)
+                ->select(['id', 'shelf_life_days'])
+                ->get();
+
+            // Save unselected products with 0.00 opening quantity
+            foreach ($trackedProducts as $product) {
+                if (in_array($product->id, $selectedProductIds)) {
+                    continue; // Skip already saved products
+                }
+
+                $lookup = [
+                    'product_id'     => $product->id,
+                    'stock_date'     => $this->stockDate,
+                    'shift_type'     => $this->getProductStockShiftType(),
+                ];
+
+                if ($hasDepartmentColumn) {
+                    $lookup['department_id'] = $primarySalesDepartmentId;
+                }
+
+                // Check if record already exists
+                $existingStock = ProductStock::where($lookup)->first();
+                
+                if (!$existingStock) {
+                    // Create new record with 0.00 opening for unselected products
+                    $productionDate = Carbon::today()->format('Y-m-d');
+                    $expiryDate = null;
+                    
+                    if ($product->shelf_life_days > 0) {
+                        $expiryDate = Carbon::parse($productionDate)->addDays($product->shelf_life_days)->format('Y-m-d');
+                    }
+
+                    ProductStock::create(
+                        array_merge($lookup, [
+                            'sales_shift_id'    => null,
+                            'department_id'     => $hasDepartmentColumn
+                                ? $primarySalesDepartmentId
+                                : null,
+                            'opening_quantity'  => 0.00,
+                            'addition_quantity' => 0.00,
+                            'production_date'   => $productionDate,
+                            'expiry_date'       => $expiryDate,
+                            'notes'             => 'Auto-recorded - product not selected during stock opening',
+                            'total_available'   => 0.00,
+                            'closing_quantity'  => 0.00,
+                            'is_workflow_verified' => true,
+                            'verified_at'       => now(),
+                            'verified_by'       => auth()->id() ?? auth()->id(),
+                            'workflow_step'     => 'opening_verified',
+                        ])
+                    );
+                }
+            }
+
+            DB::commit();
+            $this->isVerified = true;
+
+            // Mark workflow step as completed for all users to unlock POS access
+            $workflowService = app(SalesWorkflowService::class);
+            $workflowService->completeStep(
+                auth()->id(),
+                $this->currentShiftId,
+                'stock_opening'
+            );
+
+            $this->toast()->success('Stock opening completed! Redirecting to POS...')->send();
+
+            // Auto-redirect to POS with department context
+            $this->redirectToPos();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->toast()->error('Error saving stock opening: ' . $e->getMessage())->send();
+        }
+    }
+
+    /**
+     * Check if stock opening is verified
+     */
+    public function checkVerificationStatus()
+    {
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+        $this->isVerified = $this->hasVerifiedStockOpening($salesDepartmentIds);
+
+        return $this->isVerified;
+    }
+
+    protected function getFilteredQuery()
+    {
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+        $query = ProductStock::query()
+            ->where('stock_date', $this->stockDate)
+            ->where('shift_type', $this->getProductStockShiftType());
+
+        if (! $this->hasProductStocksDepartmentColumn()) {
+            return $query;
+        }
+
+        if (empty($salesDepartmentIds)) {
+            $query->whereRaw('1 = 0');
+
+            return $query;
+        }
+
+        return $query->whereIn('department_id', $salesDepartmentIds);
+    }
+
+    public function updatedSearch()
+    {
+        $this->loadProductLookupOptions();
+    }
+
+    public function updatedFilterProductType()
+    {
+        $this->loadProductLookupOptions();
+    }
+
+    public function render()
+    {
+        return view('livewire.branch-dashboard.sales-dashboard.stock-opening.index', [
+            'productTypes' => $this->productTypes,
+            'productLookupOptions' => $this->productLookupOptions,
+            'rows' => $this->rows,
+            'stockOpenings' => $this->stockOpenings,
+        ]);
+    }
+
+    private function loadProductLookupOptions(): void
+    {
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+        if (empty($salesDepartmentIds)) {
+            $this->productLookupOptions = [];
+
+            return;
+        }
+
+        $search = trim((string) $this->search);
+
+        $products = Product::query()
+            ->active()
+            ->available()
+            ->whereIn('sales_department_id', $salesDepartmentIds)
+            ->when($this->filterProductType, function ($query) {
+                $query->where('product_type_id', $this->filterProductType);
+            })
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('sku', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'sku']);
+
+        $this->productLookupOptions = $products->map(static function (Product $product): array {
+            return [
+                'id' => (string) $product->id,
+                'name' => (string) $product->name,
+                'sku' => (string) ($product->sku ?? '-'),
+                'label' => trim((string) $product->name . ' (' . (string) ($product->sku ?? '-') . ')'),
+            ];
+        })->all();
+    }
+
+    /**
+     * @param array<int> $salesDepartmentIds
+     */
+    private function loadProductTypes(array $salesDepartmentIds): void
+    {
+        if (empty($salesDepartmentIds)) {
+            $this->productTypes = [];
+
+            return;
+        }
+
+        $this->productTypes = ProductType::query()
+            ->whereIn('id', Product::query()
+                ->active()
+                ->available()
+                ->whereIn('sales_department_id', $salesDepartmentIds)
+                ->select('product_type_id')
+                ->distinct())
+            ->active()
+            ->ordered()
+            ->get(['id', 'name'])
+            ->map(static fn (ProductType $type): array => [
+                'id' => (int) $type->id,
+                'name' => (string) $type->name,
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  array<int>  $salesDepartmentIds
+     * @return array<int, string>
+     */
+    private function resolveDefaultProductIdsForStockOpening(array $salesDepartmentIds, string $stockDate): array
+    {
+        $dispatchProductIds = $this->resolveDispatchProductIdsForDate($salesDepartmentIds, $stockDate);
+
+        $stockQuery = ProductStock::query()
+            ->where('stock_date', $stockDate)
+            ->where('shift_type', $this->getProductStockShiftType());
+
+        if ($this->hasProductStocksDepartmentColumn()) {
+            $stockQuery->whereIn('department_id', $salesDepartmentIds);
+        }
+
+        $stockProductIds = $stockQuery->pluck('product_id')
+            ->map(static fn ($id): string => (string) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        return array_values(array_unique(array_merge($dispatchProductIds, $stockProductIds)));
+    }
+
+    /**
+     * @param  array<int>  $salesDepartmentIds
+     * @return array<int, string>
+     */
+    private function resolveDispatchProductIdsForDate(array $salesDepartmentIds, string $stockDate): array
+    {
+        if (empty($salesDepartmentIds)) {
+            return [];
+        }
+
+        return ProductDispatch::query()
+            ->whereIn('sales_department_id', $salesDepartmentIds)
+            ->whereIn('status', ['pending_verification', 'accepted', 'received'])
+            ->where(function ($query) use ($stockDate) {
+                $query->whereDate('dispatch_date', $stockDate)
+                    ->orWhereDate('dispatch_time', $stockDate)
+                    ->orWhereDate('received_at', $stockDate);
+            })
+            ->whereNotNull('product_id')
+            ->pluck('product_id')
+            ->map(static fn ($id): string => (string) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Resolve equivalent sales department IDs from slug in branch/global scope.
+     *
+     * @return array<int>
+     */
+    private function resolveEquivalentSalesDepartmentIds(): array
+    {
+        $signature = implode('|', [
+            (string) ($this->salesDeptSlug ?? ''),
+            (string) ($this->departmentId ?? ''),
+            (string) ($this->getBranchId() ?? ''),
+        ]);
+        if ($this->cachedSalesDepartmentSignature === $signature && $this->cachedSalesDepartmentIds !== null) {
+            return $this->cachedSalesDepartmentIds;
+        }
+
+        if (! $this->departmentId && ! $this->salesDeptSlug) {
+            $this->cachedSalesDepartmentSignature = $signature;
+            $this->cachedSalesDepartmentIds = [];
+
+            return $this->cachedSalesDepartmentIds;
+        }
+
+        // Prefer explicit slug resolution (branch-specific first, then global).
+        if ($this->salesDeptSlug) {
+            $branchId = $this->getBranchId();
+            $department = null;
+
+            if ($branchId) {
+                $department = Department::query()
+                    ->where('slug', $this->salesDeptSlug)
+                    ->where('branch_id', $branchId)
+                    ->first();
+
+                if (! $department) {
+                    $department = Department::query()
+                        ->where('slug', $this->salesDeptSlug)
+                        ->whereNull('branch_id')
+                        ->first();
+                }
+            } else {
+                $department = Department::query()
+                    ->where('slug', $this->salesDeptSlug)
+                    ->first();
+            }
+
+            if ($department) {
+                $this->cachedSalesDepartmentSignature = $signature;
+                $this->cachedSalesDepartmentIds = [(int) $department->id];
+
+                return $this->cachedSalesDepartmentIds;
+            }
+        }
+
+        $branchId = $this->getBranchId();
+        $query = Department::query()
+            ->whereHas('category', function ($categoryQuery) {
+                $categoryQuery->whereRaw('LOWER(name) = ?', ['sales']);
+            });
+
+        if ($this->salesDeptSlug) {
+            $query->where('slug', $this->salesDeptSlug);
+        } elseif ($this->departmentId) {
+            $query->where('id', (int) $this->departmentId);
+        }
+
+        if ($branchId) {
+            $query->where(function ($scopeQuery) use ($branchId) {
+                $scopeQuery->where('branch_id', $branchId)
+                    ->orWhereNull('branch_id');
+            });
+        }
+
+        $ids = $query->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! empty($ids)) {
+            $this->cachedSalesDepartmentSignature = $signature;
+            $this->cachedSalesDepartmentIds = $ids;
+
+            return $this->cachedSalesDepartmentIds;
+        }
+
+        if ($this->departmentId) {
+            $this->cachedSalesDepartmentSignature = $signature;
+            $this->cachedSalesDepartmentIds = [(int) $this->departmentId];
+
+            return $this->cachedSalesDepartmentIds;
+        }
+
+        $this->cachedSalesDepartmentSignature = $signature;
+        $this->cachedSalesDepartmentIds = $this->departmentId ? [(int) $this->departmentId] : [];
+
+        return $this->cachedSalesDepartmentIds;
+    }
+
+    /**
+     * @param  array<int>  $departmentIds
+     */
+    private function resolvePrimarySalesDepartmentId(array $departmentIds): ?int
+    {
+        $departmentIds = array_values(array_unique(array_map(static fn ($id) => (int) $id, $departmentIds)));
+        if (empty($departmentIds)) {
+            return null;
+        }
+
+        if ($this->departmentId && in_array((int) $this->departmentId, $departmentIds, true)) {
+            return (int) $this->departmentId;
+        }
+
+        return $departmentIds[0] ?? null;
+    }
+
+    private function getProductStockShiftType(): string
+    {
+        return ProductStock::normalizeShiftType($this->shiftType);
+    }
+}

@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SweetTooth - Loading State Diagnostic</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #e0e0e0;
+            padding: 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-left: 4px solid #4CAF50;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        .header h1 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .header p {
+            color: #aaa;
+            font-size: 14px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .section {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .section h2 {
+            color: #4CAF50;
+            font-size: 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section h2::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #4CAF50;
+            border-radius: 50%;
+        }
+        
+        .check-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #333;
+            border-radius: 4px;
+            border-left: 3px solid #555;
+        }
+        
+        .check-item.ok {
+            border-left-color: #4CAF50;
+            background: #1b3a1b;
+        }
+        
+        .check-item.error {
+            border-left-color: #f44336;
+            background: #3a1b1b;
+        }
+        
+        .check-item.warning {
+            border-left-color: #ff9800;
+            background: #3a2a1a;
+        }
+        
+        .check-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .check-item.ok .check-icon {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .check-item.error .check-icon {
+            background: #f44336;
+            color: white;
+        }
+        
+        .check-item.warning .check-icon {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .check-content {
+            flex: 1;
+        }
+        
+        .check-label {
+            color: #fff;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        
+        .check-value {
+            color: #aaa;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            flex: 1;
+            min-width: 140px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #666;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #777;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+            flex: 0;
+        }
+        
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        
+        .code-block {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            color: #4CAF50;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .info-box {
+            background: #1e3a5f;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #b0d4ff;
+            font-size: 13px;
+        }
+        
+        .success-box {
+            background: #1b3a1b;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #81c784;
+            font-size: 13px;
+        }
+        
+        .warning-box {
+            background: #4a3820;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #ffb74d;
+            font-size: 13px;
+        }
+        
+        .error-box {
+            background: #3a1b1b;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #ef5350;
+            font-size: 13px;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #444;
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            color: #aaa;
+            border: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            transition: all 0.3s;
+            margin: 0;
+            min-width: auto;
+            flex: auto;
+        }
+        
+        .tab-btn:hover {
+            color: #fff;
+            background: #333;
+            transform: none;
+        }
+        
+        .tab-btn.active {
+            color: #4CAF50;
+            border-bottom-color: #4CAF50;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 500px) {
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .stat-card {
+            background: #333;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 3px solid #4CAF50;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #444;
+            border-top-color: #4CAF50;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .output {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 15px;
+        }
+        
+        .output-line {
+            padding: 4px 0;
+            color: #aaa;
+            border-bottom: 1px solid #333;
+        }
+        
+        .output-line.success {
+            color: #4CAF50;
+        }
+        
+        .output-line.error {
+            color: #f44336;
+        }
+        
+        .output-line.warning {
+            color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔍 SweetTooth Diagnostic Tool</h1>
+            <p>Real-time inspection of your loading states and component health</p>
+        </div>
+
+        <!-- System Status Overview -->
+        <div class="section full-width">
+            <h2>System Status</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="componentCount">-</div>
+                    <div class="stat-label">Alpine Components</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stuckLoaders">-</div>
+                    <div class="stat-label">Stuck Loaders</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="selectCount">-</div>
+                    <div class="stat-label">Select Dropdowns</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="tableCount">-</div>
+                    <div class="stat-label">Table Components</div>
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" onclick="runFullDiagnostic()">Run Full Diagnostic</button>
+                <button class="btn-secondary" onclick="liveInspect()">Start Live Inspection</button>
+                <button class="btn-secondary" onclick="exportReport()">Export Report</button>
+            </div>
+        </div>
+
+        <!-- Tabbed Interface -->
+        <div class="section full-width">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab(event, 'environment')">Environment</button>
+                <button class="tab-btn" onclick="switchTab(event, 'components')">Components</button>
+                <button class="tab-btn" onclick="switchTab(event, 'loading')">Loading States</button>
+                <button class="tab-btn" onclick="switchTab(event, 'network')">Network</button>
+                <button class="tab-btn" onclick="switchTab(event, 'console')">Console</button>
+            </div>
+
+            <!-- Environment Tab -->
+            <div id="environment" class="tab-content active">
+                <h2 style="margin-top: 0;">Environment Details</h2>
+                <div id="envChecks"></div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="checkEnvironment()">Check Environment</button>
+                </div>
+            </div>
+
+            <!-- Components Tab -->
+            <div id="components" class="tab-content">
+                <h2 style="margin-top: 0;">Component Analysis</h2>
+                <div id="componentAnalysis"></div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="analyzeComponents()">Analyze Components</button>
+                </div>
+            </div>
+
+            <!-- Loading States Tab -->
+            <div id="loading" class="tab-content">
+                <h2 style="margin-top: 0;">Loading State Diagnostics</h2>
+                <div id="loadingDiags"></div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="checkLoadingStates()">Check Loading States</button>
+                </div>
+            </div>
+
+            <!-- Network Tab -->
+            <div id="network" class="tab-content">
+                <h2 style="margin-top: 0;">Network & Assets</h2>
+                <div id="networkChecks"></div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="checkNetwork()">Check Network</button>
+                </div>
+            </div>
+
+            <!-- Console Tab -->
+            <div id="console" class="tab-content">
+                <h2 style="margin-top: 0;">Diagnostic Output</h2>
+                <div class="output" id="consoleOutput"></div>
+                <div class="button-group">
+                    <button class="btn-secondary" onclick="clearConsole()">Clear Output</button>
+                    <button class="btn-primary" onclick="exportConsole()">Copy to Clipboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid">
+            <div class="section">
+                <h2>Quick Actions</h2>
+                <div class="info-box">
+                    <strong>Hard Refresh Browser:</strong> This clears your browser cache and reloads the page with fresh assets.
+                </div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="hardRefresh()">Ctrl+Shift+R</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Test Components</h2>
+                <div class="info-box">
+                    <strong>Test Interactive Elements:</strong> Opens new window to test real components
+                </div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="openTestPage()">Open App</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const consoleOutput = document.getElementById('consoleOutput');
+        const diagnosticData = {
+            timestamp: new Date().toISOString(),
+            checks: {}
+        };
+
+        function log(message, type = 'info') {
+            const line = document.createElement('div');
+            line.className = `output-line ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            line.textContent = `[${timestamp}] ${message}`;
+            consoleOutput.appendChild(line);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        function switchTab(evt, tabName) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(el => el.classList.remove('active'));
+            
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            evt.target.classList.add('active');
+        }
+
+        function createCheckItem(label, value, isOk, details = '') {
+            const item = document.createElement('div');
+            item.className = `check-item ${isOk ? 'ok' : 'error'}`;
+            item.innerHTML = `
+                <div class="check-icon">${isOk ? '✓' : '✗'}</div>
+                <div class="check-content">
+                    <div class="check-label">${label}</div>
+                    <div class="check-value">${value}${details ? ' — ' + details : ''}</div>
+                </div>
+            `;
+            return item;
+        }
+
+        function checkEnvironment() {
+            const envChecks = document.getElementById('envChecks');
+            envChecks.innerHTML = '';
+            log('Checking environment...', 'info');
+
+            // Alpine
+            const hasAlpine = typeof Alpine !== 'undefined';
+            envChecks.appendChild(createCheckItem(
+                'Alpine.js',
+                hasAlpine ? '✓ Loaded' : '✗ Missing',
+                hasAlpine,
+                hasAlpine ? `v${Alpine.version || '?'}` : 'Critical'
+            ));
+            diagnosticData.checks.alpine = hasAlpine;
+
+            // Livewire
+            const hasLivewire = typeof Livewire !== 'undefined';
+            envChecks.appendChild(createCheckItem(
+                'Livewire',
+                hasLivewire ? '✓ Loaded' : '✗ Missing',
+                hasLivewire,
+                hasLivewire ? 'Ready' : 'Critical'
+            ));
+            diagnosticData.checks.livewire = hasLivewire;
+
+            // DOM
+            const pageTitle = document.title || 'Unknown';
+            envChecks.appendChild(createCheckItem(
+                'Page Title',
+                pageTitle,
+                true
+            ));
+
+            // Viewport
+            const viewport = window.innerWidth + ' × ' + window.innerHeight;
+            envChecks.appendChild(createCheckItem(
+                'Viewport',
+                viewport,
+                true
+            ));
+
+            // UserAgent
+            const browser = navigator.userAgent.split(' ').pop();
+            envChecks.appendChild(createCheckItem(
+                'Browser',
+                browser,
+                true
+            ));
+
+            log('Environment check completed', 'success');
+        }
+
+        function analyzeComponents() {
+            const compAnalysis = document.getElementById('componentAnalysis');
+            compAnalysis.innerHTML = '';
+            log('Analyzing components...', 'info');
+
+            const allComponents = document.querySelectorAll('[x-data]');
+            let selects = 0, tables = 0, modals = 0, forms = 0;
+
+            allComponents.forEach(comp => {
+                const xData = comp.getAttribute('x-data');
+                if (xData.includes('tallstackui_select')) selects++;
+                if (xData.includes('tallstackui_table')) tables++;
+                if (xData.includes('modal') || comp.getAttribute('x-show')?.includes('modal')) modals++;
+            });
+
+            forms = document.querySelectorAll('form[wire\\:submit], form[x-on\\:submit]').length;
+
+            compAnalysis.appendChild(createCheckItem('Select Dropdowns', selects, true));
+            compAnalysis.appendChild(createCheckItem('Tables', tables, true));
+            compAnalysis.appendChild(createCheckItem('Modals', modals, true));
+            compAnalysis.appendChild(createCheckItem('Forms', forms, true));
+
+            // Update stats
+            document.getElementById('componentCount').textContent = allComponents.length;
+            document.getElementById('selectCount').textContent = selects;
+            document.getElementById('tableCount').textContent = tables;
+
+            log(`Found ${allComponents.length} Alpine components`, 'success');
+            log(`Selects: ${selects}, Tables: ${tables}, Modals: ${modals}, Forms: ${forms}`, 'info');
+        }
+
+        function checkLoadingStates() {
+            const loadingDiags = document.getElementById('loadingDiags');
+            loadingDiags.innerHTML = '';
+            log('Checking loading states...', 'info');
+
+            // Check for visible loading indicators
+            const loadingElements = document.querySelectorAll('[x-show="loading"], [wire\\:loading], .loading, [class*="loader"]');
+            let visibleLoaders = 0;
+
+            loadingElements.forEach(el => {
+                const style = window.getComputedStyle(el);
+                if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+                    visibleLoaders++;
+                }
+            });
+
+            document.getElementById('stuckLoaders').textContent = visibleLoaders;
+
+            if (visibleLoaders === 0) {
+                loadingDiags.appendChild(createCheckItem(
+                    'Stuck Loading Indicators',
+                    '✓ None detected',
+                    true,
+                    'Your loading states appear healthy'
+                ));
+                log('No stuck loading states detected', 'success');
+            } else {
+                loadingDiags.appendChild(createCheckItem(
+                    'Stuck Loading Indicators',
+                    '⚠ ' + visibleLoaders + ' found',
+                    false,
+                    'Check your requests in Network tab'
+                ));
+                log(`⚠ Found ${visibleLoaders} visible loading indicators`, 'warning');
+            }
+
+            // Check wire:loading directives
+            const wireLoading = document.querySelectorAll('[wire\\:loading]').length;
+            loadingDiags.appendChild(createCheckItem(
+                'wire:loading Directives',
+                wireLoading,
+                wireLoading > 0,
+                'Active loading handlers'
+            ));
+
+            // Check Livewire hooks
+            if (window.Livewire) {
+                loadingDiags.appendChild(createCheckItem(
+                    'Livewire Hooks',
+                    '✓ Available',
+                    true,
+                    'Event system ready'
+                ));
+            }
+
+            log('Loading state check completed', 'success');
+        }
+
+        function checkNetwork() {
+            const networkChecks = document.getElementById('networkChecks');
+            networkChecks.innerHTML = '';
+            log('Checking network and assets...', 'info');
+
+            // Scripts
+            const scripts = document.querySelectorAll('script[src]');
+            networkChecks.appendChild(createCheckItem(
+                'Scripts Loaded',
+                scripts.length,
+                scripts.length > 0
+            ));
+
+            // Stylesheets
+            const links = document.querySelectorAll('link[rel="stylesheet"]');
+            networkChecks.appendChild(createCheckItem(
+                'Stylesheets Loaded',
+                links.length,
+                links.length > 0
+            ));
+
+            // Build assets
+            const buildAssets = document.querySelectorAll('script[src*="/build/"], link[href*="/build/"]');
+            const hasBuild = buildAssets.length > 0;
+            networkChecks.appendChild(createCheckItem(
+                'Build Assets',
+                hasBuild ? buildAssets.length + ' loaded' : 'None (dev mode)',
+                true
+            ));
+
+            // Images
+            const images = document.querySelectorAll('img[src]');
+            networkChecks.appendChild(createCheckItem(
+                'Images',
+                images.length,
+                images.length > 0
+            ));
+
+            // Performance
+            if (window.performance && window.performance.timing) {
+                const timing = window.performance.timing;
+                const loadTime = timing.loadEventEnd - timing.navigationStart;
+                networkChecks.appendChild(createCheckItem(
+                    'Page Load Time',
+                    Math.max(0, loadTime) + 'ms',
+                    loadTime > 0
+                ));
+            }
+
+            log('Network check completed', 'success');
+        }
+
+        function runFullDiagnostic() {
+            log('========== FULL DIAGNOSTIC START ==========', 'info');
+            checkEnvironment();
+            setTimeout(() => {
+                analyzeComponents();
+                setTimeout(() => {
+                    checkLoadingStates();
+                    setTimeout(() => {
+                        checkNetwork();
+                        log('========== FULL DIAGNOSTIC COMPLETE ==========', 'success');
+                        document.getElementById('console').click();
+                    }, 500);
+                }, 500);
+            }, 500);
+        }
+
+        function liveInspect() {
+            log('Starting live inspection mode...', 'info');
+            log('Monitoring for changes...', 'info');
+            
+            let previousState = {
+                components: document.querySelectorAll('[x-data]').length,
+                loaders: document.querySelectorAll('[x-show="loading"], [wire:loading]').length
+            };
+
+            const interval = setInterval(() => {
+                const currentState = {
+                    components: document.querySelectorAll('[x-data]').length,
+                    loaders: document.querySelectorAll('[x-show="loading"], [wire:loading]').length
+                };
+
+                if (currentState.loaders !== previousState.loaders) {
+                    log(`Loading elements changed: ${previousState.loaders} → ${currentState.loaders}`, 
+                        currentState.loaders > previousState.loaders ? 'warning' : 'success');
+                }
+
+                previousState = currentState;
+            }, 1000);
+
+            setTimeout(() => {
+                clearInterval(interval);
+                log('Live inspection stopped', 'info');
+            }, 30000);
+
+            log('Live inspection running for 30 seconds...', 'info');
+        }
+
+        function hardRefresh() {
+            log('Hard refreshing page...', 'info');
+            setTimeout(() => {
+                location.reload(true);
+            }, 500);
+        }
+
+        function openTestPage() {
+            log('Opening application in new window...', 'info');
+            window.open(window.location.origin, '_blank');
+        }
+
+        function clearConsole() {
+            consoleOutput.innerHTML = '';
+            log('Console cleared', 'info');
+        }
+
+        function exportConsole() {
+            const text = Array.from(consoleOutput.querySelectorAll('.output-line'))
+                .map(el => el.textContent).join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                log('Report copied to clipboard!', 'success');
+            });
+        }
+
+        function exportReport() {
+            const report = {
+                ...diagnosticData,
+                componentCount: document.getElementById('componentCount').textContent,
+                stuckLoaders: document.getElementById('stuckLoaders').textContent,
+                consoleOutput: Array.from(consoleOutput.querySelectorAll('.output-line'))
+                    .map(el => el.textContent)
+            };
+
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `diagnostic_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            log('Report exported as JSON', 'success');
+        }
+
+        // Auto-check on load
+        window.addEventListener('load', () => {
+            log('Diagnostic tool ready', 'success');
+            log('Click "Run Full Diagnostic" to begin', 'info');
+        });
+    </script>
+</body>
+</html>

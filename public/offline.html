@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Offline | SweetTooth</title>
+    <style>
+        :root {
+            --bg-1: #f6f8ff;
+            --bg-2: #e6ecff;
+            --panel: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --accent: #2563eb;
+            --accent-2: #38bdf8;
+            --ok: #16a34a;
+            --danger: #dc2626;
+            --ring: rgba(37, 99, 235, 0.25);
+            --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            width: 100%;
+            min-height: 100%;
+        }
+
+        body {
+            font-family: "Trebuchet MS", "Segoe UI", "Tahoma", "Arial", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(65rem 65rem at -10% -10%, #dbeafe 0%, transparent 55%),
+                radial-gradient(55rem 55rem at 110% 110%, #bfdbfe 0%, transparent 50%),
+                linear-gradient(160deg, var(--bg-1), var(--bg-2));
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .orb {
+            position: fixed;
+            border-radius: 999px;
+            filter: blur(42px);
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb.one {
+            width: 280px;
+            height: 280px;
+            top: 5%;
+            left: 7%;
+            background: #38bdf8;
+        }
+
+        .orb.two {
+            width: 340px;
+            height: 340px;
+            right: 6%;
+            bottom: 8%;
+            background: #2563eb;
+        }
+
+        .offline-card {
+            position: relative;
+            z-index: 1;
+            width: min(560px, 100%);
+            background: linear-gradient(180deg, #ffffff, #f8fbff);
+            border: 1px solid #dbe7ff;
+            border-radius: 26px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .top-stripe {
+            height: 8px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        }
+
+        .content {
+            padding: 34px 30px 30px;
+        }
+
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            border: 1px solid #fee2e2;
+            color: #991b1b;
+            background: #fef2f2;
+            margin-bottom: 16px;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 999px;
+            background: var(--danger);
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45);
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45); }
+            70% { box-shadow: 0 0 0 9px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: clamp(1.7rem, 3.2vw, 2.2rem);
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 0.98rem;
+            max-width: 48ch;
+        }
+
+        .signal {
+            margin-top: 22px;
+            display: grid;
+            grid-template-columns: 72px 1fr;
+            gap: 14px;
+            align-items: center;
+            padding: 14px;
+            border: 1px solid #dbe7ff;
+            background: #ffffff;
+            border-radius: 16px;
+        }
+
+        .signal svg {
+            width: 56px;
+            height: 56px;
+            color: var(--accent);
+        }
+
+        .signal strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.92rem;
+        }
+
+        .signal p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.87rem;
+        }
+
+        .actions {
+            margin-top: 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 12px;
+            padding: 13px 17px;
+            font-size: 0.92rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .btn.primary {
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            color: #ffffff;
+            min-width: 168px;
+            box-shadow: 0 12px 26px var(--ring);
+        }
+
+        .btn.primary:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.04);
+        }
+
+        .btn.secondary {
+            background: #eef4ff;
+            color: #1e3a8a;
+        }
+
+        .btn.secondary:hover {
+            background: #e2ecff;
+        }
+
+        .meta {
+            margin-top: 18px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 16px;
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        .help {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border: 1px dashed #c7d8ff;
+            border-radius: 12px;
+            background: #f5f9ff;
+            color: #334155;
+            font-size: 0.85rem;
+            line-height: 1.55;
+            display: none;
+        }
+
+        .help.show {
+            display: block;
+        }
+
+        @media (max-width: 640px) {
+            .content {
+                padding: 26px 20px 22px;
+            }
+
+            .signal {
+                grid-template-columns: 58px 1fr;
+                gap: 10px;
+            }
+
+            .signal svg {
+                width: 48px;
+                height: 48px;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="orb one"></div>
+    <div class="orb two"></div>
+
+    <main class="offline-card">
+        <div class="top-stripe"></div>
+        <section class="content">
+            <div class="status-chip" id="statusChip">
+                <span class="dot" id="statusDot"></span>
+                <span id="statusText">You are offline</span>
+            </div>
+
+            <h1>You are offline</h1>
+            <p class="subtitle">
+                Please check your connection. We could not reach the server right now, but your page is ready to retry as soon as internet is back.
+            </p>
+
+            <div class="signal">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M2.5 8.6C7.7 4.3 16.3 4.3 21.5 8.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M6 12c3.5-2.9 8.5-2.9 12 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M9.7 15.5c1.3-1.1 3.3-1.1 4.6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M4 4l16 16" stroke="#dc2626" stroke-width="2.1" stroke-linecap="round"/>
+                </svg>
+                <div>
+                    <strong>Network status monitor</strong>
+                    <p id="monitorText">Waiting for internet reconnection.</p>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn primary" id="retryBtn" type="button">Try Again</button>
+                <button class="btn secondary" id="tipsBtn" type="button">Connection Tips</button>
+            </div>
+
+            <div class="help" id="tipsBox">
+                1. Check Wi-Fi or mobile data.
+                2. Toggle airplane mode off and on.
+                3. If using office/home internet, restart router if needed.
+                4. Return here and click Try Again.
+            </div>
+
+            <div class="meta">
+                <span>App: SweetTooth Dashboard</span>
+                <span id="lastChecked">Last checked: --</span>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            var retryBtn = document.getElementById('retryBtn');
+            var tipsBtn = document.getElementById('tipsBtn');
+            var tipsBox = document.getElementById('tipsBox');
+            var statusText = document.getElementById('statusText');
+            var statusChip = document.getElementById('statusChip');
+            var statusDot = document.getElementById('statusDot');
+            var monitorText = document.getElementById('monitorText');
+            var lastChecked = document.getElementById('lastChecked');
+
+            function stamp() {
+                lastChecked.textContent = 'Last checked: ' + new Date().toLocaleTimeString();
+            }
+
+            function setOnlineState(isOnline) {
+                if (isOnline) {
+                    statusText.textContent = 'Connection restored';
+                    statusChip.style.background = '#f0fdf4';
+                    statusChip.style.borderColor = '#bbf7d0';
+                    statusChip.style.color = '#166534';
+                    statusDot.style.background = '#16a34a';
+                    monitorText.textContent = 'Connection is back. Reloading now.';
+                    setTimeout(function () {
+                        window.location.reload();
+                    }, 700);
+                } else {
+                    statusText.textContent = 'You are offline';
+                    statusChip.style.background = '#fef2f2';
+                    statusChip.style.borderColor = '#fee2e2';
+                    statusChip.style.color = '#991b1b';
+                    statusDot.style.background = '#dc2626';
+                    monitorText.textContent = 'Waiting for internet reconnection.';
+                }
+                stamp();
+            }
+
+            retryBtn.addEventListener('click', function () {
+                stamp();
+                window.location.reload();
+            });
+
+            tipsBtn.addEventListener('click', function () {
+                tipsBox.classList.toggle('show');
+            });
+
+            window.addEventListener('online', function () {
+                setOnlineState(true);
+            });
+
+            window.addEventListener('offline', function () {
+                setOnlineState(false);
+            });
+
+            setOnlineState(navigator.onLine);
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+--- a/app/Livewire/BranchDashboard/Inventory/ItemDispatches.php
++++ b/app/Livewire/BranchDashboard/Inventory/ItemDispatches.php
+@@ -7,6 +7,7 @@
+ use App\Models\Stock;
+ use App\Models\StockMovement;
+ use App\Services\AuditService;
++use App\Models\UnitOfMeasure; // Add this import
+ use App\Traits\Exportable;
+ use Illuminate\Support\Facades\Auth;
+ use Illuminate\Support\Facades\DB;
+@@ -349,13 +350,12 @@
+                         $lowStockWarnings[] = "{$item['item_name']}: Stock level is now {$quantityAfter} {$item['uom']}, which is at or below the reorder level of {$stock->item->reorder_level} {$item['uom']}. Please restock!";
+                     }
+ 
+-                    // Map uom to database enum values
+-                    $uomMapping = [
+-                        'L' => 'liters',
+-                        'unit' => 'units',
+-                        'kg' => 'kg',
+-                        'grams' => 'grams',
+-                        'ml' => 'ml',
+-                        'pcs' => 'pcs',
+-                        'bags' => 'bags',
+-                        'cartons' => 'cartons',
+-                    ];
+-
+-                    $mappedUom = $uomMapping[$item['uom']] ?? $item['uom'];
++                    // Map uom to database enum values using dynamic method
++                    $mappedUom = $this->getDatabaseUom($item['uom']);
++
+                     // Create dispatch record
+@@ -475,6 +475,66 @@
+         $this->resetValidation();
+     }
+ 
++    /**
++     * Get the database-compatible UOM value from the unit symbol
++     */
++    private function getDatabaseUom($uomSymbol)
++    {
++        // Fetch all UOM records to create a dynamic mapping
++        $uomMap = UnitOfMeasure::all()->pluck('name', 'symbol')->toArray();
++        
++        // Specific mapping for the enum values in the database
++        $enumMappings = [
++            'g' => 'grams',
++            'gram' => 'grams',
++            'grams' => 'grams',
++            'kg' => 'kg',
++            'kilogram' => 'kg',
++            'kilograms' => 'kg',
++            'L' => 'liters',
++            'liter' => 'liters',
++            'liters' => 'liters',
++            'ml' => 'ml',
++            'milliliter' => 'ml',
++            'milliliters' => 'ml',
++            'pcs' => 'pcs',
++            'piece' => 'pcs',
++            'pieces' => 'pcs',
++            'unit' => 'units',
++            'units' => 'units',
++            'bag' => 'bags',
++            'bags' => 'bags',
++            'carton' => 'cartons',
++            'cartons' => 'cartons',
++        ];
++        
++        // First try the specific enum mapping
++        if (isset($enumMappings[strtolower($uomSymbol)])) {
++            return $enumMappings[strtolower($uomSymbol)];
++        }
++        
++        // Then try the dynamic mapping from the database
++        $lowerSymbol = strtolower($uomSymbol);
++        foreach ($uomMap as $symbol => $name) {
++            if (strtolower($symbol) === $lowerSymbol) {
++                // Map to the closest enum value
++                $enumKeys = array_keys($enumMappings);
++                foreach ($enumKeys as $enumKey) {
++                    if (strtolower($name) === strtolower($enumKey) || 
++                        str_contains(strtolower($name), strtolower($enumKey)) ||
++                        str_contains(strtolower($enumKey), strtolower($name))) {
++                        return $enumMappings[$enumKey];
++                    }
++                }
++                // Default fallback to the symbol itself if no match found
++                return $uomSymbol;
++            }
++        }
++        
++        // If no match found, return the original symbol (which might cause an error)
++        return $uomSymbol;
++    }
++
+     public function dispatchItems()
+     {

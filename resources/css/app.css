@@ -1,0 +1,217 @@
+@import 'tailwindcss';
+@import '../../vendor/livewire/flux/dist/flux.css';
+@import '../../vendor/tallstackui/tallstackui/css/v4.css';
+
+@plugin '@tailwindcss/forms';
+
+@source '../../vendor/tallstackui/tallstackui/**/*.php';
+
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
+@source '../../vendor/livewire/flux/stubs/**/*.blade.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-gray-50: #fafafa;
+    --color-gray-100: #f5f5f5;
+    --color-gray-200: #e5e5e5;
+    --color-gray-300: #d4d4d4;
+    --color-gray-400: #a3a3a3;
+    --color-gray-500: #737373;
+    --color-gray-600: #525252;
+    --color-gray-700: #404040;
+    --color-gray-800: #262626;
+    --color-gray-900: #171717;
+    --color-gray-950: #0a0a0a;
+
+    --color-dark-50: #fafafa;
+    --color-dark-100: #f5f5f5;
+    --color-dark-200: #e5e5e5;
+    --color-dark-300: #d4d4d4;
+    --color-dark-400: #a3a3a3;
+    --color-dark-500: #737373;
+    --color-dark-600: #525252;
+    --color-dark-700: #404040;
+    --color-dark-800: #262626;
+    --color-dark-900: #171717;
+    --color-dark-950: #0a0a0a;
+
+    --color-zinc-50: #fafafa;
+    --color-zinc-100: #f5f5f5;
+    --color-zinc-200: #e5e5e5;
+    --color-zinc-300: #d4d4d4;
+    --color-zinc-400: #a3a3a3;
+    --color-zinc-500: #737373;
+    --color-zinc-600: #525252;
+    --color-zinc-700: #404040;
+    --color-zinc-800: #262626;
+    --color-zinc-900: #171717;
+    --color-zinc-950: #0a0a0a;
+
+    --color-accent: var(--color-neutral-800);
+    --color-accent-content: var(--color-neutral-800);
+    --color-accent-foreground: var(--color-white);
+}
+
+@layer theme {
+    .dark {
+        --color-accent: var(--color-white);
+        --color-accent-content: var(--color-white);
+        --color-accent-foreground: var(--color-neutral-800);
+    }
+}
+
+@layer base {
+
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+
+    body {
+        background-color: var(--color-background, #f7fafc);
+    }
+}
+
+:root {
+    --color-primary: inherit;
+}
+
+/* scrollbars match primary */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll,
+.overflow-y-scroll,
+.overflow-x-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-primary) transparent;
+}
+
+.overflow-auto::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-scroll::-webkit-scrollbar,
+.overflow-y-scroll::-webkit-scrollbar,
+.overflow-x-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb,
+.overflow-scroll::-webkit-scrollbar-thumb,
+.overflow-y-scroll::-webkit-scrollbar-thumb,
+.overflow-x-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--color-primary);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background-color 0.2s ease;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:hover,
+.overflow-scroll::-webkit-scrollbar-thumb:hover,
+.overflow-y-scroll::-webkit-scrollbar-thumb:hover,
+.overflow-x-scroll::-webkit-scrollbar-thumb:hover,
+.overflow-auto::-webkit-scrollbar-thumb:active,
+.overflow-y-auto::-webkit-scrollbar-thumb:active,
+.overflow-x-auto::-webkit-scrollbar-thumb:active,
+.overflow-scroll::-webkit-scrollbar-thumb:active,
+.overflow-y-scroll::-webkit-scrollbar-thumb:active,
+.overflow-x-scroll::-webkit-scrollbar-thumb:active {
+    background-color: var(--color-accent);
+}
+
+.overflow-auto::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track,
+.overflow-scroll::-webkit-scrollbar-track,
+.overflow-y-scroll::-webkit-scrollbar-track,
+.overflow-x-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* interactive elements follow primary palette */
+a,
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+a.primary,
+a.btn,
+a.button,
+button.primary,
+button.btn,
+.flux\:navlist\.item,
+.flux\:navlist\.item button,
+.flux\:navlist\.group button {
+    background-color: transparent;
+    color: inherit;
+    border-color: transparent;
+}
+
+a:hover,
+a:focus-visible,
+a:active,
+a.primary:hover,
+a.btn:hover,
+a.button:hover,
+button:hover,
+button.primary:hover,
+button.btn:hover,
+.flux\:navlist\.item:hover,
+.flux\:navlist\.item button:hover,
+.flux\:navlist\.group button:hover,
+.flux\:navlist\.item:focus-visible,
+.flux\:navlist\.item button:focus-visible,
+.flux\:navlist\.group button:focus-visible,
+.flux\:navlist\.item:active,
+.flux\:navlist\.item button:active,
+.flux\:navlist\.group button:active {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+}
+
+::selection {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+}
+
+[data-flux-field]:not(ui-radio, ui-checkbox) {
+    @apply grid gap-2;
+}
+
+[data-flux-label] {
+    @apply !mb-0 !leading-tight;
+}
+
+input:focus[data-flux-control],
+textarea:focus[data-flux-control],
+select:focus[data-flux-control] {
+    @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
+}
+[x-cloak] {
+    display: none !important;
+}
+
+/* Hide Livewire loading elements by default - they will be shown by Livewire JS when loading */
+[wire\:loading]:not([wire\:loading\.remove]) {
+    display: none;
+}
+/* \[:where(&)\]:size-4 {
+    @apply size-4;🤚🏿
+} */

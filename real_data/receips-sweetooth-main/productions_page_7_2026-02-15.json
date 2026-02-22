@@ -1,0 +1,2927 @@
+[
+  {
+    "reference_no": "2026/9489",
+    "production_date": "02/13/2026",
+    "produced_product": "OMELETTE (70644)",
+    "quantity_produced": "1.00 PORTION",
+    "wasted_quantity": "0.00 PORTION",
+    "ingredients": [
+      {
+        "ingredient": "EGG OMELETTE (WIP) (70518)",
+        "input_qty": "1.00 PORTION",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 PORTION",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "0",
+    "production_cost": "0.0000",
+    "total_cost": "0.0000",
+    "table_info": {
+      "date_time": "02/13/2026 02:37 PM",
+      "ref_no": "2026/9489",
+      "location": "HOT KITCHEN",
+      "product_short": "OMELETTE (70644)",
+      "qty_short": "1.00 PORTION",
+      "total_cost_short": "₦ 0.00"
+    }
+  },
+  {
+    "reference_no": "2026/9488",
+    "production_date": "02/13/2026",
+    "produced_product": "PLAIN POPCORN (70258)",
+    "quantity_produced": "60.00 PK",
+    "wasted_quantity": "0.00 PK",
+    "ingredients": [
+      {
+        "ingredient": "RAW CORN (69523)",
+        "input_qty": "3,000.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "3,000.00 G",
+        "total_price": "6120"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "1,350.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1,350.00 ML",
+        "total_price": "4320"
+      },
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "1,650.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1,650.00 G",
+        "total_price": "2772"
+      },
+      {
+        "ingredient": "MARGARINE BUTTER (PASTRY) (69317)",
+        "input_qty": "1,200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1,200.00 G",
+        "total_price": "5880"
+      }
+    ],
+    "ingredients_cost": "19092",
+    "production_cost": "0.0000",
+    "total_cost": "19092.0000",
+    "table_info": {
+      "date_time": "02/13/2026 02:02 PM",
+      "ref_no": "2026/9488",
+      "location": "TILL",
+      "product_short": "PLAIN POPCORN (70258)",
+      "qty_short": "60.00 PK",
+      "total_cost_short": "₦ 19,092.00"
+    }
+  },
+  {
+    "reference_no": "2026/9487",
+    "production_date": "02/13/2026",
+    "produced_product": "YANKEE BREAKFAST (OMELETTE) (70422)",
+    "quantity_produced": "1.00 PORTION",
+    "wasted_quantity": "0.00 PORTION",
+    "ingredients": [
+      {
+        "ingredient": "PANCAKE BATTER (70451)",
+        "input_qty": "1.00 PORTION",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 PORTION",
+        "total_price": "1000"
+      },
+      {
+        "ingredient": "SAUSAGE (69559)",
+        "input_qty": "2.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2.00 PCS",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "BAKED BEANS IN TOMATO SAUCE (68751)",
+        "input_qty": "100.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "100.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "1150"
+      },
+      {
+        "ingredient": "MUSHROOM (69362)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "83350"
+      },
+      {
+        "ingredient": "FRESH TOMATOES (69122)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "125000"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "10.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "10.00 ML",
+        "total_price": "32"
+      },
+      {
+        "ingredient": "MARPLE SYRUP (WIP) (70453)",
+        "input_qty": "70.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "70.00 G",
+        "total_price": "70000"
+      },
+      {
+        "ingredient": "EGG OMELETTE (WIP) (70518)",
+        "input_qty": "1.00 PORTION",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 PORTION",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "280532",
+    "production_cost": "0.0000",
+    "total_cost": "280532.0000",
+    "table_info": {
+      "date_time": "02/13/2026 01:41 PM",
+      "ref_no": "2026/9487",
+      "location": "HOT KITCHEN",
+      "product_short": "YANKEE BREAKFAST (OMELETTE) (70422)",
+      "qty_short": "1.00 PORTION",
+      "total_cost_short": "₦ 280,532.00"
+    }
+  },
+  {
+    "reference_no": "2026/9484",
+    "production_date": "02/13/2026",
+    "produced_product": "VALENTINE VANILLA SPONGE (71212)",
+    "quantity_produced": "1.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "46.88 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "46.88 G",
+        "total_price": "51.568"
+      },
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "42.19 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "42.19 G",
+        "total_price": "70.8792"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "15.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "15.00 G",
+        "total_price": "45"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "0.75 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "0.75 G",
+        "total_price": "0.375"
+      },
+      {
+        "ingredient": "WHITE VINEGAR (69820)",
+        "input_qty": "1.13 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.13 ML",
+        "total_price": "565"
+      },
+      {
+        "ingredient": "VANILLA EXTRACT (69763)",
+        "input_qty": "0.75 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "0.75 G",
+        "total_price": "60"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "9.38 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "9.38 ML",
+        "total_price": "30.016"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "22.50 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "22.50 G",
+        "total_price": "517.5"
+      },
+      {
+        "ingredient": "BUTTER CREAM (WIP) (70542)",
+        "input_qty": "34.38 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "34.38 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "1340.3382",
+    "production_cost": "0.0000",
+    "total_cost": "1340.3400",
+    "table_info": {
+      "date_time": "02/13/2026 01:38 PM",
+      "ref_no": "2026/9484",
+      "location": "PASTRY",
+      "product_short": "VALENTINE VANILLA SPONGE (71212)",
+      "qty_short": "1.00 PCS",
+      "total_cost_short": "₦ 1,340.34"
+    }
+  },
+  {
+    "reference_no": "2026/9486",
+    "production_date": "02/13/2026",
+    "produced_product": "VALENTINE CHOCOLATE SPONGE (71213)",
+    "quantity_produced": "8.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "335.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "335.00 G",
+        "total_price": "368.5"
+      },
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "60.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "60.00 G",
+        "total_price": "100.8"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "4.50 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "4.50 G",
+        "total_price": "2.25"
+      },
+      {
+        "ingredient": "WHITE VINEGAR (69820)",
+        "input_qty": "9.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "9.00 ML",
+        "total_price": "4500"
+      },
+      {
+        "ingredient": "VANILLA EXTRACT (69763)",
+        "input_qty": "9.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "9.00 G",
+        "total_price": "720"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "268.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "268.00 ML",
+        "total_price": "857.6"
+      },
+      {
+        "ingredient": "BUTTER CREAM (WIP) (70542)",
+        "input_qty": "156.50 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "156.50 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "BAKING SODA (68754)",
+        "input_qty": "9.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "9.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "COCOA POWDER (68961)",
+        "input_qty": "156.50 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "156.50 G",
+        "total_price": "5008"
+      },
+      {
+        "ingredient": "BUTTER MILK (WIP) (70544)",
+        "input_qty": "500.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "500.00 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "11557.15",
+    "production_cost": "0.0000",
+    "total_cost": "11557.1500",
+    "table_info": {
+      "date_time": "02/13/2026 01:38 PM",
+      "ref_no": "2026/9486",
+      "location": "PASTRY",
+      "product_short": "VALENTINE CHOCOLATE SPONGE (71213)",
+      "qty_short": "8.00 PCS",
+      "total_cost_short": "₦ 11,557.15"
+    }
+  },
+  {
+    "reference_no": "2026/9485",
+    "production_date": "02/13/2026",
+    "produced_product": "BAGUETTE BREAD (69878)",
+    "quantity_produced": "10.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "2,500.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2,500.00 G",
+        "total_price": "2750"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "25"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "155000"
+      }
+    ],
+    "ingredients_cost": "157775",
+    "production_cost": "0.0000",
+    "total_cost": "157775.0000",
+    "table_info": {
+      "date_time": "02/13/2026 01:33 PM",
+      "ref_no": "2026/9485",
+      "location": "PASTRY",
+      "product_short": "BAGUETTE BREAD (69878)",
+      "qty_short": "10.00 PCS",
+      "total_cost_short": "₦ 157,775.00"
+    }
+  },
+  {
+    "reference_no": "2026/9483",
+    "production_date": "02/13/2026",
+    "produced_product": "VALENTINE VANILLA SPONGE (71212)",
+    "quantity_produced": "8.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "375.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "375.00 G",
+        "total_price": "412.5"
+      },
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "337.50 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "337.50 G",
+        "total_price": "567"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "120.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "120.00 G",
+        "total_price": "360"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "6.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "6.00 G",
+        "total_price": "3"
+      },
+      {
+        "ingredient": "WHITE VINEGAR (69820)",
+        "input_qty": "9.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "9.00 ML",
+        "total_price": "4500"
+      },
+      {
+        "ingredient": "VANILLA EXTRACT (69763)",
+        "input_qty": "6.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "6.00 G",
+        "total_price": "480"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "75.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "75.00 ML",
+        "total_price": "240"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "180.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "180.00 G",
+        "total_price": "4140"
+      },
+      {
+        "ingredient": "BUTTER CREAM (WIP) (70542)",
+        "input_qty": "275.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "275.00 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "10702.5",
+    "production_cost": "0.0000",
+    "total_cost": "10702.5000",
+    "table_info": {
+      "date_time": "02/13/2026 01:32 PM",
+      "ref_no": "2026/9483",
+      "location": "PASTRY",
+      "product_short": "VALENTINE VANILLA SPONGE (71212)",
+      "qty_short": "8.00 PCS",
+      "total_cost_short": "₦ 10,702.50"
+    }
+  },
+  {
+    "reference_no": "2026/9482",
+    "production_date": "02/13/2026",
+    "produced_product": "SPANISH LATTE (70315)",
+    "quantity_produced": "1.00 CU",
+    "wasted_quantity": "0.00 CU",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "600"
+      },
+      {
+        "ingredient": "CONDENSED MILK (68980)",
+        "input_qty": "30.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "30.00 ML",
+        "total_price": "112.5"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "712.5",
+    "production_cost": "0.0000",
+    "total_cost": "712.5000",
+    "table_info": {
+      "date_time": "02/13/2026 01:31 PM",
+      "ref_no": "2026/9482",
+      "location": "CORNER STORE",
+      "product_short": "SPANISH LATTE (70315)",
+      "qty_short": "1.00 CU",
+      "total_cost_short": "₦ 712.50"
+    }
+  },
+  {
+    "reference_no": "2026/9481",
+    "production_date": "02/13/2026",
+    "produced_product": "LEMON ICED TEA (70172)",
+    "quantity_produced": "1.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "LEMON ICED TEA (70172)",
+        "input_qty": "40.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "40.00 PCS",
+        "total_price": "160000"
+      },
+      {
+        "ingredient": "LEMON (69290)",
+        "input_qty": "250.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "250.00 G",
+        "total_price": "375000"
+      },
+      {
+        "ingredient": "DRY SUGAR (69174)",
+        "input_qty": "120.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "120.00 G",
+        "total_price": "9420000"
+      },
+      {
+        "ingredient": "C-WAY WATER (69034)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "300000"
+      }
+    ],
+    "ingredients_cost": "10255000",
+    "production_cost": "0.0000",
+    "total_cost": "10255000.0000",
+    "table_info": {
+      "date_time": "02/13/2026 01:29 PM",
+      "ref_no": "2026/9481",
+      "location": "CORNER STORE",
+      "product_short": "LEMON ICED TEA (70172)",
+      "qty_short": "1.00 PCS",
+      "total_cost_short": "₦ 10,255,000.00"
+    }
+  },
+  {
+    "reference_no": "2026/9480",
+    "production_date": "02/13/2026",
+    "produced_product": "BAILEYS ESPRESSO ON THE ROCK COFFEE (68623)",
+    "quantity_produced": "1.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "BAILEYS (68749)",
+        "input_qty": "50.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 ML",
+        "total_price": "1100000"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "1100000",
+    "production_cost": "0.0000",
+    "total_cost": "1100000.0000",
+    "table_info": {
+      "date_time": "02/13/2026 01:28 PM",
+      "ref_no": "2026/9480",
+      "location": "CORNER STORE",
+      "product_short": "BAILEYS ESPRESSO ON THE ROCK COFFEE (68623)",
+      "qty_short": "1.00 PCS",
+      "total_cost_short": "₦ 1,100,000.00"
+    }
+  },
+  {
+    "reference_no": "2026/9479",
+    "production_date": "02/13/2026",
+    "produced_product": "LATTE COFFE (70154)",
+    "quantity_produced": "1.00 CU",
+    "wasted_quantity": "0.00 CU",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "180.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "180.00 G",
+        "total_price": "540"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "84"
+      }
+    ],
+    "ingredients_cost": "624",
+    "production_cost": "0.0000",
+    "total_cost": "624.0000",
+    "table_info": {
+      "date_time": "02/13/2026 01:28 PM",
+      "ref_no": "2026/9479",
+      "location": "CORNER STORE",
+      "product_short": "LATTE COFFE (70154)",
+      "qty_short": "1.00 CU",
+      "total_cost_short": "₦ 624.00"
+    }
+  },
+  {
+    "reference_no": "2026/9477",
+    "production_date": "02/13/2026",
+    "produced_product": "AFFOGATO COFFEE (68622)",
+    "quantity_produced": "1.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "VANILLA GELATO CORNERSTORE (70587)",
+        "input_qty": "110.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "110.00 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "0",
+    "production_cost": "0.0000",
+    "total_cost": "0.0000",
+    "table_info": {
+      "date_time": "02/13/2026 01:26 PM",
+      "ref_no": "2026/9477",
+      "location": "CORNER STORE",
+      "product_short": "AFFOGATO COFFEE (68622)",
+      "qty_short": "1.00 PCS",
+      "total_cost_short": "₦ 0.00"
+    }
+  },
+  {
+    "reference_no": "2026/9476",
+    "production_date": "02/13/2026",
+    "produced_product": "LATTE COFFEE (70168)",
+    "quantity_produced": "1.00 CP",
+    "wasted_quantity": "0.00 CP",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "600"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "600",
+    "production_cost": "0.0000",
+    "total_cost": "600.0000",
+    "table_info": {
+      "date_time": "02/13/2026 01:25 PM",
+      "ref_no": "2026/9476",
+      "location": "CORNER STORE",
+      "product_short": "LATTE COFFEE (70168)",
+      "qty_short": "1.00 CP",
+      "total_cost_short": "₦ 600.00"
+    }
+  },
+  {
+    "reference_no": "2026/9478",
+    "production_date": "02/13/2026",
+    "produced_product": "AFFOGATO COFFEE (68622)",
+    "quantity_produced": "1.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "VANILLA GELATO CORNERSTORE (70587)",
+        "input_qty": "110.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "110.00 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "0",
+    "production_cost": "0.0000",
+    "total_cost": "0.0000",
+    "table_info": {
+      "date_time": "02/13/2026 01:21 PM",
+      "ref_no": "2026/9478",
+      "location": "CORNER STORE",
+      "product_short": "AFFOGATO COFFEE (68622)",
+      "qty_short": "1.00 PCS",
+      "total_cost_short": "₦ 0.00"
+    }
+  },
+  {
+    "reference_no": "2026/9475",
+    "production_date": "02/13/2026",
+    "produced_product": "DO IT FOR THE BRITS(OMELETTE) (70073)",
+    "quantity_produced": "1.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "LOAF BREAD (WIP) (70454)",
+        "input_qty": "3.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "3.00 PCS",
+        "total_price": "3000"
+      },
+      {
+        "ingredient": "SAUSAGE (69559)",
+        "input_qty": "2.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2.00 PCS",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "BAKED BEANS IN TOMATO SAUCE (68751)",
+        "input_qty": "100.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "100.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "30.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "30.00 G",
+        "total_price": "690"
+      },
+      {
+        "ingredient": "MUSHROOM (69362)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "83350"
+      },
+      {
+        "ingredient": "FRESH TOMATOES (69122)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "125000"
+      },
+      {
+        "ingredient": "BACON (68747)",
+        "input_qty": "45.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "45.00 G",
+        "total_price": "1215"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "10.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "10.00 ML",
+        "total_price": "32"
+      },
+      {
+        "ingredient": "EGG OMELETTE (WIP) (70518)",
+        "input_qty": "1.00 PORTION",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 PORTION",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "213287",
+    "production_cost": "0.0000",
+    "total_cost": "213287.0000",
+    "table_info": {
+      "date_time": "02/13/2026 01:21 PM",
+      "ref_no": "2026/9475",
+      "location": "HOT KITCHEN",
+      "product_short": "DO IT FOR THE BRITS(OMELETTE) (70073)",
+      "qty_short": "1.00 PCS",
+      "total_cost_short": "₦ 213,287.00"
+    }
+  },
+  {
+    "reference_no": "2026/9474",
+    "production_date": "02/13/2026",
+    "produced_product": "CAPPUCCINO COFFEE (69949)",
+    "quantity_produced": "1.00 CU",
+    "wasted_quantity": "0.00 CU",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "180.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "180.00 G",
+        "total_price": "540"
+      },
+      {
+        "ingredient": "C-WAY WATER (69034)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "27000"
+      }
+    ],
+    "ingredients_cost": "27540",
+    "production_cost": "0.0000",
+    "total_cost": "27540.0000",
+    "table_info": {
+      "date_time": "02/13/2026 12:59 PM",
+      "ref_no": "2026/9474",
+      "location": "CORNER STORE",
+      "product_short": "CAPPUCCINO COFFEE (69949)",
+      "qty_short": "1.00 CU",
+      "total_cost_short": "₦ 27,540.00"
+    }
+  },
+  {
+    "reference_no": "2026/9473",
+    "production_date": "02/13/2026",
+    "produced_product": "LATTE COFFEE (70168)",
+    "quantity_produced": "1.00 CP",
+    "wasted_quantity": "0.00 CP",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "600"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "600",
+    "production_cost": "0.0000",
+    "total_cost": "600.0000",
+    "table_info": {
+      "date_time": "02/13/2026 12:58 PM",
+      "ref_no": "2026/9473",
+      "location": "CORNER STORE",
+      "product_short": "LATTE COFFEE (70168)",
+      "qty_short": "1.00 CP",
+      "total_cost_short": "₦ 600.00"
+    }
+  },
+  {
+    "reference_no": "2026/9472",
+    "production_date": "02/13/2026",
+    "produced_product": "LATTE COFFEE (70168)",
+    "quantity_produced": "1.00 CP",
+    "wasted_quantity": "0.00 CP",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "600"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "600",
+    "production_cost": "0.0000",
+    "total_cost": "600.0000",
+    "table_info": {
+      "date_time": "02/13/2026 12:45 PM",
+      "ref_no": "2026/9472",
+      "location": "CORNER STORE",
+      "product_short": "LATTE COFFEE (70168)",
+      "qty_short": "1.00 CP",
+      "total_cost_short": "₦ 600.00"
+    }
+  },
+  {
+    "reference_no": "2026/9471",
+    "production_date": "02/13/2026",
+    "produced_product": "CORNERSTORE'S CHICKEN FETTUCCINE ALFREDO (70043)",
+    "quantity_produced": "1.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "MARINATED CHICKEN FILLET (WIP) (70460)",
+        "input_qty": "150.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "150.00 G",
+        "total_price": "150000"
+      },
+      {
+        "ingredient": "FETTUCCINE PASTA (WIP) (70479)",
+        "input_qty": "100.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "100.00 G",
+        "total_price": "100000"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "20.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "20.00 ML",
+        "total_price": "64"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "5.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "5.00 G",
+        "total_price": "2.5"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "20.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "20.00 G",
+        "total_price": "460"
+      },
+      {
+        "ingredient": "PARMESSAN CHEESE (69410)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "WHITE WINE (69821)",
+        "input_qty": "20.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "20.00 ML",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "WHITE SAUCE (WIP) (70455)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "200000"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "150.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "150.00 G",
+        "total_price": "450"
+      },
+      {
+        "ingredient": "MARKET CHILLI PEPPER (69319)",
+        "input_qty": "5.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "5.00 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "450976.5",
+    "production_cost": "0.0000",
+    "total_cost": "450976.5000",
+    "table_info": {
+      "date_time": "02/13/2026 12:45 PM",
+      "ref_no": "2026/9471",
+      "location": "HOT KITCHEN",
+      "product_short": "CORNERSTORE'S CHICKEN FETTUCCINE ALFREDO (70043)",
+      "qty_short": "1.00 PCS",
+      "total_cost_short": "₦ 450,976.50"
+    }
+  },
+  {
+    "reference_no": "2026/9470",
+    "production_date": "02/13/2026",
+    "produced_product": "CORNERSTORE'S CLUB SANDWICH (70044)",
+    "quantity_produced": "1.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "MARINATED CHICKEN FILLET (WIP) (70460)",
+        "input_qty": "80.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "80.00 G",
+        "total_price": "80000"
+      },
+      {
+        "ingredient": "FRESH TOMATOES (69122)",
+        "input_qty": "60.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "60.00 G",
+        "total_price": "150000"
+      },
+      {
+        "ingredient": "KETCHUP & MAYO (WIP) (70462)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "50000"
+      },
+      {
+        "ingredient": "BACON (68747)",
+        "input_qty": "45.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "45.00 G",
+        "total_price": "1215"
+      },
+      {
+        "ingredient": "LETTUCE (69294)",
+        "input_qty": "10.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "10.00 G",
+        "total_price": "80000"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "20.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "20.00 ML",
+        "total_price": "64"
+      },
+      {
+        "ingredient": "EGG (69070)",
+        "input_qty": "1.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 PCS",
+        "total_price": "648"
+      },
+      {
+        "ingredient": "LOAF BREAD (WIP) (70454)",
+        "input_qty": "3.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "3.00 PCS",
+        "total_price": "3000"
+      },
+      {
+        "ingredient": "COLESLAW (WIP) (70470)",
+        "input_qty": "70.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "70.00 G",
+        "total_price": "70000"
+      },
+      {
+        "ingredient": "FRENCH FRIES (69118)",
+        "input_qty": "160.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "160.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "TOMATO KETCHUP (69671)",
+        "input_qty": "60.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "60.00 G",
+        "total_price": "810000"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "20.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "20.00 ML",
+        "total_price": "64"
+      }
+    ],
+    "ingredients_cost": "1244991",
+    "production_cost": "0.0000",
+    "total_cost": "1244991.0000",
+    "table_info": {
+      "date_time": "02/13/2026 12:43 PM",
+      "ref_no": "2026/9470",
+      "location": "HOT KITCHEN",
+      "product_short": "CORNERSTORE'S CLUB SANDWICH (70044)",
+      "qty_short": "1.00 PCS",
+      "total_cost_short": "₦ 1,244,991.00"
+    }
+  },
+  {
+    "reference_no": "2026/9469",
+    "production_date": "02/13/2026",
+    "produced_product": "SPANISH LATTE (70315)",
+    "quantity_produced": "1.00 CU",
+    "wasted_quantity": "0.00 CU",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "600"
+      },
+      {
+        "ingredient": "CONDENSED MILK (68980)",
+        "input_qty": "30.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "30.00 ML",
+        "total_price": "112.5"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "712.5",
+    "production_cost": "0.0000",
+    "total_cost": "712.5000",
+    "table_info": {
+      "date_time": "02/13/2026 12:00 PM",
+      "ref_no": "2026/9469",
+      "location": "CORNER STORE",
+      "product_short": "SPANISH LATTE (70315)",
+      "qty_short": "1.00 CU",
+      "total_cost_short": "₦ 712.50"
+    }
+  },
+  {
+    "reference_no": "2026/9468",
+    "production_date": "02/13/2026",
+    "produced_product": "MOCHA COFFEE (70211)",
+    "quantity_produced": "1.00 CU",
+    "wasted_quantity": "0.00 CU",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "HOT CHOCOLATE (69228)",
+        "input_qty": "10.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "10.00 G",
+        "total_price": "27.4"
+      },
+      {
+        "ingredient": "CHOCOLATE SYRUP (68941)",
+        "input_qty": "30.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "30.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "600"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "627.4",
+    "production_cost": "0.0000",
+    "total_cost": "627.4000",
+    "table_info": {
+      "date_time": "02/13/2026 11:44 AM",
+      "ref_no": "2026/9468",
+      "location": "CORNER STORE",
+      "product_short": "MOCHA COFFEE (70211)",
+      "qty_short": "1.00 CU",
+      "total_cost_short": "₦ 627.40"
+    }
+  },
+  {
+    "reference_no": "2026/9598",
+    "production_date": "02/13/2026",
+    "produced_product": "ICING COOKIES (70156)",
+    "quantity_produced": "8.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "156.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "156.00 G",
+        "total_price": "171.6"
+      },
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "90.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "90.00 G",
+        "total_price": "151.2"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "0.48 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "0.48 G",
+        "total_price": "0.24"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "80.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "80.00 G",
+        "total_price": "1840"
+      },
+      {
+        "ingredient": "BAKING POWDER (68753)",
+        "input_qty": "0.48 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "0.48 G",
+        "total_price": "1.8"
+      },
+      {
+        "ingredient": "EGG (69070)",
+        "input_qty": "1.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 PCS",
+        "total_price": "648"
+      },
+      {
+        "ingredient": "VANILLA EXTRACT (69763)",
+        "input_qty": "0.80 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "0.80 G",
+        "total_price": "64"
+      }
+    ],
+    "ingredients_cost": "2876.84",
+    "production_cost": "0.0000",
+    "total_cost": "2876.8400",
+    "table_info": {
+      "date_time": "02/13/2026 11:35 AM",
+      "ref_no": "2026/9598",
+      "location": "PASTRY",
+      "product_short": "ICING COOKIES (70156)",
+      "qty_short": "8.00 PCS",
+      "total_cost_short": "₦ 2,876.84"
+    }
+  },
+  {
+    "reference_no": "2026/9597",
+    "production_date": "02/13/2026",
+    "produced_product": "CHICKEN SAUCE (WIP) (70560)",
+    "quantity_produced": "2,126.00 G",
+    "wasted_quantity": "0.00 G",
+    "ingredients": [
+      {
+        "ingredient": "CHICKEN FILLET (68910)",
+        "input_qty": "1,549.79 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1,549.79 G",
+        "total_price": "9298740"
+      }
+    ],
+    "ingredients_cost": "9298740",
+    "production_cost": "0.0000",
+    "total_cost": "9298740.0000",
+    "table_info": {
+      "date_time": "02/13/2026 11:34 AM",
+      "ref_no": "2026/9597",
+      "location": "PASTRY",
+      "product_short": "CHICKEN SAUCE (WIP) (70560)",
+      "qty_short": "2,126.00 G",
+      "total_cost_short": "₦ 9,298,740.00"
+    }
+  },
+  {
+    "reference_no": "2026/9467",
+    "production_date": "02/13/2026",
+    "produced_product": "SPANISH LATTE (70315)",
+    "quantity_produced": "1.00 CU",
+    "wasted_quantity": "0.00 CU",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "600"
+      },
+      {
+        "ingredient": "CONDENSED MILK (68980)",
+        "input_qty": "30.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "30.00 ML",
+        "total_price": "112.5"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "712.5",
+    "production_cost": "0.0000",
+    "total_cost": "712.5000",
+    "table_info": {
+      "date_time": "02/13/2026 11:08 AM",
+      "ref_no": "2026/9467",
+      "location": "CORNER STORE",
+      "product_short": "SPANISH LATTE (70315)",
+      "qty_short": "1.00 CU",
+      "total_cost_short": "₦ 712.50"
+    }
+  },
+  {
+    "reference_no": "2026/9466",
+    "production_date": "02/13/2026",
+    "produced_product": "DOUBLE AGENT BURGER (70075)",
+    "quantity_produced": "2.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "LETTUCE (69294)",
+        "input_qty": "20.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "20.00 G",
+        "total_price": "160000"
+      },
+      {
+        "ingredient": "EGG (69070)",
+        "input_qty": "2.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2.00 PCS",
+        "total_price": "1296"
+      },
+      {
+        "ingredient": "FRENCH FRIES (69118)",
+        "input_qty": "320.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "320.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "COLESLAW (WIP) (70470)",
+        "input_qty": "100.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "100.00 G",
+        "total_price": "100000"
+      },
+      {
+        "ingredient": "TOMATO KETCHUP (69671)",
+        "input_qty": "120.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "120.00 G",
+        "total_price": "1620000"
+      },
+      {
+        "ingredient": "ONIONS (69388)",
+        "input_qty": "40.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "40.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "SLICE CHEESE (69582)",
+        "input_qty": "2.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2.00 PCS",
+        "total_price": "116600"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "60.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "60.00 ML",
+        "total_price": "192"
+      },
+      {
+        "ingredient": "BACON (68747)",
+        "input_qty": "180.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "180.00 G",
+        "total_price": "4860"
+      },
+      {
+        "ingredient": "BURGER BREAD (WIP) (70475)",
+        "input_qty": "2.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2.00 PCS",
+        "total_price": "2000"
+      },
+      {
+        "ingredient": "BEEF PATTIES (WIP) (70477)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "200000"
+      }
+    ],
+    "ingredients_cost": "2204948",
+    "production_cost": "0.0000",
+    "total_cost": "2204948.0000",
+    "table_info": {
+      "date_time": "02/13/2026 10:40 AM",
+      "ref_no": "2026/9466",
+      "location": "HOT KITCHEN",
+      "product_short": "DOUBLE AGENT BURGER (70075)",
+      "qty_short": "2.00 PCS",
+      "total_cost_short": "₦ 2,204,948.00"
+    }
+  },
+  {
+    "reference_no": "2026/9464",
+    "production_date": "02/13/2026",
+    "produced_product": "OMELETTE (70644)",
+    "quantity_produced": "2.00 PORTION",
+    "wasted_quantity": "0.00 PORTION",
+    "ingredients": [
+      {
+        "ingredient": "EGG OMELETTE (WIP) (70518)",
+        "input_qty": "2.00 PORTION",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2.00 PORTION",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "0",
+    "production_cost": "0.0000",
+    "total_cost": "0.0000",
+    "table_info": {
+      "date_time": "02/13/2026 10:39 AM",
+      "ref_no": "2026/9464",
+      "location": "HOT KITCHEN",
+      "product_short": "OMELETTE (70644)",
+      "qty_short": "2.00 PORTION",
+      "total_cost_short": "₦ 0.00"
+    }
+  },
+  {
+    "reference_no": "2026/9465",
+    "production_date": "02/13/2026",
+    "produced_product": "CARAMEL LATTE (68655)",
+    "quantity_produced": "1.00 CU",
+    "wasted_quantity": "0.00 CU",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "600"
+      },
+      {
+        "ingredient": "CARAMEL TOPPING (68882)",
+        "input_qty": "100.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "100.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "600",
+    "production_cost": "0.0000",
+    "total_cost": "600.0000",
+    "table_info": {
+      "date_time": "02/13/2026 10:39 AM",
+      "ref_no": "2026/9465",
+      "location": "CORNER STORE",
+      "product_short": "CARAMEL LATTE (68655)",
+      "qty_short": "1.00 CU",
+      "total_cost_short": "₦ 600.00"
+    }
+  },
+  {
+    "reference_no": "2026/9462",
+    "production_date": "02/13/2026",
+    "produced_product": "BEEF FRIAND (68627)",
+    "quantity_produced": "31.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "25.83 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "25.83 G",
+        "total_price": "12.915"
+      },
+      {
+        "ingredient": "PUFF PASTRY MARGARINE (69502)",
+        "input_qty": "968.75 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "968.75 G",
+        "total_price": "9338.75"
+      },
+      {
+        "ingredient": "BEEF SAUCE (WIP) (70559)",
+        "input_qty": "2,480.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2,480.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "1,291.67 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1,291.67 G",
+        "total_price": "1420.837"
+      }
+    ],
+    "ingredients_cost": "10772.502",
+    "production_cost": "0.0000",
+    "total_cost": "10772.5000",
+    "table_info": {
+      "date_time": "02/13/2026 09:34 AM",
+      "ref_no": "2026/9462",
+      "location": "PASTRY",
+      "product_short": "BEEF FRIAND (68627)",
+      "qty_short": "31.00 PCS",
+      "total_cost_short": "₦ 10,772.50"
+    }
+  },
+  {
+    "reference_no": "2026/9463",
+    "production_date": "02/13/2026",
+    "produced_product": "CHICKEN FRIAND (69978)",
+    "quantity_produced": "4.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "3.33 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "3.33 G",
+        "total_price": "1.665"
+      },
+      {
+        "ingredient": "PUFF PASTRY MARGARINE (69502)",
+        "input_qty": "125.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "125.00 G",
+        "total_price": "1205"
+      },
+      {
+        "ingredient": "CHICKEN SAUCE (WIP) (70560)",
+        "input_qty": "320.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "320.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "166.67 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "166.67 G",
+        "total_price": "183.337"
+      }
+    ],
+    "ingredients_cost": "1390.002",
+    "production_cost": "0.0000",
+    "total_cost": "1390.0000",
+    "table_info": {
+      "date_time": "02/13/2026 09:34 AM",
+      "ref_no": "2026/9463",
+      "location": "PASTRY",
+      "product_short": "CHICKEN FRIAND (69978)",
+      "qty_short": "4.00 PCS",
+      "total_cost_short": "₦ 1,390.00"
+    }
+  },
+  {
+    "reference_no": "2026/9461",
+    "production_date": "02/13/2026",
+    "produced_product": "CINNAMON ROLL (70006)",
+    "quantity_produced": "12.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "CINNAMON POWDER (68947)",
+        "input_qty": "16.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "16.00 G",
+        "total_price": "56000"
+      },
+      {
+        "ingredient": "PASTRY CREAM (WIP) (70547)",
+        "input_qty": "200.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "200.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "CROISSANT DOUGH CUT WASTE(WIP) (70643)",
+        "input_qty": "1,382.40 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1,382.40 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "56000",
+    "production_cost": "0.0000",
+    "total_cost": "56000.0000",
+    "table_info": {
+      "date_time": "02/13/2026 09:33 AM",
+      "ref_no": "2026/9461",
+      "location": "PASTRY",
+      "product_short": "CINNAMON ROLL (70006)",
+      "qty_short": "12.00 PCS",
+      "total_cost_short": "₦ 56,000.00"
+    }
+  },
+  {
+    "reference_no": "2026/9460",
+    "production_date": "02/13/2026",
+    "produced_product": "MINI CROISSANT (71014)",
+    "quantity_produced": "2.00 PK",
+    "wasted_quantity": "0.00 PK",
+    "ingredients": [
+      {
+        "ingredient": "MINI CROISSANT DOUGH (WIP) (71060)",
+        "input_qty": "12.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "12.00 PCS",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "0",
+    "production_cost": "0.0000",
+    "total_cost": "0.0000",
+    "table_info": {
+      "date_time": "02/13/2026 09:30 AM",
+      "ref_no": "2026/9460",
+      "location": "PASTRY",
+      "product_short": "MINI CROISSANT (71014)",
+      "qty_short": "2.00 PK",
+      "total_cost_short": "₦ 0.00"
+    }
+  },
+  {
+    "reference_no": "2026/9459",
+    "production_date": "02/13/2026",
+    "produced_product": "MINI CROISSANT (71014)",
+    "quantity_produced": "12.00 PK",
+    "wasted_quantity": "0.00 PK",
+    "ingredients": [
+      {
+        "ingredient": "MINI CROISSANT DOUGH (WIP) (71060)",
+        "input_qty": "72.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "72.00 PCS",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "0",
+    "production_cost": "0.0000",
+    "total_cost": "0.0000",
+    "table_info": {
+      "date_time": "02/13/2026 09:29 AM",
+      "ref_no": "2026/9459",
+      "location": "PASTRY",
+      "product_short": "MINI CROISSANT (71014)",
+      "qty_short": "12.00 PK",
+      "total_cost_short": "₦ 0.00"
+    }
+  },
+  {
+    "reference_no": "2026/9458",
+    "production_date": "02/13/2026",
+    "produced_product": "SAUSAGE CROISSANT (68612)",
+    "quantity_produced": "11.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "70.28 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "70.28 G",
+        "total_price": "118.0704"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "275.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "275.00 G",
+        "total_price": "6325"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "12.83 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "12.83 G",
+        "total_price": "39773"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "11.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "11.00 G",
+        "total_price": "5.5"
+      },
+      {
+        "ingredient": "SAUSAGE (69559)",
+        "input_qty": "11.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "11.00 PCS",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "18.33 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.33 G",
+        "total_price": "3849.3"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "572.92 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "572.92 G",
+        "total_price": "630.212"
+      }
+    ],
+    "ingredients_cost": "50701.0824",
+    "production_cost": "0.0000",
+    "total_cost": "50701.0800",
+    "table_info": {
+      "date_time": "02/13/2026 09:28 AM",
+      "ref_no": "2026/9458",
+      "location": "PASTRY",
+      "product_short": "SAUSAGE CROISSANT (68612)",
+      "qty_short": "11.00 PCS",
+      "total_cost_short": "₦ 50,701.08"
+    }
+  },
+  {
+    "reference_no": "2026/9457",
+    "production_date": "02/13/2026",
+    "produced_product": "PAIN AU CHOCOLATE CROISSANT (70232)",
+    "quantity_produced": "12.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "61.33 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "61.33 G",
+        "total_price": "103.0344"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "240.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "240.00 G",
+        "total_price": "5520"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "11.20 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "11.20 G",
+        "total_price": "34720"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "9.60 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "9.60 G",
+        "total_price": "4.8"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "16.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "16.00 G",
+        "total_price": "3360"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "500.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "500.00 G",
+        "total_price": "550"
+      },
+      {
+        "ingredient": "CHOCOLATE STICK (68940)",
+        "input_qty": "144.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "144.00 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "44257.8344",
+    "production_cost": "0.0000",
+    "total_cost": "44257.8300",
+    "table_info": {
+      "date_time": "02/13/2026 09:28 AM",
+      "ref_no": "2026/9457",
+      "location": "PASTRY",
+      "product_short": "PAIN AU CHOCOLATE CROISSANT (70232)",
+      "qty_short": "12.00 PCS",
+      "total_cost_short": "₦ 44,257.83"
+    }
+  },
+  {
+    "reference_no": "2026/9456",
+    "production_date": "02/13/2026",
+    "produced_product": "CHEESE CROISSANT (69973)",
+    "quantity_produced": "12.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "76.67 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "76.67 G",
+        "total_price": "128.8056"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "300.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "300.00 G",
+        "total_price": "6900"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "14.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "14.00 G",
+        "total_price": "43400"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "12.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "12.00 G",
+        "total_price": "6"
+      },
+      {
+        "ingredient": "EMMENTAL CHEESE (69076)",
+        "input_qty": "60.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "60.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "MOZZARELLA CHEESE (69357)",
+        "input_qty": "60.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "60.00 G",
+        "total_price": "3311880"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "20.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "20.00 G",
+        "total_price": "4200"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "625.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "625.00 G",
+        "total_price": "687.5"
+      }
+    ],
+    "ingredients_cost": "3367202.3056",
+    "production_cost": "0.0000",
+    "total_cost": "3367202.3100",
+    "table_info": {
+      "date_time": "02/13/2026 09:26 AM",
+      "ref_no": "2026/9456",
+      "location": "PASTRY",
+      "product_short": "CHEESE CROISSANT (69973)",
+      "qty_short": "12.00 PCS",
+      "total_cost_short": "₦ 3,367,202.31"
+    }
+  },
+  {
+    "reference_no": "2026/9455",
+    "production_date": "02/13/2026",
+    "produced_product": "PLAIN CROISSANT (70256)",
+    "quantity_produced": "12.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "76.67 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "76.67 G",
+        "total_price": "128.8056"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "300.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "300.00 G",
+        "total_price": "6900"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "14.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "14.00 G",
+        "total_price": "43400"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "12.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "12.00 G",
+        "total_price": "6"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "625.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "625.00 G",
+        "total_price": "687.5"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "20.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "20.00 G",
+        "total_price": "4200"
+      }
+    ],
+    "ingredients_cost": "55322.3056",
+    "production_cost": "0.0000",
+    "total_cost": "55322.3100",
+    "table_info": {
+      "date_time": "02/13/2026 09:25 AM",
+      "ref_no": "2026/9455",
+      "location": "PASTRY",
+      "product_short": "PLAIN CROISSANT (70256)",
+      "qty_short": "12.00 PCS",
+      "total_cost_short": "₦ 55,322.31"
+    }
+  },
+  {
+    "reference_no": "2026/9454",
+    "production_date": "02/13/2026",
+    "produced_product": "HAZELNUT DOUGHNUT (70140)",
+    "quantity_produced": "9.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "70.59 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "70.59 G",
+        "total_price": "118.5912"
+      },
+      {
+        "ingredient": "MARGARINE BUTTER (PASTRY) (69317)",
+        "input_qty": "35.29 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "35.29 G",
+        "total_price": "172.921"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "12.35 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "12.35 G",
+        "total_price": "38285"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "7.06 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "7.06 G",
+        "total_price": "3.53"
+      },
+      {
+        "ingredient": "HAZELNUT SPREAD (69219)",
+        "input_qty": "17.65 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "17.65 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "352.94 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "352.94 G",
+        "total_price": "388.234"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "35.29 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "35.29 G",
+        "total_price": "7410.9"
+      },
+      {
+        "ingredient": "egg production (70580)",
+        "input_qty": "17.65 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "17.65 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "46379.1762",
+    "production_cost": "0.0000",
+    "total_cost": "46379.1800",
+    "table_info": {
+      "date_time": "02/13/2026 09:23 AM",
+      "ref_no": "2026/9454",
+      "location": "PASTRY",
+      "product_short": "HAZELNUT DOUGHNUT (70140)",
+      "qty_short": "9.00 PCS",
+      "total_cost_short": "₦ 46,379.18"
+    }
+  },
+  {
+    "reference_no": "2026/9453",
+    "production_date": "02/13/2026",
+    "produced_product": "COCONUT DOUGHNUT (70015)",
+    "quantity_produced": "9.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "70.59 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "70.59 G",
+        "total_price": "118.5912"
+      },
+      {
+        "ingredient": "MARGARINE BUTTER (PASTRY) (69317)",
+        "input_qty": "35.29 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "35.29 G",
+        "total_price": "172.921"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "7.06 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "7.06 G",
+        "total_price": "3.53"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "12.35 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "12.35 G",
+        "total_price": "38285"
+      },
+      {
+        "ingredient": "DESSICATED COCONUT (70497)",
+        "input_qty": "17.65 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "17.65 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "egg production (70580)",
+        "input_qty": "17.65 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "17.65 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "0.18 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "0.18 G",
+        "total_price": "0.198"
+      }
+    ],
+    "ingredients_cost": "38580.2402",
+    "production_cost": "0.0000",
+    "total_cost": "38580.2400",
+    "table_info": {
+      "date_time": "02/13/2026 09:20 AM",
+      "ref_no": "2026/9453",
+      "location": "PASTRY",
+      "product_short": "COCONUT DOUGHNUT (70015)",
+      "qty_short": "9.00 PCS",
+      "total_cost_short": "₦ 38,580.24"
+    }
+  },
+  {
+    "reference_no": "2026/9451",
+    "production_date": "02/13/2026",
+    "produced_product": "PLAIN DOUGHNUT (70257)",
+    "quantity_produced": "8.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "62.75 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "62.75 G",
+        "total_price": "105.42"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "10.98 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "10.98 G",
+        "total_price": "34038"
+      },
+      {
+        "ingredient": "MARGARINE BUTTER (PASTRY) (69317)",
+        "input_qty": "31.37 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "31.37 G",
+        "total_price": "153.713"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "6.27 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "6.27 G",
+        "total_price": "3.135"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "313.73 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "313.73 G",
+        "total_price": "345.103"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "31.37 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "31.37 G",
+        "total_price": "6587.7"
+      },
+      {
+        "ingredient": "egg production (70580)",
+        "input_qty": "15.69 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "15.69 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "41233.071",
+    "production_cost": "0.0000",
+    "total_cost": "41233.0700",
+    "table_info": {
+      "date_time": "02/13/2026 09:20 AM",
+      "ref_no": "2026/9451",
+      "location": "PASTRY",
+      "product_short": "PLAIN DOUGHNUT (70257)",
+      "qty_short": "8.00 PCS",
+      "total_cost_short": "₦ 41,233.07"
+    }
+  },
+  {
+    "reference_no": "2026/9450",
+    "production_date": "02/13/2026",
+    "produced_product": "STRAWBERRY JAM DOUGHNUT (68614)",
+    "quantity_produced": "6.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "47.06 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "47.06 G",
+        "total_price": "79.0608"
+      },
+      {
+        "ingredient": "MARGARINE BUTTER (PASTRY) (69317)",
+        "input_qty": "23.53 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "23.53 G",
+        "total_price": "115.297"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "4.71 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "4.71 G",
+        "total_price": "2.355"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "8.24 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "8.24 G",
+        "total_price": "25544"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "235.29 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "235.29 G",
+        "total_price": "258.819"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "23.53 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "23.53 G",
+        "total_price": "4941.3"
+      },
+      {
+        "ingredient": "STRAWBERRY JAM (68827)",
+        "input_qty": "48.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "48.00 G",
+        "total_price": "408000"
+      },
+      {
+        "ingredient": "egg production (70580)",
+        "input_qty": "11.76 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "11.76 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "438940.8318",
+    "production_cost": "0.0000",
+    "total_cost": "438940.8300",
+    "table_info": {
+      "date_time": "02/13/2026 09:18 AM",
+      "ref_no": "2026/9450",
+      "location": "PASTRY",
+      "product_short": "STRAWBERRY JAM DOUGHNUT (68614)",
+      "qty_short": "6.00 PCS",
+      "total_cost_short": "₦ 438,940.83"
+    }
+  },
+  {
+    "reference_no": "2026/9449",
+    "production_date": "02/13/2026",
+    "produced_product": "CREAM FILLING DOUGHNUT (70926)",
+    "quantity_produced": "5.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "39.22 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "39.22 G",
+        "total_price": "65.8896"
+      },
+      {
+        "ingredient": "MARGARINE BUTTER (PASTRY) (69317)",
+        "input_qty": "19.61 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "19.61 G",
+        "total_price": "96.089"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "3.92 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "3.92 G",
+        "total_price": "1.96"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "6.86 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "6.86 G",
+        "total_price": "21266"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "196.08 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "196.08 G",
+        "total_price": "215.688"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "19.61 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "19.61 G",
+        "total_price": "4118.1"
+      },
+      {
+        "ingredient": "egg production (70580)",
+        "input_qty": "9.80 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "9.80 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "PASTRY CREAM (WIP) (70547)",
+        "input_qty": "40.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "40.00 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "25763.7266",
+    "production_cost": "0.0000",
+    "total_cost": "25763.7300",
+    "table_info": {
+      "date_time": "02/13/2026 09:17 AM",
+      "ref_no": "2026/9449",
+      "location": "PASTRY",
+      "product_short": "CREAM FILLING DOUGHNUT (70926)",
+      "qty_short": "5.00 PCS",
+      "total_cost_short": "₦ 25,763.73"
+    }
+  },
+  {
+    "reference_no": "2026/9448",
+    "production_date": "02/13/2026",
+    "produced_product": "SPECIAL DOUGHNUT (70317)",
+    "quantity_produced": "4.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "31.37 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "31.37 G",
+        "total_price": "52.7016"
+      },
+      {
+        "ingredient": "MARGARINE BUTTER (PASTRY) (69317)",
+        "input_qty": "15.69 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "15.69 G",
+        "total_price": "76.881"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "3.14 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "3.14 G",
+        "total_price": "1.57"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "5.49 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "5.49 G",
+        "total_price": "17019"
+      },
+      {
+        "ingredient": "ICING SUGAR (69241)",
+        "input_qty": "1.96 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.96 G",
+        "total_price": "4.3904"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "156.86 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "156.86 G",
+        "total_price": "172.546"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "15.69 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "15.69 G",
+        "total_price": "3294.9"
+      },
+      {
+        "ingredient": "egg production (70580)",
+        "input_qty": "7.84 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "7.84 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "20621.989",
+    "production_cost": "0.0000",
+    "total_cost": "20621.9900",
+    "table_info": {
+      "date_time": "02/13/2026 09:16 AM",
+      "ref_no": "2026/9448",
+      "location": "PASTRY",
+      "product_short": "SPECIAL DOUGHNUT (70317)",
+      "qty_short": "4.00 PCS",
+      "total_cost_short": "₦ 20,621.99"
+    }
+  },
+  {
+    "reference_no": "2026/9447",
+    "production_date": "02/13/2026",
+    "produced_product": "CHOCOLATE OREO DOUGHNUT (69995)",
+    "quantity_produced": "8.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "62.75 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "62.75 G",
+        "total_price": "105.42"
+      },
+      {
+        "ingredient": "MARGARINE BUTTER (PASTRY) (69317)",
+        "input_qty": "31.37 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "31.37 G",
+        "total_price": "153.713"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "6.27 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "6.27 G",
+        "total_price": "3.135"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "10.98 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "10.98 G",
+        "total_price": "34038"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "313.73 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "313.73 G",
+        "total_price": "345.103"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "31.37 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "31.37 G",
+        "total_price": "6587.7"
+      },
+      {
+        "ingredient": "OREO POWDER (68967)",
+        "input_qty": "29.80 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "29.80 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "egg production (70580)",
+        "input_qty": "15.69 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "15.69 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "DOUGHNUT GLAZE (WIP) (70549)",
+        "input_qty": "15.69 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "15.69 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "41233.071",
+    "production_cost": "0.0000",
+    "total_cost": "41233.0700",
+    "table_info": {
+      "date_time": "02/13/2026 09:13 AM",
+      "ref_no": "2026/9447",
+      "location": "PASTRY",
+      "product_short": "CHOCOLATE OREO DOUGHNUT (69995)",
+      "qty_short": "8.00 PCS",
+      "total_cost_short": "₦ 41,233.07"
+    }
+  },
+  {
+    "reference_no": "2026/9452",
+    "production_date": "02/13/2026",
+    "produced_product": "egg production (70580)",
+    "quantity_produced": "2,000.00 G",
+    "wasted_quantity": "0.00 G",
+    "ingredients": [
+      {
+        "ingredient": "EGG (69070)",
+        "input_qty": "40.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "40.00 PCS",
+        "total_price": "25920"
+      }
+    ],
+    "ingredients_cost": "25920",
+    "production_cost": "0.0000",
+    "total_cost": "25920.0000",
+    "table_info": {
+      "date_time": "02/13/2026 09:07 AM",
+      "ref_no": "2026/9452",
+      "location": "PASTRY",
+      "product_short": "egg production (70580)",
+      "qty_short": "2,000.00 G",
+      "total_cost_short": "₦ 25,920.00"
+    }
+  },
+  {
+    "reference_no": "2026/9446",
+    "production_date": "02/13/2026",
+    "produced_product": "CRISPY DOUGHNUT (70060)",
+    "quantity_produced": "6.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "GRANULATED SUGAR (68701)",
+        "input_qty": "47.06 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "47.06 G",
+        "total_price": "79.0608"
+      },
+      {
+        "ingredient": "MARGARINE BUTTER (PASTRY) (69317)",
+        "input_qty": "23.53 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "23.53 G",
+        "total_price": "115.297"
+      },
+      {
+        "ingredient": "SALT (69547)",
+        "input_qty": "4.71 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "4.71 G",
+        "total_price": "2.355"
+      },
+      {
+        "ingredient": "YEAST (69833)",
+        "input_qty": "8.24 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "8.24 G",
+        "total_price": "25544"
+      },
+      {
+        "ingredient": "WHITE FLOUR (69815)",
+        "input_qty": "23.53 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "23.53 G",
+        "total_price": "25.883"
+      },
+      {
+        "ingredient": "POWDERED MILK (69494)",
+        "input_qty": "23.53 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "23.53 G",
+        "total_price": "4941.3"
+      },
+      {
+        "ingredient": "Pastry Icing (70516)",
+        "input_qty": "35.29 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "35.29 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "egg production (70580)",
+        "input_qty": "11.76 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "11.76 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "30707.8958",
+    "production_cost": "0.0000",
+    "total_cost": "30707.9000",
+    "table_info": {
+      "date_time": "02/13/2026 09:07 AM",
+      "ref_no": "2026/9446",
+      "location": "PASTRY",
+      "product_short": "CRISPY DOUGHNUT (70060)",
+      "qty_short": "6.00 PCS",
+      "total_cost_short": "₦ 30,707.90"
+    }
+  },
+  {
+    "reference_no": "2026/9445",
+    "production_date": "02/13/2026",
+    "produced_product": "CAPPUCCINO COFFEE (69949)",
+    "quantity_produced": "1.00 CU",
+    "wasted_quantity": "0.00 CU",
+    "ingredients": [
+      {
+        "ingredient": "COFFEE BEAN CAFFEINATED (69242)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "180.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "180.00 G",
+        "total_price": "540"
+      },
+      {
+        "ingredient": "C-WAY WATER (69034)",
+        "input_qty": "18.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "18.00 G",
+        "total_price": "27000"
+      }
+    ],
+    "ingredients_cost": "27540",
+    "production_cost": "0.0000",
+    "total_cost": "27540.0000",
+    "table_info": {
+      "date_time": "02/13/2026 08:51 AM",
+      "ref_no": "2026/9445",
+      "location": "CORNER STORE",
+      "product_short": "CAPPUCCINO COFFEE (69949)",
+      "qty_short": "1.00 CU",
+      "total_cost_short": "₦ 27,540.00"
+    }
+  },
+  {
+    "reference_no": "2026/9444",
+    "production_date": "02/13/2026",
+    "produced_product": "DO IT FOR THE BRITS(OMELETTE) (70073)",
+    "quantity_produced": "1.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "LOAF BREAD (WIP) (70454)",
+        "input_qty": "3.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "3.00 PCS",
+        "total_price": "3000"
+      },
+      {
+        "ingredient": "SAUSAGE (69559)",
+        "input_qty": "2.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2.00 PCS",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "BAKED BEANS IN TOMATO SAUCE (68751)",
+        "input_qty": "100.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "100.00 G",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "UNSALTED BUTTER (69753)",
+        "input_qty": "30.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "30.00 G",
+        "total_price": "690"
+      },
+      {
+        "ingredient": "MUSHROOM (69362)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "83350"
+      },
+      {
+        "ingredient": "FRESH TOMATOES (69122)",
+        "input_qty": "50.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "50.00 G",
+        "total_price": "125000"
+      },
+      {
+        "ingredient": "BACON (68747)",
+        "input_qty": "45.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "45.00 G",
+        "total_price": "1215"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "10.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "10.00 ML",
+        "total_price": "32"
+      },
+      {
+        "ingredient": "EGG OMELETTE (WIP) (70518)",
+        "input_qty": "1.00 PORTION",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 PORTION",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "213287",
+    "production_cost": "0.0000",
+    "total_cost": "213287.0000",
+    "table_info": {
+      "date_time": "02/13/2026 08:47 AM",
+      "ref_no": "2026/9444",
+      "location": "HOT KITCHEN",
+      "product_short": "DO IT FOR THE BRITS(OMELETTE) (70073)",
+      "qty_short": "1.00 PCS",
+      "total_cost_short": "₦ 213,287.00"
+    }
+  },
+  {
+    "reference_no": "2026/9442",
+    "production_date": "02/13/2026",
+    "produced_product": "CHICKEN WRAP (69983)",
+    "quantity_produced": "2.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "LETTUCE (69294)",
+        "input_qty": "2.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2.00 G",
+        "total_price": "16000"
+      },
+      {
+        "ingredient": "FRESH TOMATOES (69122)",
+        "input_qty": "8.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "8.00 G",
+        "total_price": "20000"
+      },
+      {
+        "ingredient": "BIG TORTILLA BREAD (68783)",
+        "input_qty": "2.00 PCS",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2.00 PCS",
+        "total_price": "9170"
+      },
+      {
+        "ingredient": "KETCHUP & MAYO (WIP) (70462)",
+        "input_qty": "5.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "5.00 G",
+        "total_price": "5000"
+      },
+      {
+        "ingredient": "VEGETABLE OIL (69789)",
+        "input_qty": "2.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "2.00 ML",
+        "total_price": "6.4"
+      },
+      {
+        "ingredient": "MARINATED CHICKEN FILLET (WIP) (70460)",
+        "input_qty": "16.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "16.00 G",
+        "total_price": "16000"
+      },
+      {
+        "ingredient": "GREEN BELL PEPPER (69177)",
+        "input_qty": "8.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "8.00 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "66176.4",
+    "production_cost": "0.0000",
+    "total_cost": "66176.4000",
+    "table_info": {
+      "date_time": "02/13/2026 08:36 AM",
+      "ref_no": "2026/9442",
+      "location": "HOT KITCHEN",
+      "product_short": "CHICKEN WRAP (69983)",
+      "qty_short": "2.00 PCS",
+      "total_cost_short": "₦ 66,176.40"
+    }
+  },
+  {
+    "reference_no": "2026/9443",
+    "production_date": "02/13/2026",
+    "produced_product": "FROTHY TOP CHOCOLATE (70106)",
+    "quantity_produced": "1.00 PCS",
+    "wasted_quantity": "0.00 PCS",
+    "ingredients": [
+      {
+        "ingredient": "CONDENSED MILK (68980)",
+        "input_qty": "10.00 ML",
+        "wastage_percent": "0.00 %",
+        "final_qty": "10.00 ML",
+        "total_price": "37.5"
+      },
+      {
+        "ingredient": "HOT CHOCOLATE (69228)",
+        "input_qty": "20.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "20.00 G",
+        "total_price": "54.8"
+      },
+      {
+        "ingredient": "UHT MILK (69749)",
+        "input_qty": "250.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "250.00 G",
+        "total_price": "750"
+      },
+      {
+        "ingredient": "CORNERSTORE BRANDED PAPER  COFFEE CUP (69003)",
+        "input_qty": "1.00 RO",
+        "wastage_percent": "0.00 %",
+        "final_qty": "1.00 RO",
+        "total_price": "0"
+      },
+      {
+        "ingredient": "CHOCOLATE TOPPING (I06) - NEW (68943)",
+        "input_qty": "60.00 G",
+        "wastage_percent": "0.00 %",
+        "final_qty": "60.00 G",
+        "total_price": "0"
+      }
+    ],
+    "ingredients_cost": "842.3",
+    "production_cost": "0.0000",
+    "total_cost": "842.3000",
+    "table_info": {
+      "date_time": "02/13/2026 08:36 AM",
+      "ref_no": "2026/9443",
+      "location": "CORNER STORE",
+      "product_short": "FROTHY TOP CHOCOLATE (70106)",
+      "qty_short": "1.00 PCS",
+      "total_cost_short": "₦ 842.30"
+    }
+  }
+]

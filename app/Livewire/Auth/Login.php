@@ -1,0 +1,150 @@
+<?php
+
+namespace App\Livewire\Auth;
+
+use App\Models\Branch;
+use App\Models\User;
+use Illuminate\Auth\Events\Lockout;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Laravel\Fortify\Features;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Validate;
+use Livewire\Component;
+
+#[Layout('components.layouts.auth')]
+class Login extends Component
+{
+    #[Validate('required|string|email')]
+    public string $email = '';
+
+    #[Validate('required|string')]
+    public string $password = '';
+
+    public bool $remember = false;
+
+    /**
+     * Handle an incoming authentication request.
+     */
+    public function login(): void
+    {
+        $this->validate();
+
+        $this->ensureIsNotRateLimited();
+
+        $user = $this->validateCredentials();
+
+        if (Features::canManageTwoFactorAuthentication() && $user->hasEnabledTwoFactorAuthentication()) {
+            Session::put([
+                'login.id' => $user->getKey(),
+                'login.remember' => $this->remember,
+            ]);
+
+            $this->redirect(route('two-factor.login'), navigate: true);
+
+            return;
+        }
+
+        Auth::login($user, $this->remember);
+
+        RateLimiter::clear($this->throttleKey());
+        Session::regenerate();
+        
+        // Get user's branch for context
+        $branch = $this->getUserBranch($user);
+        
+        if ($branch) {
+            session()->put('current_branch_id', $branch->id);
+            $user->update(['last_accessed_branch_id' => $branch->id]);
+        }
+        
+        // Redirect to DashboardRouter which will handle role-based routing
+        if ($branch) {
+            $this->redirectIntended(
+                default: route('branch-dashboard.dashboards.router', ['b_id' => $branch->id], absolute: false),
+                navigate: true
+            );
+        } else {
+            $this->redirectIntended(
+                default: route('branch-dashboard.dashboards.router', [], absolute: false),
+                navigate: true
+            );
+        }
+    }
+
+    /**
+     * Get the branch for redirect after login
+     * Priority: user's assigned branch > last accessed branch > first available branch
+     */
+    protected function getUserBranch(User $user): ?Branch
+    {
+        // If user has an assigned branch, use it (required for non-super-admins)
+        if ($user->branch_id) {
+            $branch = Branch::find($user->branch_id);
+            if ($branch) {
+                return $branch;
+            }
+        }
+
+        // If user has a last accessed branch, use it (for super admins)
+        if ($user->last_accessed_branch_id) {
+            $branch = Branch::find($user->last_accessed_branch_id);
+            if ($branch) {
+                return $branch;
+            }
+        }
+
+        // Otherwise, get the first available branch (for super admins without preference)
+        return Branch::orderBy('created_at')->first();
+    }
+
+    /**
+     * Validate the user's credentials.
+     */
+    protected function validateCredentials(): User
+    {
+        $user = Auth::getProvider()->retrieveByCredentials(['email' => $this->email, 'password' => $this->password]);
+
+        if (! $user || ! Auth::getProvider()->validateCredentials($user, ['password' => $this->password])) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => __('auth.failed'),
+            ]);
+        }
+
+        return $user;
+    }
+
+    /**
+     * Ensure the authentication request is not rate limited.
+     */
+    protected function ensureIsNotRateLimited(): void
+    {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+            return;
+        }
+
+        event(new Lockout(request()));
+
+        $seconds = RateLimiter::availableIn($this->throttleKey());
+
+        throw ValidationException::withMessages([
+            'email' => __('auth.throttle', [
+                'seconds' => $seconds,
+                'minutes' => ceil($seconds / 60),
+            ]),
+        ]);
+    }
+
+    /**
+     * Get the authentication rate limiting throttle key.
+     */
+    protected function throttleKey(): string
+    {
+        return Str::transliterate(Str::lower($this->email).'|'.request()->ip());
+    }
+}

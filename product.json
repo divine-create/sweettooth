@@ -1,0 +1,159 @@
+  {
+    "reference_no": "This will function as the ID, althouth teh system does not have the reference number",
+    "production_date": "02/10/2026",
+    "produced_product": "this will be used to create products (acts a a products name",
+    "quantity_produced": "imported to teh production records",
+    "wasted_quantity": "imnported as well",
+    "ingredients": [ // the ingredient will have two functions which are 1: used to populate the items table , the stocks can be different 
+      //in each of the ingredient, you will over look teh item that already exisit 
+      //2 : the ingredients will now be used to make recipes that are linked to the product in the, acting as the ingredient item sin the recipe
+      {
+        "ingredient": "this will be the item name, (note how ids are used in the recipes to mark items ro recipes",
+        "input_qty": "quantity required to make 1 batch of the item",
+        "wastage_percent": "",
+        "final_qty": "",
+        "total_price": ""
+        //you will match the data above to fit into my data bas3e for each of the json 
+      },
+    ],
+    "ingredients_cost": "",
+    "production_cost": "",
+    "total_cost": "",
+    "table_info": {
+      "date_time": "",
+      "ref_no": "",
+      "location": "The location will act as the production department while keepingh the sales department blanck, ",
+      "product_short": ")",
+      "qty_short": "Act to recorded quantity lost during produiction, can go into the damanged space of the production stock after dispatching in daily produce",
+      "total_cost_short": ""
+    }
+  },
+
+
+  • Got it — I treated the product.json comments as instructions and built the import commands accordingly.
+
+  I added four separate Artisan commands so you can run them independently (no “all‑at‑once” importer):
+
+  What I added
+
+  - import:production-items → creates Items + Stocks from ingredient lists
+  - import:production-products → creates Products from produced_product
+  - import:production-recipes → creates Recipes + Recipe Ingredients (normalized per 1 unit of output)
+  - import:production-records → creates Shifts, DailyProduces, ProductionRecords
+
+  Each command supports --dry-run, --mode=merge|replace, and mapping options.
+
+  Files added
+
+  - app/Console/Commands/ImportProductionItems.php
+  - app/Console/Commands/ImportProductionProducts.php
+  - app/Console/Commands/ImportProductionRecipes.php
+  - app/Console/Commands/ImportProductionRecords.php
+  - app/Console/Commands/Concerns/ParsesProductionJson.php
+
+  Default JSON path
+
+  - real_data/receips-sweetooth-main
+
+  ———
+
+  ## How To Run (recommended order)
+
+  php artisan import:production-items
+  php artisan import:production-products
+  php artisan import:production-recipes
+  php artisan import:production-records
+
+  ### With explicit branch + dry-run
+
+  php artisan import:production-items --branch-id=YOUR_BRANCH_UUID --dry-run
+
+  ———
+
+  ## Department / Product Type Mapping
+
+  These commands need departments and product types by location (HOT KITCHEN, PASTRY, etc).
+  You can pass a JSON map (file path or inline JSON).
+
+  Example file: department_map.json
+
+  {
+    "HOT KITCHEN": 1,
+    "PASTRY": 2,
+    "GELATO": 3,
+    "CORNER STORE": 4,
+    "TILL": 5,
+    "CONCESSION": 6
+  }
+
+  Example file: product_type_map.json
+
+  {
+    "HOT KITCHEN": 3,
+    "PASTRY": 4,
+    "GELATO": 5,
+    "CORNER STORE": 6,
+    "TILL": 7,
+    "CONCESSION": 8
+  }
+
+  Then run:
+
+  php artisan import:production-products --department-map=department_map.json --product-type-map=product_type_map.json
+  php artisan import:production-recipes --department-map=department_map.json --product-type-map=product_type_map.json
+  php artisan import:production-records --department-map=department_map.json
+
+  If you want the importer to auto-create missing departments/product types:
+
+  php artisan import:production-products --create-missing-departments --create-missing-product-types
+
+  ———
+
+  ## Replace vs Merge
+
+  All commands default to merge.
+  If you want to wipe related tables first:
+
+  php artisan import:production-recipes --mode=replace --force
+
+  ———
+
+  ## Key Import Logic (aligned to product.json instructions)
+
+  - Products: produced_product becomes Product name (ID in parentheses becomes SKU).
+  - Items: Ingredient names become Items (ID in parentheses becomes SKU).
+  - Recipes: Ingredients become Recipe Ingredients linked to Product’s recipe.
+  - Production Records: reference_no used as batch_number, production_date + table_info.date_time used for shift/record time.
+
+  I also normalize recipes per 1 unit of output:
+
+  ingredient_ratio = input_qty / quantity_produced
+
+  If you want per-batch recipes instead, say so and I’ll flip the logic.
+
+  ———
+
+  ## Unit Mapping I Applied
+
+  From the JSON data:
+
+  - G → g
+  - KG → kg
+  - ML → ml
+  - CL → cl
+  - PCS → pcs
+  - PORTION, PK, RO, SPN → unit
+  - CU, CP → cup
+  - SC → scoop
+
+  If you want different mapping (e.g., CU → cup_serving), I can adjust.
+
+  ———
+
+  If you want me to:
+
+  1. Add a stock movement importer (raw material consumption / product output)
+  2. Change the recipe normalization (per‑batch instead of per‑unit)
+  3. Force a different department/product_type strategy
+
+  tell me which direction you want and I’ll tighten it up.

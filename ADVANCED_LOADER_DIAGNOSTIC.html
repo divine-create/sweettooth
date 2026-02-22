@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Loader Diagnostic Tool</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4ec9b0;
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #569cd6;
+            margin-top: 30px;
+        }
+        .section {
+            background: #252526;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 3px solid #007acc;
+            border-radius: 4px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            margin: 5px 0;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+        .pass {
+            color: #4ec9b0;
+        }
+        .fail {
+            color: #f48771;
+        }
+        .info {
+            color: #ce9178;
+        }
+        pre {
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #404040;
+        }
+        .output {
+            background: #1e1e1e;
+            border: 1px solid #404040;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            min-height: 100px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        input {
+            background: #3c3c3c;
+            color: #e0e0e0;
+            border: 1px solid #555;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 5px 0;
+        }
+        .warning {
+            color: #dcdcaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Advanced Loader State Diagnostic Tool</h1>
+        <p>Run these diagnostics on your SweetTooth platform to identify loading state issues.</p>
+
+        <div class="section">
+            <h2>System Check</h2>
+            <button onclick="runSystemCheck()">Run System Check</button>
+            <div id="systemCheckOutput" class="output" style="display:none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Alpine.js Diagnostics</h2>
+            <button onclick="runAlpineCheck()">Check Alpine.js</button>
+            <div id="alpineOutput" class="output" style="display:none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Livewire Diagnostics</h2>
+            <button onclick="runLivewireCheck()">Check Livewire</button>
+            <div id="livewireOutput" class="output" style="display:none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>TallStackUI Check</h2>
+            <button onclick="runTallStackUICheck()">Check TallStackUI</button>
+            <div id="tallstackuiOutput" class="output" style="display:none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Loading Elements on Page</h2>
+            <button onclick="findLoadingElements()">Find All Loading Elements</button>
+            <div id="loadingElementsOutput" class="output" style="display:none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Fix Loading States</h2>
+            <button onclick="resetAllLoadingStates()">Reset All Loading States (Temporary Fix)</button>
+            <div id="resetOutput" class="output" style="display:none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Copy Full Report</h2>
+            <button onclick="generateFullReport()">Generate Full Report</button>
+            <div id="reportOutput" class="output" style="display:none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Quick Help</h2>
+            <p><strong>What to do:</strong></p>
+            <ol>
+                <li>Run "Run System Check" first</li>
+                <li>If issues found, run each diagnostic</li>
+                <li>Copy the full report and share with developers</li>
+                <li>If urgent, click "Reset All Loading States" for temporary fix</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function log(output, message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'pass' ? 'pass' : type === 'fail' ? 'fail' : type === 'warning' ? 'warning' : 'info';
+            const html = `<div class="${color}">[${timestamp}] ${escapeHtml(message)}</div>`;
+            output.innerHTML += html;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showOutput(elementId) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            return element;
+        }
+
+        function runSystemCheck() {
+            const output = showOutput('systemCheckOutput');
+            output.innerHTML = '';
+
+            log(output, '=== SYSTEM CHECK ===', 'info');
+            log(output, 'URL: ' + window.location.href, 'info');
+            log(output, 'User Agent: ' + navigator.userAgent, 'info');
+            log(output, 'Time: ' + new Date().toISOString(), 'info');
+            log(output, '', 'info');
+
+            // Check globals
+            const checks = {
+                'Alpine.js': typeof Alpine,
+                'Livewire': typeof Livewire,
+                'jQuery': typeof jQuery,
+                'Axios': typeof axios,
+            };
+
+            for (const [name, type] of Object.entries(checks)) {
+                const status = type !== 'undefined' ? 'pass' : 'fail';
+                log(output, `${name}: ${type}`, status);
+            }
+
+            log(output, '', 'info');
+            log(output, 'TallStackUI Data Stores:', 'info');
+            
+            if (window.Alpine && window.Alpine.data) {
+                const stores = [
+                    'tallstackui_loading',
+                    'tallstackui_select',
+                    'tallstackui_table',
+                    'tallstackui_modal',
+                    'tallstackui_dialog',
+                ];
+                
+                stores.forEach(store => {
+                    const exists = typeof window.Alpine.data[store] !== 'undefined';
+                    const status = exists ? 'pass' : 'fail';
+                    log(output, `  ${store}: ${exists ? 'registered' : 'NOT FOUND'}`, status);
+                });
+            } else {
+                log(output, 'Alpine not found - cannot check stores', 'fail');
+            }
+        }
+
+        function runAlpineCheck() {
+            const output = showOutput('alpineOutput');
+            output.innerHTML = '';
+
+            log(output, '=== ALPINE.JS DIAGNOSTICS ===', 'info');
+
+            if (typeof Alpine === 'undefined') {
+                log(output, 'Alpine.js is NOT loaded!', 'fail');
+                return;
+            }
+
+            log(output, 'Alpine version: ' + (Alpine.version || 'unknown'), 'pass');
+            log(output, 'Alpine initialized: true', 'pass');
+            log(output, '', 'info');
+
+            // Check data stores
+            log(output, 'Checking Alpine data stores...', 'info');
+            const elements = document.querySelectorAll('[x-data]');
+            log(output, `Found ${elements.length} elements with x-data`, 'info');
+
+            // Look for loading-related elements
+            const loadingElements = document.querySelectorAll('[x-data*="loading"], [x-show*="loading"]');
+            log(output, `Found ${loadingElements.length} loading-related elements`, 'info');
+
+            loadingElements.forEach((el, i) => {
+                const xData = el.getAttribute('x-data') || 'N/A';
+                const xShow = el.getAttribute('x-show') || 'N/A';
+                log(output, `  [${i}] x-data: ${xData.substring(0, 50)}...`, 'info');
+                log(output, `  [${i}] x-show: ${xShow.substring(0, 50)}...`, 'info');
+            });
+
+            log(output, '', 'info');
+            log(output, 'Alpine error handler:', 'info');
+            try {
+                Alpine.onElsAdded(el => {
+                    console.log('Alpine element added');
+                });
+                log(output, 'Alpine event listeners working', 'pass');
+            } catch(e) {
+                log(output, 'Error setting up listeners: ' + e.message, 'fail');
+            }
+        }
+
+        function runLivewireCheck() {
+            const output = showOutput('livewireOutput');
+            output.innerHTML = '';
+
+            log(output, '=== LIVEWIRE DIAGNOSTICS ===', 'info');
+
+            if (typeof Livewire === 'undefined') {
+                log(output, 'Livewire is NOT loaded!', 'fail');
+                return;
+            }
+
+            log(output, 'Livewire loaded: true', 'pass');
+            log(output, 'Testing Livewire connection...', 'info');
+
+            Livewire.ping()
+                .then(response => {
+                    log(output, 'Livewire ping: SUCCESS', 'pass');
+                    log(output, 'Response time: ' + response.responseTime + 'ms', 'pass');
+                })
+                .catch(error => {
+                    log(output, 'Livewire ping: FAILED', 'fail');
+                    log(output, 'Error: ' + (error.message || JSON.stringify(error)), 'fail');
+                });
+
+            // Check for wire: directives
+            const wireElements = document.querySelectorAll('[wire\\:click], [wire\\:submit], [wire\\:loading]');
+            log(output, '', 'info');
+            log(output, `Found ${wireElements.length} elements with wire directives`, 'info');
+
+            // Sample a few
+            let count = 0;
+            wireElements.forEach((el, i) => {
+                if (count < 5) {
+                    const attrs = Array.from(el.attributes)
+                        .filter(a => a.name.startsWith('wire:'))
+                        .map(a => a.name + '="' + a.value + '"')
+                        .join(' ');
+                    log(output, `  [${i}] ${attrs}`, 'info');
+                    count++;
+                }
+            });
+
+            if (wireElements.length > 5) {
+                log(output, `  ... and ${wireElements.length - 5} more`, 'info');
+            }
+        }
+
+        function runTallStackUICheck() {
+            const output = showOutput('tallstackuiOutput');
+            output.innerHTML = '';
+
+            log(output, '=== TALLSTACKUI DIAGNOSTICS ===', 'info');
+
+            // Check for TallStackUI elements
+            const loadingComponents = document.querySelectorAll('[x-data*="tallstackui_loading"]');
+            const selectComponents = document.querySelectorAll('[x-data*="tallstackui_select"]');
+            const tableComponents = document.querySelectorAll('[x-data*="tallstackui_table"]');
+
+            log(output, `Loading components: ${loadingComponents.length}`, 'info');
+            log(output, `Select components: ${selectComponents.length}`, 'info');
+            log(output, `Table components: ${tableComponents.length}`, 'info');
+            log(output, '', 'info');
+
+            // Check loading component states
+            if (loadingComponents.length > 0) {
+                log(output, 'Checking loading component states...', 'info');
+                loadingComponents.forEach((el, i) => {
+                    const displayed = window.getComputedStyle(el).display !== 'none';
+                    const status = displayed ? 'fail' : 'pass';
+                    log(output, `  [${i}] Visible: ${displayed}`, status);
+                });
+            }
+
+            // Check select loading states
+            if (selectComponents.length > 0) {
+                log(output, '', 'info');
+                log(output, 'Checking select component states...', 'info');
+                selectComponents.forEach((el, i) => {
+                    if (el.__x && el.__x.$data) {
+                        const loading = el.__x.$data.loading;
+                        const status = loading ? 'warning' : 'pass';
+                        log(output, `  [${i}] Loading: ${loading}`, status);
+                    }
+                });
+            }
+
+            // Check table loading states  
+            if (tableComponents.length > 0) {
+                log(output, '', 'info');
+                log(output, 'Checking table component states...', 'info');
+                tableComponents.forEach((el, i) => {
+                    if (el.__x && el.__x.$data) {
+                        const data = el.__x.$data;
+                        log(output, `  [${i}] Table exists`, 'info');
+                    }
+                });
+            }
+        }
+
+        function findLoadingElements() {
+            const output = showOutput('loadingElementsOutput');
+            output.innerHTML = '';
+
+            log(output, '=== LOADING ELEMENTS ON PAGE ===', 'info');
+
+            // Find all visible spinners
+            const spinners = document.querySelectorAll('.animate-spin, [x-show*="loading"]');
+            log(output, `Found ${spinners.length} potential spinner elements`, 'info');
+            log(output, '', 'info');
+
+            let visibleCount = 0;
+            spinners.forEach((el, i) => {
+                const style = window.getComputedStyle(el);
+                const isVisible = style.display !== 'none' && style.visibility !== 'hidden';
+                
+                if (isVisible) {
+                    visibleCount++;
+                    log(output, `[VISIBLE ${visibleCount}] ${el.tagName}`, 'fail');
+                    log(output, `  Class: ${el.className}`, 'info');
+                    log(output, `  x-show: ${el.getAttribute('x-show') || 'N/A'}`, 'info');
+                    
+                    // Try to find parent component
+                    let parent = el.parentElement;
+                    for (let j = 0; j < 5 && parent; j++) {
+                        if (parent.hasAttribute('x-data') || parent.hasAttribute('wire:id')) {
+                            log(output, `  Parent: ${parent.tagName} (level ${j})`, 'info');
+                            break;
+                        }
+                        parent = parent.parentElement;
+                    }
+                    log(output, '', 'info');
+                }
+            });
+
+            if (visibleCount === 0) {
+                log(output, 'No visible spinner elements found! ✓', 'pass');
+                log(output, '(This is good - loaders should be hidden)', 'pass');
+            } else {
+                log(output, `Total visible spinners: ${visibleCount}`, 'fail');
+                log(output, 'These should NOT be visible unless loading', 'warning');
+            }
+        }
+
+        function resetAllLoadingStates() {
+            const output = showOutput('resetOutput');
+            output.innerHTML = '';
+
+            log(output, '=== RESETTING ALL LOADING STATES ===', 'warning');
+            log(output, 'Warning: This is a temporary fix for testing', 'warning');
+            log(output, '', 'info');
+
+            let count = 0;
+
+            // Reset Alpine components
+            if (typeof Alpine !== 'undefined') {
+                document.querySelectorAll('[x-data]').forEach(el => {
+                    if (el.__x && el.__x.$data) {
+                        if (el.__x.$data.loading !== undefined) {
+                            el.__x.$data.loading = false;
+                            count++;
+                        }
+                        if (el.__x.$data.isLoading !== undefined) {
+                            el.__x.$data.isLoading = false;
+                            count++;
+                        }
+                    }
+                });
+            }
+
+            log(output, `Reset ${count} Alpine components`, 'pass');
+            log(output, '', 'info');
+            log(output, 'Hard refresh the page now for persistent fix:', 'warning');
+            log(output, 'Windows/Linux: Ctrl+Shift+R', 'info');
+            log(output, 'Mac: Cmd+Shift+R', 'info');
+        }
+
+        function generateFullReport() {
+            const output = showOutput('reportOutput');
+            output.innerHTML = '';
+
+            const report = {
+                timestamp: new Date().toISOString(),
+                url: window.location.href,
+                userAgent: navigator.userAgent,
+                checks: {
+                    alpine: typeof Alpine !== 'undefined',
+                    livewire: typeof Livewire !== 'undefined',
+                    spinnerCount: document.querySelectorAll('.animate-spin').length,
+                    visibleSpinners: Array.from(document.querySelectorAll('.animate-spin')).filter(el => {
+                        return window.getComputedStyle(el).display !== 'none';
+                    }).length,
+                },
+            };
+
+            const json = JSON.stringify(report, null, 2);
+            log(output, 'Full Report (JSON):', 'info');
+            log(output, json, 'info');
+            log(output, '', 'info');
+            log(output, 'Copy and paste this to the developers:', 'warning');
+
+            // Also create a text version
+            const text = `
+LOADER DIAGNOSTIC REPORT
+========================
+Generated: ${report.timestamp}
+URL: ${report.url}
+
+System Status:
+- Alpine.js: ${report.checks.alpine ? 'OK' : 'FAILED'}
+- Livewire: ${report.checks.livewire ? 'OK' : 'FAILED'}
+- Total spinner elements: ${report.checks.spinnerCount}
+- Visible spinners: ${report.checks.visibleSpinners}
+
+Action Required:
+${report.checks.visibleSpinners > 0 ? '- Visible spinners found - loaders stuck!' : '- No visible spinners - issue may be fixed'}
+`;
+            
+            log(output, text, 'info');
+        }
+
+        // Auto-run system check on load
+        window.addEventListener('load', () => {
+            log(showOutput('systemCheckOutput'), 'Page loaded. Ready for diagnostics.', 'pass');
+        });
+    </script>
+</body>
+</html>

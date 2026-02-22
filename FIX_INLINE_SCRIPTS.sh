@@ -1,0 +1,42 @@
+#!/bin/bash
+
+echo "🔧 Fixing Inline Script Issues..."
+echo "================================"
+
+# List of files with problematic inline scripts
+FILES=(
+    "resources/views/livewire/branch-dashboard/production/reports/production-efficiency/index.blade.php"
+    "resources/views/livewire/branch-dashboard/production/reports/cost-analysis/index.blade.php"
+    "resources/views/livewire/branch-dashboard/analytics/branch-performance.blade.php"
+    "resources/views/livewire/branch-dashboard/analytics/stock-variance-analytics.blade.php"
+    "resources/views/livewire/branch-dashboard/analytics/supplier-performance.blade.php"
+    "resources/views/livewire/branch-dashboard/sales-dashboard/analytics/index.blade.php"
+    "resources/views/livewire/branch-dashboard/sales-dashboard/my-sales/index.blade.php"
+    "resources/views/livewire/branch-dashboard/h-r/appraisals/analytics.blade.php"
+    "resources/views/super-admin/analytics/branch-performance.blade.php"
+    "resources/views/super-admin/analytics/stock-level-analytics.blade.php"
+    "resources/views/super-admin/analytics/purchase-analytics.blade.php"
+    "resources/views/super-admin/analytics/stock-variance-analytics.blade.php"
+    "resources/views/super-admin/analytics/supplier-performance.blade.php"
+    "resources/views/super-admin/analytics/overall-summary-dashboard.blade.php"
+    "resources/views/super-admin/analytics/request-dispatch-analytics.blade.php"
+)
+
+echo "Found ${#FILES[@]} files with inline scripts"
+echo ""
+echo "⚠️  Manual review required for:"
+echo "   - Apex Charts initialization"
+echo "   - Highcharts initialization"
+echo "   - Wire model listeners"
+echo ""
+echo "✅ Verify all scripts are:"
+echo "   - Wrapped in @push('scripts')"
+echo "   - Using proper event listeners"
+echo "   - Not using @this outside Alpine context"
+echo ""
+echo "Run these commands:"
+echo "  php artisan cache:clear"
+echo "  npm run build"
+echo "  php artisan serve"
+echo ""
+echo "Then check: http://localhost:8000/diagnose.html"
