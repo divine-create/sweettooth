@@ -242,8 +242,8 @@ class ImportRecipesFromProductionData extends Command
             return 'skipped';
         }
 
-        // Find or create product
-        $product = $this->findProduct($productName, $productExternalId);
+        // Find or create product - MUST filter by branch_id
+        $product = $this->findProduct($productName, $productExternalId, $branchId);
         
         if (! $product) {
             $this->warn("Skipping recipe {$productName}: product not found. Run import:production-products first.");
@@ -322,7 +322,7 @@ class ImportRecipesFromProductionData extends Command
         return 'created';
     }
 
-    protected function findProduct(string $name, ?string $externalId): ?Product
+    protected function findProduct(string $name, ?string $externalId, string $branchId): ?Product
     {
         $key = $externalId ?: $this->normalizeKey($name);
         
@@ -330,7 +330,8 @@ class ImportRecipesFromProductionData extends Command
             return Product::find($this->productCache[$key]);
         }
 
-        $query = Product::query();
+        // MUST filter by branch_id to get the correct product for this branch
+        $query = Product::query()->where('branch_id', $branchId);
         if ($externalId) {
             $query->where('sku', $externalId);
         } else {
@@ -439,6 +440,7 @@ class ImportRecipesFromProductionData extends Command
             'CORNER STORE' => 'Corner Store',
             'TILL' => 'Till Sales',
             'CONCESSION' => 'Concession',
+            'TILL CONCESSION' => 'Till Concession',
             'CORNERSTORE' => 'Corner Store',
         ];
         
@@ -450,7 +452,18 @@ class ImportRecipesFromProductionData extends Command
             return $this->departmentCache[$locKey];
         }
 
-        $department = Department::whereRaw('UPPER(name) = ?', [$mappedLocation])->first();
+        // MUST filter by branch_id to get the correct department for this branch
+        $department = Department::where('branch_id', $branchId)
+            ->whereRaw('UPPER(name) = ?', [$mappedLocation])
+            ->first();
+
+        // If not found, try global departments (no branch_id)
+        if (! $department) {
+            $department = Department::whereNull('branch_id')
+                ->whereRaw('UPPER(name) = ?', [$mappedLocation])
+                ->first();
+        }
+
         $this->departmentCache[$locKey] = $department?->id;
         
         return $department?->id;

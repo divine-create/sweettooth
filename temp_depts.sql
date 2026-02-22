@@ -1,0 +1,16 @@
+INSERT INTO `department_categories` (`id`, `name`, `description`, `created_at`, `updated_at`) VALUES
+('019c70a4-b51a-707d-8ed0-1bdce04a96c6', 'Sales', 'Departments responsible for sales operations.', '2026-02-18 12:06:08', '2026-02-18 12:06:08'),
+('019c70a4-b523-730b-bd59-df384cb43cab', 'Production', 'Departments responsible for preparing products.', '2026-02-18 12:06:08', '2026-02-18 12:06:08'),
+('019c70a4-b52b-72f0-9ca4-948122177220', 'Support', 'Support departments for shared operations.', '2026-02-18 12:06:08', '2026-02-18 12:06:08')
+ON DUPLICATE KEY UPDATE name=VALUES(name);
+
+INSERT INTO `departments` (`id`, `branch_id`, `category_id`, `name`, `slug`, `description`, `is_active`, `manager_user_id`, `enable_table_management`, `table_management_settings`, `created_at`, `updated_at`, `revenue_account_id`, `tax_account_id`, `receivable_account_id`, `cash_account_id`, `bank_account_id`) VALUES
+(45, '019c850c-7294-72ea-9ec5-1b00d6b0bdd8', '019c70a4-b523-730b-bd59-df384cb43cab', 'HOT KITCHEN', 'hot-kitchen', 'Handles hot-kitchen production workflows.', 1, NULL, 0, NULL, '2026-02-18 12:06:08', '2026-02-18 12:06:08', NULL, NULL, NULL, NULL, NULL),
+(46, '019c850c-7294-72ea-9ec5-1b00d6b0bdd8', '019c70a4-b523-730b-bd59-df384cb43cab', 'PASTRY', 'pastry', 'Handles pastry production workflows.', 1, NULL, 0, NULL, '2026-02-18 12:06:08', '2026-02-18 12:06:08', NULL, NULL, NULL, NULL, NULL),
+(47, '019c850c-7294-72ea-9ec5-1b00d6b0bdd8', '019c70a4-b523-730b-bd59-df384cb43cab', 'GELATO', 'gelato', 'Handles gelato production workflows.', 1, NULL, 0, NULL, '2026-02-18 12:06:08', '2026-02-18 12:06:08', NULL, NULL, NULL, NULL, NULL),
+(48, '019c850c-7294-72ea-9ec5-1b00d6b0bdd8', '019c70a4-b523-730b-bd59-df384cb43cab', 'CORNERSTONE', 'cornerstone', 'Production-only corner-store preparation line.', 1, NULL, 0, NULL, '2026-02-18 12:06:08', '2026-02-18 12:06:08', NULL, NULL, NULL, NULL, NULL),
+(49, '019c850c-7294-72ea-9ec5-1b00d6b0bdd8', '019c70a4-b51a-707d-8ed0-1bdce04a96c6', 'Till Sales', 'till_concession', 'Till sales operations for ice cream, pancakes, and related products.', 1, NULL, 0, NULL, '2026-02-18 12:06:08', '2026-02-18 12:06:08', NULL, NULL, NULL, NULL, NULL),
+(50, '019c850c-7294-72ea-9ec5-1b00d6b0bdd8', '019c70a4-b51a-707d-8ed0-1bdce04a96c6', 'Concession', 'concession', 'Independent concession sales department for pastries and confectionery.', 1, NULL, 0, NULL, '2026-02-18 12:06:09', '2026-02-18 12:06:09', NULL, NULL, NULL, NULL, NULL),
+(51, '019c850c-7294-72ea-9ec5-1b00d6b0bdd8', '019c70a4-b51a-707d-8ed0-1bdce04a96c6', 'Corner Store', 'corner_store', 'Corner store sales operations for drinks, tea, coffee, and related products.', 1, NULL, 0, NULL, '2026-02-18 12:06:09', '2026-02-18 12:06:09', NULL, NULL, NULL, NULL, NULL),
+(52, '019c850c-7294-72ea-9ec5-1b00d6b0bdd8', '019c70a4-b52b-72f0-9ca4-948122177220', 'Inventory/Store', 'inventorystore', 'Inventory and stock control.', 1, NULL, 0, NULL, '2026-02-18 12:06:09', '2026-02-18 12:06:09', NULL, NULL, NULL, NULL, NULL),
+(53, '019c850c-7294-72ea-9ec5-1b00d6b0bdd8', '019c70a4-b52b-72f0-9ca4-948122177220', 'HR', 'hr', 'Human resources support.', 1, NULL, 0, NULL, '2026-02-18 12:06:09', '2026-02-18 12:06:09', NULL, NULL, NULL, NULL, NULL);

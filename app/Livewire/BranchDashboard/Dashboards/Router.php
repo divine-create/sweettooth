@@ -114,12 +114,12 @@ class Router extends Component
      */
     private function routeSupport(string $branchId, $user)
     {
-        if (SidebarVisibilityService::canSeeEmployeeManagement($user)) {
-            return Redirect::route('branch-dashboard.dashboard.hr', ['b_id' => $branchId]);
-        }
-
         if (SidebarVisibilityService::canSeeInventory($user)) {
             return Redirect::route('branch-dashboard.dashboard.inventory', ['b_id' => $branchId]);
+        }
+
+        if (SidebarVisibilityService::canSeeEmployeeManagement($user)) {
+            return Redirect::route('branch-dashboard.dashboard.hr', ['b_id' => $branchId]);
         }
 
         if (SidebarVisibilityService::canSeeAccounting($user)) {

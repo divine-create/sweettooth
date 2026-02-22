@@ -29,6 +29,9 @@ use Illuminate\Support\Facades\Route;
                     Route::get('/{deptSlug}', \App\Livewire\BranchDashboard\Production\DailyProduce\Index::class)->name('index');
                 });
 
+                // Production Records
+                Route::get('records/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Records\Index::class)->name('records.index');
+
                 // Shift Closing - Production (department-based)
                 Route::prefix('shift-closing')->name('shift-closing.')->group(function () {
                     Route::get('/{deptSlug}', \App\Livewire\BranchDashboard\Production\ShiftClosing\Index::class)->name('index');

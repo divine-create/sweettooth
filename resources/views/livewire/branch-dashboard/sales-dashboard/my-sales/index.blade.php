@@ -125,23 +125,12 @@
             <!-- Overview Tab -->
             <div x-show="$wire.activeTab === 'overview'" class="space-y-6">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Hourly Sales Chart & Table -->
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6" x-data="{ showChart: true }">
+                    <!-- Hourly Sales Table -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold dark:text-white">My Hourly Sales</h3>
-                            <div class="flex gap-2">
-                                <button @click="showChart = true" :class="showChart ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'" class="px-3 py-1 rounded text-xs">
-                                    <i class="fas fa-chart-bar mr-1"></i>Chart
-                                </button>
-                                <button @click="showChart = false" :class="!showChart ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'" class="px-3 py-1 rounded text-xs">
-                                    <i class="fas fa-table mr-1"></i>Table
-                                </button>
-                            </div>
                         </div>
-                        <div x-show="showChart">
-                            <div id="myHourlySalesChart" style="height: 300px;"></div>
-                        </div>
-                        <div x-show="!showChart" class="overflow-x-auto">
+                        <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead class="bg-gray-50 dark:bg-gray-700">
                                     <tr>
@@ -169,108 +158,82 @@
                         </div>
                     </div>
 
-                    <!-- Payment Methods Chart & Table -->
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6" x-data="{ showChart: true }">
+                    <!-- Payment Methods Table -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold dark:text-white">Payment Methods</h3>
-                            <div class="flex gap-2">
-                                <button @click="showChart = true" :class="showChart ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'" class="px-3 py-1 rounded text-xs">
-                                    <i class="fas fa-chart-pie mr-1"></i>Chart
-                                </button>
-                                <button @click="showChart = false" :class="!showChart ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'" class="px-3 py-1 rounded text-xs">
-                                    <i class="fas fa-table mr-1"></i>Table
-                                </button>
-                            </div>
                         </div>
-                        <div>
-                            <div x-show="showChart">
-                                <div id="myPaymentMethodsChart" style="height: 300px;"></div>
-                            </div>
-                            <div x-show="!showChart" class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                    <thead class="bg-gray-50 dark:bg-gray-700">
-                                        <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Method</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Transactions</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                        @php $totalPayments = $payments->sum('total'); @endphp
-                                        @forelse($payments as $payment)
-                                        <tr>
-                                            <td class="px-4 py-2">
-                                                <span class="px-2 py-1 text-xs font-semibold rounded-full
-                                                    {{ $payment->payment_method === 'cash' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
-                                                       ($payment->payment_method === 'pos' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300' : 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-300') }}">
-                                                    {{ ucfirst($payment->payment_method) }}
-                                                </span>
-                                            </td>
-                                            <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{{ number_format($payment->count) }}</td>
-                                            <td class="px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                                {{ \App\Helpers\LocalizationHelper::formatCurrency($payment->total ?? 0) }}
-                                                <span class="text-xs text-gray-500">({{ number_format(($payment->total / $totalPayments) * 100, 1) }}%)</span>
-                                            </td>
-                                        </tr>
-                                        @empty
-                                        <tr>
-                                            <td colspan="3" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">No payment data</td>
-                                        </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Daily Sales Chart & Table -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6" x-data="{ showChart: true }">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold dark:text-white">My Daily Sales Trend</h3>
-                        <div class="flex gap-2">
-                            <button @click="showChart = true" :class="showChart ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'" class="px-3 py-1 rounded text-xs">
-                                <i class="fas fa-chart-line mr-1"></i>Chart
-                            </button>
-                            <button @click="showChart = false" :class="!showChart ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'" class="px-3 py-1 rounded text-xs">
-                                <i class="fas fa-table mr-1"></i>Table
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <div x-show="showChart">
-                            <div id="myDailySalesChart" style="height: 400px;"></div>
-                        </div>
-                        <div x-show="!showChart" class="overflow-x-auto">
+                        <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead class="bg-gray-50 dark:bg-gray-700">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Sales</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Orders</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Avg Order</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Method</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Transactions</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    @forelse($dailySales as $day)
+                                    @php $totalPayments = $payments->sum('total'); @endphp
+                                    @forelse($payments as $payment)
                                     <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ \Carbon\Carbon::parse($day->date)->format('M d, Y') }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                            {{ \App\Helpers\LocalizationHelper::formatCurrency($day->total ?? 0) }}
+                                        <td class="px-4 py-2">
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                                {{ $payment->payment_method === 'cash' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
+                                                   ($payment->payment_method === 'pos' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300' : 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-300') }}">
+                                                {{ ucfirst($payment->payment_method) }}
+                                            </span>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ number_format($day->count) }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                                            {{ \App\Helpers\LocalizationHelper::formatCurrency($day->avg_order ?? 0) }}
+                                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{{ number_format($payment->count) }}</td>
+                                        <td class="px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                            {{ \App\Helpers\LocalizationHelper::formatCurrency($payment->total ?? 0) }}
+                                            <span class="text-xs text-gray-500">({{ $totalPayments > 0 ? number_format(($payment->total / $totalPayments) * 100, 1) : 0 }}%)</span>
                                         </td>
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="4" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No daily data available</td>
+                                        <td colspan="3" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">No payment data</td>
                                     </tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Daily Sales Table -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold dark:text-white">My Daily Sales Trend</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Sales</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Orders</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Avg Order</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                @forelse($dailySales as $day)
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ \Carbon\Carbon::parse($day->date)->format('M d, Y') }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                        {{ \App\Helpers\LocalizationHelper::formatCurrency($day->total ?? 0) }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ number_format($day->count) }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                                        {{ \App\Helpers\LocalizationHelper::formatCurrency($day->avg_order ?? 0) }}
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan=\"4\" class=\"px-6 py-8 text-center text-gray-500 dark:text-gray-400\">No daily data available</td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -316,11 +279,6 @@
 
             <!-- Products Tab -->
             <div x-show="$wire.activeTab === 'products'" class="space-y-6">
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <h3 class="text-lg font-semibold dark:text-white mb-4">My Top 10 Products</h3>
-                    <div id="myTopProductsChart" style="height: 400px;"></div>
-                </div>
-
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                     <h3 class="text-lg font-semibold dark:text-white mb-4">Product Performance Details</h3>
                     <div class="overflow-x-auto">
@@ -377,7 +335,14 @@
                                         {{ ucfirst($sale->status) }}
                                     </span>
                                 </div>
-                                <span class="text-sm text-gray-600 dark:text-gray-400">{{ $sale->sale_time->format('M d, Y h:i A') }}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm text-gray-600 dark:text-gray-400">{{ $sale->sale_time->format('M d, Y h:i A') }}</span>
+                                    <button type="button"
+                                            wire:click="printReceipt({{ $sale->id }})"
+                                            class="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700">
+                                        Print Receipt
+                                    </button>
+                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-4 text-sm">
                                 <div>
@@ -413,104 +378,21 @@
             </div>
         </div>
 
-        @php
-            $currencyCode = \App\Helpers\Settings::currencyLocalization('primary_currency', 'USD');
-        @endphp
-
-        @push('scripts')
-        <script src="https://code.highcharts.com/highcharts.js"></script>
-        <script>
-            document.addEventListener('livewire:initialized', () => {
-                initializeCharts();
-            });
-
-            function initializeCharts() {
-                // Hourly Sales Chart
-                const hourlyData = @json($hourlySales);
-                Highcharts.chart('myHourlySalesChart', {
-                    chart: { type: 'column' },
-                    title: { text: null },
-                    xAxis: {
-                        categories: hourlyData.map(h => h.hour + ':00'),
-                        title: { text: 'Hour' }
-                    },
-                    yAxis: { title: { text: `Sales (${currencyCode})` } },
-                    series: [{
-                        name: 'Sales',
-                        data: hourlyData.map(h => parseFloat(h.total)),
-                        color: '#3b82f6'
-                    }],
-                    legend: { enabled: false },
-                    credits: { enabled: false }
-                });
-
-                // Payment Methods Pie Chart
-                const paymentData = @json($payments);
-                Highcharts.chart('myPaymentMethodsChart', {
-                    chart: { type: 'pie' },
-                    title: { text: null },
-                    plotOptions: {
-                        pie: {
-                            allowPointSelect: true,
-                            cursor: 'pointer',
-                            dataLabels: {
-                                enabled: true,
-                                format: '<b>{point.name}</b>: {point.percentage:.1f}%'
-                            }
-                        }
-                    },
-                    series: [{
-                        name: 'Amount',
-                        colorByPoint: true,
-                        data: paymentData.map(p => ({
-                            name: p.payment_method.charAt(0).toUpperCase() + p.payment_method.slice(1),
-                            y: parseFloat(p.total)
-                        }))
-                    }],
-                    credits: { enabled: false }
-                });
-
-                // Daily Sales Chart
-                const dailyData = @json($dailySales);
-                Highcharts.chart('myDailySalesChart', {
-                    chart: { type: 'line' },
-                    title: { text: null },
-                    xAxis: {
-                        categories: dailyData.map(d => new Date(d.date).toLocaleDateString()),
-                        title: { text: 'Date' }
-                    },
-                    yAxis: { title: { text: `Amount (${currencyCode})` } },
-                    series: [{
-                        name: 'Total Sales',
-                        data: dailyData.map(d => parseFloat(d.total)),
-                        color: '#3b82f6'
-                    }],
-                    credits: { enabled: false }
-                });
-
-                // Top Products Bar Chart
-                const productData = @json($topProducts);
-                Highcharts.chart('myTopProductsChart', {
-                    chart: { type: 'bar' },
-                    title: { text: null },
-                    xAxis: {
-                        categories: productData.map(p => p.product?.name || 'N/A'),
-                        title: { text: null }
-                    },
-                    yAxis: {
-                        min: 0,
-                        title: { text: `Revenue (${currencyCode})` }
-                    },
-                    series: [{
-                        name: 'Revenue',
-                        data: productData.map(p => parseFloat(p.total_revenue)),
-                        colorByPoint: true
-                    }],
-                    legend: { enabled: false },
-                    credits: { enabled: false }
-                });
-            }
-        </script>
-        @endpush
     </div>
 </div>
+
+@push('scripts')
+<script>
+    window.addEventListener('print-receipt', (event) => {
+        const html = event.detail?.html || '';
+        if (!html) return;
+        const win = window.open('', '_blank', 'width=420,height=720');
+        if (!win) return;
+        win.document.open();
+        win.document.write(`<html><head><title>Receipt</title></head><body>${html}</body></html>`);
+        win.document.close();
+        win.focus();
+        win.print();
+    });
+</script>
+@endpush

@@ -37,6 +37,7 @@ class ProductStock extends Model
         'transfer_quantity',
         'glovo_quantity',
         'quantity_sold',
+        'quantity_reserved',
         'closing_quantity',
         'amount',
         'notes',
@@ -54,6 +55,7 @@ class ProductStock extends Model
         'transfer_quantity' => 'decimal:2',
         'glovo_quantity' => 'decimal:2',
         'quantity_sold' => 'decimal:2',
+        'quantity_reserved' => 'decimal:2',
         'closing_quantity' => 'decimal:2',
         'amount' => 'decimal:2',
     ];
@@ -170,11 +172,12 @@ class ProductStock extends Model
 
     public function calculateClosing(): float
     {
-        // Formula: Total Available - Transfer - Glovo - Sold
+        // Formula: Total Available - Transfer - Glovo - Sold - Reserved
         return $this->total_available
             - $this->transfer_quantity
             - $this->glovo_quantity
-            - $this->quantity_sold;
+            - $this->quantity_sold
+            - ($this->quantity_reserved ?? 0);
     }
 
     public function updateCalculatedFields(): void

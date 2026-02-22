@@ -10,6 +10,7 @@ use App\Models\Recipe;
 use App\Models\SalesProductionRequestItem;
 use App\Services\SalesProductionMaterialsService;
 use App\Services\SalesProductionRequestWorkflowService;
+use App\Services\UomConversionService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -209,7 +210,8 @@ class SalesRequests extends Component
                 'request',
                 'recipe.product',
                 'recipe.unitOfMeasure',
-                'product',
+                'product.unitOfMeasure',
+                'product.salesUom',
                 'productionDepartment',
                 'latestMaterialRequest.itemRequest',
             ])
@@ -222,6 +224,56 @@ class SalesRequests extends Component
         }
 
         return $query->firstOrFail();
+    }
+
+    /**
+     * @return array{production_qty:float,production_symbol:string,sales_qty:float,sales_symbol:string,converted:bool}
+     */
+    public function getQuantityDisplay(SalesProductionRequestItem $item): array
+    {
+        $product = $item->product;
+        $salesQty = (float) $item->quantity_requested;
+        $salesSymbol = $product?->salesUom?->symbol
+            ?? $product?->unitOfMeasure?->symbol
+            ?? $item->recipe?->unitOfMeasure?->symbol
+            ?? '';
+
+        $productionUomId = $product?->uom_id ?? $item->recipe?->uom_id;
+        $productionSymbol = $product?->unitOfMeasure?->symbol
+            ?? $item->recipe?->unitOfMeasure?->symbol
+            ?? $salesSymbol;
+
+        $convertedQty = null;
+        if ($product?->sales_uom_id && $productionUomId) {
+            /** @var UomConversionService $converter */
+            $converter = app(UomConversionService::class);
+            $convertedQty = $converter->tryConvert(
+                $salesQty,
+                (int) $product->sales_uom_id,
+                (int) $productionUomId,
+                [
+                    'branch_id' => $this->getBranchId(),
+                    'product_id' => (string) $product->id,
+                ]
+            );
+        }
+
+        $productionQty = $convertedQty ?? $salesQty;
+
+        return [
+            'production_qty' => $productionQty,
+            'production_symbol' => (string) $productionSymbol,
+            'sales_qty' => $salesQty,
+            'sales_symbol' => (string) $salesSymbol,
+            'converted' => $convertedQty !== null,
+        ];
+    }
+
+    private function resolveProductionQuantity(SalesProductionRequestItem $item): float
+    {
+        $display = $this->getQuantityDisplay($item);
+
+        return (float) $display['production_qty'];
     }
 
     private function createExecutionRequestForApprovedItem(SalesProductionRequestItem $item): void
@@ -266,7 +318,7 @@ class SalesRequests extends Component
             throw new DomainException("No active recipe found for sales request item {$item->id}.");
         }
 
-        $requestedUnits = (float) $item->quantity_requested;
+        $requestedUnits = $this->resolveProductionQuantity($item);
         $yieldQuantity = (float) ($recipe->yield_quantity ?? 0);
         $plannedQuantity = $requestedUnits;
 
@@ -315,7 +367,9 @@ class SalesRequests extends Component
                 'productionDepartment:id,name',
                 'recipe:id,product_name,sku,yield_quantity,uom_id',
                 'recipe.unitOfMeasure:id,symbol',
-                'product:id,name,sku',
+                'product:id,name,sku,uom_id,sales_uom_id',
+                'product.unitOfMeasure:id,symbol',
+                'product.salesUom:id,symbol',
                 'latestMaterialRequest',
                 'latestMaterialRequest.itemRequest:id,request_number,status',
             ])

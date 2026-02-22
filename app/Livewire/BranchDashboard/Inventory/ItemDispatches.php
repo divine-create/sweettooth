@@ -539,7 +539,7 @@ class ItemDispatches extends Component
                         $lowStockWarnings[] = "{$item['item_name']}: Stock level is now {$quantityAfter} {$itemBaseUomSymbol}, which is at or below the reorder level of {$stock->item->reorder_level} {$itemBaseUomSymbol}. Please restock!";
                     }
 
-                    $mappedUom = $this->resolveDispatchUomValue($detail);
+                    $dispatchUomId = $this->resolveDispatchUomId($detail);
 
                     // Create dispatch record
                     ItemDispatch::create([
@@ -551,7 +551,8 @@ class ItemDispatches extends Component
                         'received_by_id' => null,
                         'received_by_type' => null,
                         'quantity' => $dispatchQtyRequestUom,
-                        'uom' => $mappedUom,
+                        'uom' => null,
+                        'uom_id' => $dispatchUomId,
                         'dispatch_time' => now(),
                         'received_time' => null,
                         'shift' => $request->shift,
@@ -688,22 +689,9 @@ class ItemDispatches extends Component
         return $converted ?? $baseQuantity;
     }
 
-    protected function resolveDispatchUomValue(ItemRequestDetail $detail): string
+    protected function resolveDispatchUomId(ItemRequestDetail $detail): ?int
     {
-        $unit = $detail->unitOfMeasure ?: $detail->item?->unitOfMeasure;
-        if (! $unit) {
-            throw new \RuntimeException("No UOM is configured for item detail #{$detail->id}.");
-        }
-
-        $legacyDispatchUom = (string) ($unit->legacy_dispatch_uom ?? '');
-        if ($legacyDispatchUom === '') {
-            throw new \RuntimeException(
-                "Dispatch UOM mapping is missing for unit '{$unit->name}' ({$unit->symbol}). ".
-                "Set legacy_dispatch_uom in Unit of Measure settings."
-            );
-        }
-
-        return $legacyDispatchUom;
+        return $detail->uom_id ?? $detail->item?->uom_id;
     }
 
     public function closeModal()

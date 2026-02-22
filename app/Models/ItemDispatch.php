@@ -21,6 +21,7 @@ class ItemDispatch extends Model
         'received_by_type',
         'quantity',
         'uom',
+        'uom_id',
         'dispatch_time',
         'received_time',
         'shift',
@@ -63,6 +64,14 @@ class ItemDispatch extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
+    }
+
+    /**
+     * Get the UOM (new canonical UOM reference).
+     */
+    public function unitOfMeasure(): BelongsTo
+    {
+        return $this->belongsTo(UnitOfMeasure::class, 'uom_id');
     }
 
     /**

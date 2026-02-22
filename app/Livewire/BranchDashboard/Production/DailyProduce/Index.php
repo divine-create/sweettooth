@@ -247,6 +247,7 @@ class Index extends Component
                 $isSalesRequest = $salesDemandContext['is_sales_request'];
                 $isStoreRequest = (bool) $prodRequest->item_request_id;
                 $requestedUnits = $salesDemandContext['requested_units'];
+                $salesUomSymbol = $salesDemandContext['sales_uom_symbol'];
 
                 $sourceLabel = $isSalesRequest ? 'Sales Demand' : ($isStoreRequest ? 'Store Request' : 'Direct Request');
                 $sourceClass = $isSalesRequest
@@ -282,6 +283,7 @@ class Index extends Component
                     'sales_department_id' => $salesDemandContext['sales_department_id'],
                     'sales_department_name' => $salesDemandContext['sales_department_name'],
                     'requested_units' => $requestedUnits,
+                    'sales_uom' => $salesUomSymbol,
                     'production_request_number' => $prodRequest->id ? 'PR-' . $prodRequest->id : null,
                     'item_request_number' => $itemRequest->request_number ?? null,
                     'requested_quantity' => $prodRequest->planned_production_quantity,
@@ -360,6 +362,7 @@ class Index extends Component
             $salesDemandContext = $this->resolveSalesDemandContext($productionRequest);
             $allowedSalesDeptId = $salesDemandContext['sales_department_id'];
             $requestedUnits = $salesDemandContext['requested_units'];
+            $salesUomSymbol = $salesDemandContext['sales_uom_symbol'];
             $recipeProductId = $this->resolveProductIdForRecipe($produce->recipe);
             $productAllowedDeptIds = $this->resolveAllowedSalesDepartmentIdsForProduct($recipeProductId);
             if ($allowedSalesDeptId && ! in_array((int) $allowedSalesDeptId, $productAllowedDeptIds, true)) {
@@ -474,6 +477,7 @@ class Index extends Component
                 'opening_quantity' => (float) $produce->opening_quantity,
                 'requested_quantity' => (float) $produce->requested_quantity,
                 'requested_units' => $requestedUnits,
+                'sales_uom' => $salesUomSymbol,
                 'excess_to_stock' => $requestedUnits !== null ? max(0, (float) $produce->requested_quantity - $requestedUnits) : 0,
                 'produced_quantity' => (float) $actualProducedQty,
                 'rejected_quantity' => $totalRejectedQty,
@@ -1293,41 +1297,13 @@ class Index extends Component
         }
 
         $availableForDispatch = max(0, $approvedQuantity - $forOrder);
-        $salesRemainingForBatch = null;
         $totalDispatched = 0;
 
         $restrictedDeptId = $this->batchAllowedSalesDepartments[$batchId] ?? null;
         $allowedDeptIds = $this->getBatchAllowedDepartmentIds((int) $batchId);
 
-        // Sales-demand cap: do not allow allocations beyond requested sales units across all batches.
-        $dailyProduce = $batch->dailyProduce;
-        if ($dailyProduce) {
-            $salesRequestedUnits = $this->getSalesRequestedUnitsLimit($dailyProduce);
-            if ($salesRequestedUnits !== null) {
-                $allocatedAcrossProduce = 0.0;
-                $currentBatchAllocated = 0.0;
-
-                foreach ($dailyProduce->productionRecords as $batchRecord) {
-                    $allocated = 0.0;
-                    if (isset($this->batchDispatches[$batchRecord->id])) {
-                        foreach ($this->batchDispatches[$batchRecord->id] as $dispatchRow) {
-                            $allocated += (float) ($dispatchRow['quantity'] ?? 0);
-                        }
-                    } else {
-                        $allocated = (float) ($batchRecord->quantity_sent_out ?? 0);
-                    }
-
-                    $allocatedAcrossProduce += $allocated;
-                    if ((int) $batchRecord->id === (int) $batchId) {
-                        $currentBatchAllocated = $allocated;
-                    }
-                }
-
-                $otherBatchesAllocated = max(0, $allocatedAcrossProduce - $currentBatchAllocated);
-                $salesRemainingForBatch = max(0, (float) $salesRequestedUnits - $otherBatchesAllocated);
-                $availableForDispatch = min($availableForDispatch, $salesRemainingForBatch);
-            }
-        }
+        // Note: production may dispatch beyond sales-requested quantity.
+        // We only cap by approved batch quantity (after for-order allocations).
 
         if (isset($this->batchDispatches[$batchId])) {
             foreach ($this->batchDispatches[$batchId] as $index => $dispatch) {
@@ -1365,11 +1341,7 @@ class Index extends Component
                 if ($quantity > $remainingForBatch) {
                     // Reset to maximum allowed
                     $this->batchDispatches[$batchId][$index]['quantity'] = $remainingForBatch;
-                    if ($salesRemainingForBatch !== null) {
-                        $this->toast()->error("Dispatch quantity cannot exceed sales demand remaining ({$remainingForBatch}) for this batch.")->send();
-                    } else {
-                        $this->toast()->error("Dispatch quantity cannot exceed available batch quantity ({$remainingForBatch})!")->send();
-                    }
+                    $this->toast()->error("Dispatch quantity cannot exceed available batch quantity ({$remainingForBatch})!")->send();
                 }
 
                 $totalDispatched += (float) $this->batchDispatches[$batchId][$index]['quantity'];
@@ -1378,11 +1350,7 @@ class Index extends Component
 
         // Check total doesn't exceed approved
         if ($totalDispatched > $availableForDispatch) {
-            if ($salesRemainingForBatch !== null) {
-                $this->toast()->error("Total dispatch allocations ({$totalDispatched}) cannot exceed sales demand remaining ({$availableForDispatch}) for this batch.")->send();
-            } else {
-                $this->toast()->error("Total dispatch allocations ({$totalDispatched}) cannot exceed available batch quantity ({$availableForDispatch})!")->send();
-            }
+            $this->toast()->error("Total dispatch allocations ({$totalDispatched}) cannot exceed available batch quantity ({$availableForDispatch})!")->send();
 
             // Reset all dispatches to zero to prevent invalid state
             foreach ($this->batchDispatches[$batchId] as $index => $dispatch) {
@@ -1554,23 +1522,7 @@ class Index extends Component
                 $dispatchService = app(SalesProductionDispatchService::class);
                 $hasLinkedDispatches = false;
 
-                if ($salesRequestedUnits !== null) {
-                    $totalAcrossBatches = 0;
-                    foreach ($produce->productionRecords as $batch) {
-                        if ($this->isBatchDispatchLocked((int) $batch->id, true)) {
-                            $totalAcrossBatches += (float) ProductDispatch::query()
-                                ->where('production_record_id', $batch->id)
-                                ->sum('quantity');
-                        } elseif (isset($this->batchDispatches[$batch->id])) {
-                            foreach ($this->batchDispatches[$batch->id] as $dispatchData) {
-                                $totalAcrossBatches += (float) ($dispatchData['quantity'] ?? 0);
-                            }
-                        }
-                    }
-                    if ($totalAcrossBatches > $salesRequestedUnits) {
-                        throw new \RuntimeException("Total dispatched ({$totalAcrossBatches}) cannot exceed sales request ({$salesRequestedUnits}).");
-                    }
-                }
+                // Note: production may dispatch more than sales-requested quantity.
 
                 foreach ($produce->productionRecords as $batch) {
                     $isDispatchLocked = $this->isBatchDispatchLocked((int) $batch->id, true);
@@ -2169,6 +2121,7 @@ class Index extends Component
      *   sales_department_id: int|null,
      *   sales_department_name: string|null,
      *   requested_units: float|null
+     *   sales_uom_symbol: string|null
      * }
      */
     private function resolveSalesDemandContext(?ProductionRequest $productionRequest): array
@@ -2179,6 +2132,7 @@ class Index extends Component
             'sales_department_id' => null,
             'sales_department_name' => null,
             'requested_units' => null,
+            'sales_uom_symbol' => null,
         ];
 
         if (! $productionRequest) {
@@ -2195,18 +2149,29 @@ class Index extends Component
             }
 
             $salesItem = SalesProductionRequestItem::query()
-                ->with('request.salesDepartment:id,name')
+                ->with([
+                    'request.salesDepartment:id,name',
+                    'product.unitOfMeasure:id,symbol',
+                    'product.salesUom:id,symbol',
+                ])
                 ->find((int) $productionRequest->source_id);
 
             if (! $salesItem || ! $salesItem->request) {
+                $salesUomSymbol = $salesItem?->product?->salesUom?->symbol
+                    ?? $salesItem?->product?->unitOfMeasure?->symbol;
+
                 return $this->salesDemandContextCache[$cacheKey] = [
                     'is_sales_request' => true,
                     'sales_request_item_id' => null,
                     'sales_department_id' => null,
                     'sales_department_name' => null,
                     'requested_units' => (float) $salesItem?->quantity_requested ?: null,
+                    'sales_uom_symbol' => $salesUomSymbol,
                 ];
             }
+
+            $salesUomSymbol = $salesItem->product?->salesUom?->symbol
+                ?? $salesItem->product?->unitOfMeasure?->symbol;
 
             return $this->salesDemandContextCache[$cacheKey] = [
                 'is_sales_request' => true,
@@ -2216,6 +2181,7 @@ class Index extends Component
                     : null,
                 'sales_department_name' => $salesItem->request->salesDepartment?->name,
                 'requested_units' => (float) $salesItem->quantity_requested,
+                'sales_uom_symbol' => $salesUomSymbol,
             ];
         }
 
@@ -2228,13 +2194,20 @@ class Index extends Component
             }
 
             $materialLink = SalesProductionItemMaterialRequest::query()
-                ->with('salesItem.request.salesDepartment:id,name')
+                ->with([
+                    'salesItem.request.salesDepartment:id,name',
+                    'salesItem.product.unitOfMeasure:id,symbol',
+                    'salesItem.product.salesUom:id,symbol',
+                ])
                 ->where('item_request_id', (int) $productionRequest->item_request_id)
                 ->latest('id')
                 ->first();
 
             $salesItem = $materialLink?->salesItem;
             if ($salesItem && $salesItem->request) {
+                $salesUomSymbol = $salesItem->product?->salesUom?->symbol
+                    ?? $salesItem->product?->unitOfMeasure?->symbol;
+
                 return $this->salesDemandContextCache[$cacheKey] = [
                     'is_sales_request' => true,
                     'sales_request_item_id' => (int) $salesItem->id,
@@ -2243,6 +2216,7 @@ class Index extends Component
                         : null,
                     'sales_department_name' => $salesItem->request->salesDepartment?->name,
                     'requested_units' => (float) $salesItem->quantity_requested,
+                    'sales_uom_symbol' => $salesUomSymbol,
                 ];
             }
         }
@@ -2259,10 +2233,17 @@ class Index extends Component
                     }
 
                     $salesItem = SalesProductionRequestItem::query()
-                        ->with('request.salesDepartment:id,name')
+                        ->with([
+                            'request.salesDepartment:id,name',
+                            'product.unitOfMeasure:id,symbol',
+                            'product.salesUom:id,symbol',
+                        ])
                         ->find($salesItemId);
 
                     if ($salesItem && $salesItem->request) {
+                        $salesUomSymbol = $salesItem->product?->salesUom?->symbol
+                            ?? $salesItem->product?->unitOfMeasure?->symbol;
+
                         return $this->salesDemandContextCache[$cacheKey] = [
                             'is_sales_request' => true,
                             'sales_request_item_id' => (int) $salesItem->id,
@@ -2271,6 +2252,7 @@ class Index extends Component
                                 : null,
                             'sales_department_name' => $salesItem->request->salesDepartment?->name,
                             'requested_units' => (float) $salesItem->quantity_requested,
+                            'sales_uom_symbol' => $salesUomSymbol,
                         ];
                     }
                 }

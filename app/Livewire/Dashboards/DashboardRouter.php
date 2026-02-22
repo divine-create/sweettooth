@@ -58,12 +58,12 @@ class DashboardRouter extends Component
             return redirect()->route('branch-dashboard.dashboard.sales', ['b_id' => $branchId]);
         }
 
-        if ($sidebarService::canSeeEmployeeManagement($user)) {
-            return redirect()->route('branch-dashboard.dashboard.hr', ['b_id' => $branchId]);
-        }
-
         if ($sidebarService::canSeeInventory($user)) {
             return redirect()->route('branch-dashboard.dashboard.inventory', ['b_id' => $branchId]);
+        }
+
+        if ($sidebarService::canSeeEmployeeManagement($user)) {
+            return redirect()->route('branch-dashboard.dashboard.hr', ['b_id' => $branchId]);
         }
 
         if ($sidebarService::canSeeReporting($user)) {

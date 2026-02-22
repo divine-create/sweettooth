@@ -21,8 +21,10 @@ use App\Models\Department;
 use App\Services\CurrencyFormattingService;
 use App\Services\PosDocumentService;
 use App\Services\SalesStockVerificationService;
+use App\Services\UomConversionService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\{Layout, Url, Computed, On};
@@ -38,7 +40,7 @@ class Index extends BaseComponent
     public string $search = '';
     public array $cart = [];
     public float $subtotal = 0.0;
-    public float $discount = 0.0;
+    public $discount = 0.0;
     public float $tax = 0.0;
     public float $total = 0.0;
     public ?int $activeShiftId = null;
@@ -49,9 +51,10 @@ class Index extends BaseComponent
     public array $payments = [];
     public float $paymentTotal = 0.0;
     public float $paymentRemaining = 0.0;
-    protected ?Collection $productsForView = null;
+    protected ?CursorPaginator $productsForView = null;
     protected ?array $productAvailabilityForView = null;
     protected ?array $productsPayloadForView = null;
+    public int $productsPerPage = 50;
     
     public function __set(string $name, mixed $value): void
     {
@@ -262,7 +265,15 @@ class Index extends BaseComponent
 
     public function updatedSearch(): void
     {
-        // no-op: search is used in the view via query
+        $this->resetPage('products_cursor');
+        $this->productsForView = null;
+        $this->productAvailabilityForView = null;
+    }
+
+    public function updatedProductsCursor(): void
+    {
+        $this->productsForView = null;
+        $this->productAvailabilityForView = null;
     }
 
     public function addToCart(string $productId): void
@@ -641,6 +652,12 @@ class Index extends BaseComponent
                     ]);
 
                     if ($stock) {
+                        // Release reserved quantity first (table holds)
+                        if (Schema::hasColumn('product_stocks', 'quantity_reserved')) {
+                            $reserved = (float) ($stock->quantity_reserved ?? 0);
+                            $release = min($reserved, $baseQty);
+                            $stock->quantity_reserved = max(0, $reserved - $release);
+                        }
                         // Deduct base quantity from stock
                         $stock->quantity_sold = (float)$stock->quantity_sold + $baseQty;
                         $stock->amount = (float)$stock->amount + ($salesQty * $line['price']);
@@ -785,7 +802,7 @@ class Index extends BaseComponent
         $this->recalculateTotals();
     }
 
-    public function getProductsProperty(): Collection
+    public function getProductsProperty(): CursorPaginator
     {
         return $this->getProductsForView();
     }
@@ -838,6 +855,13 @@ class Index extends BaseComponent
         return $q->first();
     }
 
+    protected function toBaseQty(Product $product, float $salesQty): float
+    {
+        return $product->hasSalesUomConversion()
+            ? $product->convertSalesToBaseQuantity($salesQty)
+            : $salesQty;
+    }
+
     protected function availableQuantity(?ProductStock $stock): float
     {
         if (!$stock) return 0.0;
@@ -848,30 +872,84 @@ class Index extends BaseComponent
 
     public function getAvailableForProduct(string $productId): float
     {
+        if (is_array($this->productAvailabilityForView) && array_key_exists($productId, $this->productAvailabilityForView)) {
+            return (float) ($this->productAvailabilityForView[$productId] ?? 0);
+        }
+
         return $this->availableQuantity($this->getTodayStockForProduct($productId));
     }
 
-    protected function getProductsForView(): Collection
+    protected function getProductsForView(): CursorPaginator
     {
         if ($this->productsForView !== null) {
             return $this->productsForView;
         }
 
         if (! $this->departmentId) {
-            return $this->productsForView = collect();
+            return $this->productsForView = new CursorPaginator(
+                collect(),
+                $this->productsPerPage,
+                null,
+                ['path' => request()->url(), 'pageName' => 'products_cursor']
+            );
         }
 
         $departmentIds = $this->scopedSalesDepartmentIds();
         if (empty($departmentIds)) {
-            return $this->productsForView = collect();
+            return $this->productsForView = new CursorPaginator(
+                collect(),
+                $this->productsPerPage,
+                null,
+                ['path' => request()->url(), 'pageName' => 'products_cursor']
+            );
         }
 
         $q = Product::query()
             ->active()
             ->available()
             ->whereIn('sales_department_id', $departmentIds)
-            ->select(['id', 'name', 'price', 'sku'])
+            ->select(['products.id', 'products.name', 'products.price', 'products.sku', 'products.uom_id', 'products.sales_uom_id'])
+            ->with(['unitOfMeasure:id,symbol', 'salesUom:id,symbol'])
             ->orderBy('name');
+
+        $hasDepartmentColumn = Schema::hasColumn('product_stocks', 'department_id');
+        $departmentIdsForStock = [];
+        if ($hasDepartmentColumn) {
+            $departmentIdsForStock = $this->resolveEquivalentSalesDepartmentIds();
+            if (empty($departmentIdsForStock)) {
+                $departmentIdsForStock = [(int) $this->departmentId];
+            }
+        }
+
+        $hasStatusColumn = Schema::hasColumn('product_stocks', 'status');
+        $hasBranchColumn = Schema::hasColumn('product_stocks', 'branch_id');
+        $hasReservedColumn = Schema::hasColumn('product_stocks', 'quantity_reserved');
+
+        $latestStockIds = ProductStock::query()
+            ->selectRaw('MAX(id) as id, product_id')
+            ->when($hasDepartmentColumn, function ($query) use ($departmentIdsForStock) {
+                $query->whereIn('department_id', $departmentIdsForStock);
+            })
+            ->when($hasBranchColumn && $this->branchId, function ($query) {
+                $query->where('branch_id', $this->branchId);
+            })
+            ->when($hasStatusColumn, function ($query) {
+                $query->where('status', '!=', 'opening_pending');
+            })
+            ->groupBy('product_id');
+
+        $q->joinSub($latestStockIds, 'latest_stock', function ($join) {
+            $join->on('products.id', '=', 'latest_stock.product_id');
+        })
+        ->join('product_stocks as ps', 'ps.id', '=', 'latest_stock.id')
+        ->when($hasBranchColumn && $this->branchId, function ($query) {
+            $query->where('ps.branch_id', $this->branchId);
+        })
+        ->whereRaw(
+            $hasReservedColumn
+                ? 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold - ps.quantity_reserved)) > 1'
+                : 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold)) > 1'
+        );
 
         if (strlen($this->search)) {
             $q->where(function ($query) {
@@ -880,20 +958,55 @@ class Index extends BaseComponent
             });
         }
 
-        return $this->productsForView = $q->get();
+        return $this->productsForView = $q->cursorPaginate($this->productsPerPage, ['*'], 'products_cursor');
     }
 
     /**
-     * @param  Collection<int, Product>  $products
+     * @return array{sales_qty:float,sales_symbol:string,base_qty:float,base_symbol:string,converted:bool}
+     */
+    public function getPosStockDisplay(Product $product): array
+    {
+        $baseQty = (float) $this->getAvailableForProduct((string) $product->id);
+        $baseSymbol = $product->unitOfMeasure?->symbol ?? ($product->base_uom ?? 'unit');
+        $salesSymbol = $product->salesUom?->symbol ?? $baseSymbol;
+
+        $converted = null;
+        if ($product->sales_uom_id && $product->uom_id) {
+            /** @var UomConversionService $converter */
+            $converter = app(UomConversionService::class);
+            $converted = $converter->tryConvert(
+                $baseQty,
+                (int) $product->uom_id,
+                (int) $product->sales_uom_id,
+                [
+                    'branch_id' => $this->branchId,
+                    'product_id' => (string) $product->id,
+                ]
+            );
+        }
+
+        $salesQty = $converted ?? $baseQty;
+
+        return [
+            'sales_qty' => $salesQty,
+            'sales_symbol' => (string) $salesSymbol,
+            'base_qty' => $baseQty,
+            'base_symbol' => (string) $baseSymbol,
+            'converted' => $converted !== null,
+        ];
+    }
+
+    /**
+     * @param  CursorPaginator  $products
      * @return array<string, float>
      */
-    protected function getProductAvailabilityForView(Collection $products): array
+    protected function getProductAvailabilityForView(CursorPaginator $products): array
     {
         if ($this->productAvailabilityForView !== null) {
             return $this->productAvailabilityForView;
         }
 
-        $productIds = $products->pluck('id')
+        $productIds = $products->getCollection()->pluck('id')
             ->filter()
             ->map(static fn ($id): string => (string) $id)
             ->values()
@@ -971,7 +1084,7 @@ class Index extends BaseComponent
         $products = $this->getProductsForView();
         $availability = $this->getProductAvailabilityForView($products);
 
-        $productIds = $products->pluck('id')
+        $productIds = $products->getCollection()->pluck('id')
             ->filter()
             ->map(static fn ($id): string => (string) $id)
             ->values()
@@ -1112,6 +1225,7 @@ class Index extends BaseComponent
         DB::transaction(function () use ($table) {
             // Check if there's an existing hold sale for this table
             $existingSale = $table->getActiveSale();
+            $existingItems = collect();
 
             if ($existingSale) {
                 // Update existing sale
@@ -1122,6 +1236,8 @@ class Index extends BaseComponent
                     'total' => $this->total,
                     'order_type' => $this->orderType,
                 ]);
+
+                $existingItems = $existingSale->saleItems()->with('product')->get();
 
                 // Delete existing items
                 $existingSale->saleItems()->delete();
@@ -1146,6 +1262,61 @@ class Index extends BaseComponent
                     'order_type' => $this->orderType,
                     'notes' => 'Table: ' . $table->table_number,
                 ]);
+            }
+
+            // Reserve stock delta (base UOM)
+            $productIds = array_values(array_unique(array_map(
+                static fn ($line): string => (string) ($line['product_id'] ?? ''),
+                $this->cart
+            )));
+            $productsById = Product::query()
+                ->with(['unitOfMeasure', 'salesUom'])
+                ->whereIn('id', $productIds)
+                ->get()
+                ->keyBy('id');
+
+            $existingReserved = [];
+            foreach ($existingItems as $item) {
+                $product = $item->product;
+                if ($product) {
+                    $existingReserved[(string) $item->product_id] = ($existingReserved[(string) $item->product_id] ?? 0)
+                        + $this->toBaseQty($product, (float) $item->quantity);
+                }
+            }
+
+            $newReserved = [];
+            foreach ($this->cart as $line) {
+                $productId = (string) $line['product_id'];
+                $product = $productsById->get($productId);
+                if (!$product) {
+                    continue;
+                }
+                $newReserved[$productId] = ($newReserved[$productId] ?? 0)
+                    + $this->toBaseQty($product, (float) $line['qty']);
+            }
+
+            $allProductIds = array_values(array_unique(array_merge(array_keys($existingReserved), array_keys($newReserved))));
+            foreach ($allProductIds as $productId) {
+                $delta = ($newReserved[$productId] ?? 0) - ($existingReserved[$productId] ?? 0);
+                if (abs($delta) < 0.0001) {
+                    continue;
+                }
+
+                $stock = $this->getTodayStockForProduct($productId, true);
+                if (!$stock) {
+                    throw new \RuntimeException('Stock record not found for product ' . $productId);
+                }
+                $stock->updateCalculatedFields();
+                $available = $this->availableQuantity($stock);
+                if ($delta > 0 && $available < $delta) {
+                    throw new \RuntimeException('Insufficient stock to reserve for table.');
+                }
+
+                if (Schema::hasColumn('product_stocks', 'quantity_reserved')) {
+                    $stock->quantity_reserved = max(0, (float) ($stock->quantity_reserved ?? 0) + $delta);
+                }
+                $stock->updateCalculatedFields();
+                $stock->save();
             }
 
             // Add items to sale
@@ -1202,6 +1373,20 @@ class Index extends BaseComponent
             // Delete any hold sales for this table
             $activeSale = $table->getActiveSale();
             if ($activeSale) {
+                $items = $activeSale->saleItems()->with('product')->get();
+                foreach ($items as $item) {
+                    $product = $item->product;
+                    if (! $product) {
+                        continue;
+                    }
+                    $baseQty = $this->toBaseQty($product, (float) $item->quantity);
+                    $stock = $this->getTodayStockForProduct((string) $item->product_id, true);
+                    if ($stock && Schema::hasColumn('product_stocks', 'quantity_reserved')) {
+                        $stock->quantity_reserved = max(0, (float) ($stock->quantity_reserved ?? 0) - $baseQty);
+                        $stock->updateCalculatedFields();
+                        $stock->save();
+                    }
+                }
                 $activeSale->saleItems()->delete();
                 $activeSale->delete();
             }

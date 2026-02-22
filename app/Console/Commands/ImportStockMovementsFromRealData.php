@@ -167,9 +167,9 @@ class ImportStockMovementsFromRealData extends Command
 
         $shiftType = $productionTime->hour < 14 ? 'morning' : 'afternoon';
 
-        // Find the recipe by product name
+        // Find the recipe by product name - MUST filter by branch_id
         [$productName, $productExternalId] = $this->parseNameAndExternalId($row['produced_product'] ?? '');
-        $recipe = $this->findRecipe($productName, $productExternalId);
+        $recipe = $this->findRecipe($productName, $productExternalId, $branchId);
 
         if (! $recipe) {
             // If no recipe found, try to create movements directly from ingredients in the row
@@ -354,9 +354,10 @@ class ImportStockMovementsFromRealData extends Command
         return 'created';
     }
 
-    protected function findRecipe(string $productName, ?string $productExternalId): ?Recipe
+    protected function findRecipe(string $productName, ?string $productExternalId, string $branchId): ?Recipe
     {
-        $query = Recipe::query();
+        // MUST filter by branch_id to get the correct recipe for this branch
+        $query = Recipe::query()->where('branch_id', $branchId);
         
         if ($productExternalId) {
             $query->whereHas('product', function ($q) use ($productExternalId) {
@@ -424,13 +425,37 @@ class ImportStockMovementsFromRealData extends Command
             return null;
         }
 
-        $locKey = $this->normalizeKey($location);
+        // Map location names from production data to actual department names
+        $locationMap = [
+            'HOT KITCHEN' => 'HOT KITCHEN',
+            'PASTRY' => 'PASTRY',
+            'GELATO' => 'GELATO',
+            'CORNER STORE' => 'Corner Store',
+            'TILL' => 'Till Sales',
+            'CONCESSION' => 'Concession',
+            'TILL CONCESSION' => 'Till Sales',
+            'CORNERSTORE' => 'Corner Store',
+        ];
+
+        $locUpper = strtoupper($location);
+        $mappedLocation = $locationMap[$locUpper] ?? $location;
+        $locKey = $this->normalizeKey($mappedLocation);
         
         if (isset($this->departmentCache[$locKey])) {
             return $this->departmentCache[$locKey];
         }
 
-        $department = Department::whereRaw('UPPER(name) = ?', [$location])->first();
+        // MUST filter by branch_id to get the correct department for this branch
+        $department = Department::where('branch_id', $branchId)
+            ->whereRaw('UPPER(name) = ?', [$mappedLocation])
+            ->first();
+
+        // If not found, try global departments (no branch_id)
+        if (! $department) {
+            $department = Department::whereNull('branch_id')
+                ->whereRaw('UPPER(name) = ?', [$mappedLocation])
+                ->first();
+        }
 
         if (! $department && $this->option('create-departments')) {
             $categoryId = $this->option('department-category-id') ?: \App\Models\DepartmentCategory::value('id');
@@ -439,8 +464,8 @@ class ImportStockMovementsFromRealData extends Command
                 $department = Department::create([
                     'branch_id' => $branchId,
                     'category_id' => $categoryId,
-                    'name' => $location,
-                    'description' => "{$location} (imported)",
+                    'name' => $mappedLocation,
+                    'description' => "{$mappedLocation} (imported)",
                 ]);
             }
         }

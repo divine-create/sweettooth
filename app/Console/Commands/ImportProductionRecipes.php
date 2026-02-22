@@ -125,7 +125,7 @@ class ImportProductionRecipes extends Command
                 }
 
                 $ratio = $inputQty / $producedQty;
-                $wastePercent = $this->parsePercent($ingredient['wastage_percent'] ?? '');
+                $wastePercent = min(100, max(0, $this->parsePercent($ingredient['wastage_percent'] ?? '')));
                 $totalPrice = $this->parseMoney($ingredient['total_price'] ?? '');
                 $costPerUnit = $totalPrice > 0 ? ($totalPrice / $inputQty) : 0.0;
 

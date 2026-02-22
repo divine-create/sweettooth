@@ -40,76 +40,16 @@ class PortHarcourtRealDataSeeder extends Seeder
      */
     public function run(): void
     {
-        $dataDir = base_path('real_data');
+        $this->command->info('Seeding Port Harcourt branch and super admin...');
 
-        $workbooks = $this->discoverWorkbooks($dataDir);
-        $recipeJsonData = $this->parseRecipeJsonFiles($this->discoverRecipeJson($dataDir));
-
-        $this->command->info('Seeding Port Harcourt real-data workflow from Excel files...');
-
-        $hrUsers = $this->parseHrWorkbooks($workbooks['hr']);
-
-        $hotKitchenData = ['products' => [], 'recipes' => [], 'items' => []];
-        foreach ($workbooks['hot_kitchen'] as $path) {
-            $chunk = $this->parseHotKitchenRecipes($path);
-            $hotKitchenData['products'] = array_merge($hotKitchenData['products'], $chunk['products']);
-            $hotKitchenData['recipes'] = array_merge($hotKitchenData['recipes'], $chunk['recipes']);
-            $hotKitchenData['items'] = array_merge($hotKitchenData['items'], $chunk['items']);
-        }
-
-        if (! empty($recipeJsonData['products'])) {
-            $hotKitchenData['products'] = array_merge($hotKitchenData['products'], $recipeJsonData['products']);
-        }
-        if (! empty($recipeJsonData['recipes'])) {
-            $hotKitchenData['recipes'] = array_merge($hotKitchenData['recipes'], $recipeJsonData['recipes']);
-        }
-        if (! empty($recipeJsonData['items'])) {
-            $hotKitchenData['items'] = array_merge($hotKitchenData['items'], $recipeJsonData['items']);
-        }
-
-        $priceProducts = [];
-        foreach ($workbooks['product_prices'] as $path) {
-            $priceProducts = array_merge($priceProducts, $this->parsePriceWorkbookProducts($path));
-        }
-
-        $analysisProducts = [];
-        foreach ($workbooks['production_analysis'] as $analysisPath) {
-            $analysisProducts = array_merge($analysisProducts, $this->parseProductionAnalysisProducts($analysisPath));
-        }
-
-        $compiledProducts = $this->compileProducts(
-            $priceProducts,
-            $analysisProducts,
-            $hotKitchenData['products']
-        );
-
-        DB::transaction(function () use ($hrUsers, $hotKitchenData, $compiledProducts): void {
+        DB::transaction(function (): void {
             $branch = $this->seedBranch();
             $categories = $this->seedCategories();
             $departments = $this->seedDepartments($branch, $categories);
-            $uomMap = $this->buildUomMap();
-            $productTypes = $this->seedProductTypes($departments);
-
-            $users = $this->seedUsers($hrUsers, $branch, $departments);
-
-            $items = $this->seedItems($hotKitchenData['items'], $branch, $uomMap);
-            $products = $this->seedProducts($compiledProducts, $branch, $productTypes, $uomMap, $departments);
-            $this->attachProductsToSalesDepartments($compiledProducts, $products, $departments);
-            $recipes = $this->seedRecipes($hotKitchenData['recipes'], $products, $items, $branch, $departments, $uomMap, $users);
             $this->ensureSuperAdminUser($branch, $departments);
-            $this->seedProductionFromJson(
-                $recipeJsonData['productions'] ?? [],
-                $branch,
-                $departments,
-                $recipes,
-                $items,
-                $uomMap,
-                $users
-            );
-            User::query()->update(['password' => Hash::make('password')]);
         });
 
-        $this->command->info('Port Harcourt real-data seeding completed.');
+        $this->command->info('Port Harcourt branch seeding completed.');
     }
 
     /**

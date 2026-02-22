@@ -311,12 +311,13 @@ trait ParsesProductionJson
     {
         $location = $this->normalizeKey($location);
         $defaults = [
-            'HOT KITCHEN' => ['name' => 'Hot Kitchen', 'code' => 'HK'],
-            'PASTRY' => ['name' => 'Pastry', 'code' => 'PA'],
-            'GELATO' => ['name' => 'Gelato', 'code' => 'GE'],
-            'CORNER STORE' => ['name' => 'Corner Store', 'code' => 'CS'],
-            'TILL' => ['name' => 'Till', 'code' => 'TL'],
-            'CONCESSION' => ['name' => 'Concession', 'code' => 'CN'],
+            'HOT KITCHEN' => ['name' => 'Hot Kitchen Items', 'code' => 'HK'],
+            'PASTRY' => ['name' => 'Pastry Items', 'code' => 'PS'],
+            'GELATO' => ['name' => 'Gelato Items', 'code' => 'GL'],
+            'CORNER STORE' => ['name' => 'Cornerstone Items', 'code' => 'CS'],
+            'CORNERSTONE' => ['name' => 'Cornerstone Items', 'code' => 'CS'],
+            'TILL' => ['name' => 'Till Items', 'code' => 'TL'],
+            'CONCESSION' => ['name' => 'Concession Items', 'code' => 'CN'],
         ];
 
         if (isset($defaults[$location])) {

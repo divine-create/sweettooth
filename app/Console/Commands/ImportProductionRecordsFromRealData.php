@@ -166,15 +166,15 @@ class ImportProductionRecordsFromRealData extends Command
             return 'error';
         }
 
-        // Find product
-        $product = $this->findProduct($productName, $productExternalId);
+        // Find product - MUST filter by branch_id
+        $product = $this->findProduct($productName, $productExternalId, $branchId);
         if (! $product) {
             $this->warn("Skipping {$referenceNo}: product '{$productName}' not found.");
             return 'error';
         }
 
-        // Find recipe
-        $recipe = $this->findRecipe($product);
+        // Find recipe - MUST filter by branch_id
+        $recipe = $this->findRecipe($product, $branchId);
         if (! $recipe) {
             $this->warn("Skipping {$referenceNo}: recipe for '{$productName}' not found.");
             return 'error';
@@ -245,9 +245,10 @@ class ImportProductionRecordsFromRealData extends Command
         return 'created';
     }
 
-    protected function findProduct(string $name, ?string $externalId): ?Product
+    protected function findProduct(string $name, ?string $externalId, string $branchId): ?Product
     {
-        $query = Product::query();
+        // MUST filter by branch_id to get the correct product for this branch
+        $query = Product::query()->where('branch_id', $branchId);
         if ($externalId) {
             $query->where('sku', $externalId);
         } else {
@@ -256,15 +257,18 @@ class ImportProductionRecordsFromRealData extends Command
         return $query->first();
     }
 
-    protected function findRecipe(Product $product): ?Recipe
+    protected function findRecipe(Product $product, string $branchId): ?Recipe
     {
-        $cacheKey = "product_{$product->id}";
+        $cacheKey = "product_{$product->id}_{$branchId}";
         
         if (isset($this->recipeCache[$cacheKey])) {
             return Recipe::find($this->recipeCache[$cacheKey]);
         }
 
-        $recipe = Recipe::where('product_id', $product->id)->first();
+        // MUST filter by branch_id to get the correct recipe for this branch
+        $recipe = Recipe::where('product_id', $product->id)
+            ->where('branch_id', $branchId)
+            ->first();
         
         if ($recipe) {
             $this->recipeCache[$cacheKey] = $recipe->id;
@@ -279,13 +283,37 @@ class ImportProductionRecordsFromRealData extends Command
             return null;
         }
 
-        $locKey = $this->normalizeKey($location);
+        // Map location names from production data to actual department names
+        $locationMap = [
+            'HOT KITCHEN' => 'HOT KITCHEN',
+            'PASTRY' => 'PASTRY',
+            'GELATO' => 'GELATO',
+            'CORNER STORE' => 'Corner Store',
+            'TILL' => 'Till Sales',
+            'CONCESSION' => 'Concession',
+            'TILL CONCESSION' => 'Till Sales',
+            'CORNERSTORE' => 'Corner Store',
+        ];
+
+        $locUpper = strtoupper($location);
+        $mappedLocation = $locationMap[$locUpper] ?? $location;
+        $locKey = $this->normalizeKey($mappedLocation);
         
         if (isset($this->departmentCache[$locKey])) {
             return $this->departmentCache[$locKey];
         }
 
-        $department = Department::whereRaw('UPPER(name) = ?', [$location])->first();
+        // MUST filter by branch_id to get the correct department for this branch
+        $department = Department::where('branch_id', $branchId)
+            ->whereRaw('UPPER(name) = ?', [$mappedLocation])
+            ->first();
+
+        // If not found, try global departments (no branch_id)
+        if (! $department) {
+            $department = Department::whereNull('branch_id')
+                ->whereRaw('UPPER(name) = ?', [$mappedLocation])
+                ->first();
+        }
 
         if (! $department && $this->option('create-departments')) {
             $categoryId = $this->option('department-category-id') ?: \App\Models\DepartmentCategory::value('id');
@@ -294,14 +322,15 @@ class ImportProductionRecordsFromRealData extends Command
                 $department = Department::create([
                     'branch_id' => $branchId,
                     'category_id' => $categoryId,
-                    'name' => $location,
-                    'description' => "{$location} (imported)",
+                    'name' => $mappedLocation,
+                    'description' => "{$mappedLocation} (imported)",
                 ]);
-                $this->warn("Created department: {$location}");
+                $this->warn("Created department: {$mappedLocation}");
             }
         }
 
         $this->departmentCache[$locKey] = $department?->id;
+        
         return $department?->id;
     }
 

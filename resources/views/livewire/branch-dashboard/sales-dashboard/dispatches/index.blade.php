@@ -128,14 +128,30 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-center">
+                                    @php
+                                        $qtyDisplay = $this->getDispatchQuantityDisplay($dispatch);
+                                    @endphp
                                     <div class="font-semibold text-zinc-900 dark:text-zinc-100">
-                                        {{ number_format($dispatch->quantity, 2) }} {{ $dispatch->uom }}
+                                        {{ number_format($qtyDisplay['sales_qty'], 2) }} {{ $qtyDisplay['sales_symbol'] }}
+                                        @if($qtyDisplay['converted'] && $qtyDisplay['production_symbol'])
+                                            <div class="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                                ({{ number_format($qtyDisplay['production_qty'], 2) }} {{ $qtyDisplay['production_symbol'] }})
+                                            </div>
+                                        @endif
                                     </div>
                                     @if($dispatch->status === 'received' && $dispatch->received_quantity != $dispatch->quantity)
+                                        @php
+                                            $receivedDisplay = $this->getReceivedQuantityDisplay($dispatch);
+                                        @endphp
                                         <div class="text-xs mt-1">
                                             <span class="text-zinc-600 dark:text-zinc-400">Received:</span>
                                             <span class="font-medium {{ $dispatch->received_quantity > $dispatch->quantity ? 'text-orange-600' : 'text-red-600' }}">
-                                                {{ number_format($dispatch->received_quantity, 2) }} {{ $dispatch->uom }}
+                                                {{ number_format($receivedDisplay['sales_qty'], 2) }} {{ $receivedDisplay['sales_symbol'] }}
+                                                @if($receivedDisplay['converted'] && $receivedDisplay['production_symbol'])
+                                                    <span class="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                                        ({{ number_format($receivedDisplay['production_qty'], 2) }} {{ $receivedDisplay['production_symbol'] }})
+                                                    </span>
+                                                @endif
                                             </span>
                                         </div>
                                     @endif

@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\Branch;
 use App\Models\Shift;
 use App\Services\SalesProductionDispatchService;
+use App\Services\UomConversionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Layout;
@@ -168,6 +169,8 @@ class Index extends BaseComponent
             })
             ->with([
                 'product',
+                'product.unitOfMeasure:id,symbol',
+                'product.salesUom:id,symbol',
                 'dispatchedBy',
                 'receivedBy',
                 'dailyProduce',
@@ -190,6 +193,82 @@ class Index extends BaseComponent
         }
 
         return $query;
+    }
+
+    /**
+     * @return array{sales_qty:float,sales_symbol:string,production_qty:float,production_symbol:string,converted:bool}
+     */
+    public function getDispatchQuantityDisplay(ProductDispatch $dispatch): array
+    {
+        $product = $dispatch->product;
+        $productionUomId = $product?->uom_id;
+        $salesUomId = $product?->sales_uom_id;
+        $productionSymbol = $product?->unitOfMeasure?->symbol ?? ($dispatch->uom ?? '');
+        $salesSymbol = $product?->salesUom?->symbol ?? $productionSymbol;
+        $quantity = (float) $dispatch->quantity;
+
+        $converted = null;
+        if ($salesUomId && $productionUomId) {
+            /** @var UomConversionService $converter */
+            $converter = app(UomConversionService::class);
+            $converted = $converter->tryConvert(
+                $quantity,
+                (int) $productionUomId,
+                (int) $salesUomId,
+                [
+                    'branch_id' => $this->branchId,
+                    'product_id' => (string) ($product?->id ?? ''),
+                ]
+            );
+        }
+
+        $salesQty = $converted ?? $quantity;
+
+        return [
+            'sales_qty' => $salesQty,
+            'sales_symbol' => (string) $salesSymbol,
+            'production_qty' => $quantity,
+            'production_symbol' => (string) $productionSymbol,
+            'converted' => $converted !== null,
+        ];
+    }
+
+    /**
+     * @return array{sales_qty:float,sales_symbol:string,production_qty:float,production_symbol:string,converted:bool}
+     */
+    public function getReceivedQuantityDisplay(ProductDispatch $dispatch): array
+    {
+        $product = $dispatch->product;
+        $productionUomId = $product?->uom_id;
+        $salesUomId = $product?->sales_uom_id;
+        $productionSymbol = $product?->unitOfMeasure?->symbol ?? ($dispatch->uom ?? '');
+        $salesSymbol = $product?->salesUom?->symbol ?? $productionSymbol;
+        $quantity = (float) ($dispatch->received_quantity ?? 0);
+
+        $converted = null;
+        if ($salesUomId && $productionUomId) {
+            /** @var UomConversionService $converter */
+            $converter = app(UomConversionService::class);
+            $converted = $converter->tryConvert(
+                $quantity,
+                (int) $productionUomId,
+                (int) $salesUomId,
+                [
+                    'branch_id' => $this->branchId,
+                    'product_id' => (string) ($product?->id ?? ''),
+                ]
+            );
+        }
+
+        $salesQty = $converted ?? $quantity;
+
+        return [
+            'sales_qty' => $salesQty,
+            'sales_symbol' => (string) $salesSymbol,
+            'production_qty' => $quantity,
+            'production_symbol' => (string) $productionSymbol,
+            'converted' => $converted !== null,
+        ];
     }
 
     /**

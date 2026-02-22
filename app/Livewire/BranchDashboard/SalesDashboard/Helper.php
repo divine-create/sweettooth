@@ -2,18 +2,30 @@
 
 namespace App\Livewire\BranchDashboard\SalesDashboard;
 
-use Livewire\Component;
+use App\Livewire\BaseComponent;
+use App\Livewire\Concerns\SalesDepartmentContext;
 use Livewire\Attributes\Layout;
 use TallStackUi\Traits\Interactions;
 
 #[Layout('components.layouts.app.branch-dashboard')]
-class Helper extends Component
+class Helper extends BaseComponent
 {
-    use Interactions;
+    use Interactions, SalesDepartmentContext;
 
     public function mount()
     {
-        // Any initialization if needed
+        $this->mountBase();
+        $this->initializeDepartmentContext();
+    }
+
+    protected function getModelClass(): string
+    {
+        return \App\Models\Sale::class;
+    }
+
+    protected function getAllSelectableIds(): array
+    {
+        return [];
     }
 
     public function render()

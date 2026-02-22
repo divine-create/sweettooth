@@ -12,6 +12,7 @@ use App\Models\Shift;
 use App\Services\SalesWorkflowService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Layout;
@@ -31,12 +32,22 @@ class Index extends BaseComponent
     // are now provided by SalesDepartmentContext trait
 
     public ?int $quantity = 20;
+    public int $productsPerPage = 20;
+    protected string $pageName = 'stock_opening_page';
+    public string $page = '';
     public ?string $search = null;
     public ?int $filterProductType = null;
     public ?string $filterStatus = null;
     public ?string $selectedProductId = null;
     public array $selectedProductIds = [];
     public array $productLookupOptions = [];
+
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'filterProductType' => ['except' => ''],
+        'page' => ['except' => 1],
+    ];
+    #[Url(keep: true)]
 
     // Stock opening data
     public array $stockOpenings = [];
@@ -53,9 +64,11 @@ class Index extends BaseComponent
     public ?string $expectedPreviousClosingShift = null;
 
     public ?ProductStock $selectedStockItem = null;
+    public ?string $stock_products_cursor = null;
     private ?bool $productStocksHasDepartmentColumn = null;
     private ?array $cachedSalesDepartmentIds = null;
     private ?string $cachedSalesDepartmentSignature = null;
+    protected ?LengthAwarePaginator $productsPaginatorForView = null;
 
     // Table headers
     public array $headers = [
@@ -221,8 +234,16 @@ class Index extends BaseComponent
             ->all();
 
         if (empty($targetProductIds)) {
-            $targetProductIds = $this->resolveDefaultProductIdsForStockOpening($salesDepartmentIds, $stockDate);
+        $productsPaginator = $this->resolvePaginatedProductsForStockOpening($salesDepartmentIds);
+        $this->productsPaginatorForView = $productsPaginator;
+        $targetProductIds = $productsPaginator->getCollection()
+            ->pluck('id')
+            ->map(static fn ($id): string => (string) $id)
+            ->values()
+            ->all();
             $this->selectedProductIds = $targetProductIds;
+        } else {
+            $this->productsPaginatorForView = $this->resolvePaginatedProductsForStockOpening($salesDepartmentIds);
         }
 
         if (empty($targetProductIds)) {
@@ -798,18 +819,18 @@ class Index extends BaseComponent
             }
 
             // Get tracked products (selected + dispatch-linked + existing stock rows) to find unselected ones.
-            $trackedProductIds = array_values(array_unique(array_merge(
-                array_map(static fn ($id): string => (string) $id, $selectedProductIds),
-                $this->resolveDefaultProductIdsForStockOpening($salesDepartmentIds, $this->stockDate)
-            )));
+        $trackedProductIds = array_values(array_unique(array_merge(
+            array_map(static fn ($id): string => (string) $id, $selectedProductIds),
+            $this->resolveDefaultProductIdsForStockOpening($salesDepartmentIds, $this->stockDate)
+        )));
 
-            $trackedProducts = Product::query()
-                ->active()
-                ->available()
-                ->whereIn('id', $trackedProductIds)
-                ->whereIn('sales_department_id', $salesDepartmentIds)
-                ->select(['id', 'shelf_life_days'])
-                ->get();
+        $trackedProducts = Product::query()
+            ->active()
+            ->available()
+            ->whereIn('id', $trackedProductIds)
+            ->whereIn('sales_department_id', $salesDepartmentIds)
+            ->select(['id', 'shelf_life_days'])
+            ->get();
 
             // Save unselected products with 0.00 opening quantity
             foreach ($trackedProducts as $product) {
@@ -916,21 +937,42 @@ class Index extends BaseComponent
 
     public function updatedSearch()
     {
-        $this->loadProductLookupOptions();
+        $this->resetPage($this->pageName);
+        $this->loadStockOpeningData();
     }
 
     public function updatedFilterProductType()
     {
-        $this->loadProductLookupOptions();
+        $this->resetPage($this->pageName);
+        $this->loadStockOpeningData();
+    }
+
+    public function updatedPage(): void
+    {
+        $this->selectedProductIds = [];
+        $this->loadStockOpeningData();
+    }
+
+    public function gotoPage($page, $pageName = 'page')
+    {
+        $this->setPage($page, $pageName);
+        $this->selectedProductIds = [];
+        $this->loadStockOpeningData();
     }
 
     public function render()
     {
+        if ($this->productsPaginatorForView === null) {
+            $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+            $this->productsPaginatorForView = $this->resolvePaginatedProductsForStockOpening($salesDepartmentIds);
+        }
+
         return view('livewire.branch-dashboard.sales-dashboard.stock-opening.index', [
             'productTypes' => $this->productTypes,
             'productLookupOptions' => $this->productLookupOptions,
             'rows' => $this->rows,
             'stockOpenings' => $this->stockOpenings,
+            'productsPaginator' => $this->productsPaginatorForView,
         ]);
     }
 
@@ -1003,6 +1045,76 @@ class Index extends BaseComponent
      * @param  array<int>  $salesDepartmentIds
      * @return array<int, string>
      */
+    private function resolveAllProductIdsForStockOpening(array $salesDepartmentIds): array
+    {
+        if (empty($salesDepartmentIds)) {
+            return [];
+        }
+
+        $search = trim((string) $this->search);
+
+        return Product::query()
+            ->active()
+            ->available()
+            ->whereIn('sales_department_id', $salesDepartmentIds)
+            ->when($this->filterProductType, function ($query) {
+                $query->where('product_type_id', $this->filterProductType);
+            })
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('sku', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderBy('name')
+            ->pluck('id')
+            ->map(static fn ($id): string => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int>  $salesDepartmentIds
+     */
+    private function resolvePaginatedProductsForStockOpening(array $salesDepartmentIds): LengthAwarePaginator
+    {
+        if (empty($salesDepartmentIds)) {
+            return new LengthAwarePaginator(
+                collect(),
+                0,
+                $this->productsPerPage,
+                LengthAwarePaginator::resolveCurrentPage(),
+                ['path' => request()->url()]
+            );
+        }
+
+        $search = trim((string) $this->search);
+
+        return Product::query()
+            ->active()
+            ->available()
+            ->whereIn('sales_department_id', $salesDepartmentIds)
+            ->when($this->filterProductType, function ($query) {
+                $query->where('product_type_id', $this->filterProductType);
+            })
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('sku', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderBy('name')
+            ->paginate(
+                $this->productsPerPage,
+                ['id', 'name', 'sku', 'uom_id', 'product_type_id', 'shelf_life_days'],
+                $this->pageName
+            );
+    }
+
+    /**
+     * @param  array<int>  $salesDepartmentIds
+     * @return array<int, string>
+     */
     private function resolveDefaultProductIdsForStockOpening(array $salesDepartmentIds, string $stockDate): array
     {
         $dispatchProductIds = $this->resolveDispatchProductIdsForDate($salesDepartmentIds, $stockDate);
@@ -1015,7 +1127,11 @@ class Index extends BaseComponent
             $stockQuery->whereIn('department_id', $salesDepartmentIds);
         }
 
-        $stockProductIds = $stockQuery->pluck('product_id')
+        $stockProductIds = $stockQuery->whereHas('product', function ($query) use ($salesDepartmentIds) {
+                $query->whereIn('sales_department_id', $salesDepartmentIds)
+                    ->where('is_active', true);
+            })
+            ->pluck('product_id')
             ->map(static fn ($id): string => (string) $id)
             ->unique()
             ->values()

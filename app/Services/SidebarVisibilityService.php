@@ -388,6 +388,7 @@ class SidebarVisibilityService
         // Inventory-related roles can see inventory links even if category mapping is incomplete.
         if ($user->hasAnyRole([
             'Inventory Manager',
+            'Inventory Team Lead',
             'Inventory Supervisor',
             'Inventory Staff',
             'Stock Controller',
@@ -397,7 +398,7 @@ class SidebarVisibilityService
             return true;
         }
 
-        return self::hasAnyPermission($user, ['view-inventory', 'manage-inventory', 'view-inventory-reports']);
+        return false;
     }
 
     public static function canSeeInventoryManagement($user = null): bool

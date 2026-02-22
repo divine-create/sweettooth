@@ -82,6 +82,18 @@ class User extends Authenticatable
         ];
     }
 
+    public static function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'employee_number' => ['required', 'string', 'max:50', 'unique:users'],
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'department_id' => ['nullable', 'uuid', 'exists:departments,id'],
+            'is_active' => ['boolean'],
+        ];
+    }
+
     // Authorization scopes - CRITICAL for data filtering
     public function scopeForCurrentUser(Builder $query): Builder
     {

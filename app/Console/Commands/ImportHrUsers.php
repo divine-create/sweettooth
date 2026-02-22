@@ -216,13 +216,26 @@ class ImportHrUsers extends Command
             $headerRow[$column] = $this->normalizeHeaderName((string) $sheet->getCellByColumnAndRow($column, 1)->getFormattedValue());
         }
 
-        $nameColumn = $this->findColumn($headerRow, ['name', 'staff_name', 'employee_name', 'full_name']);
+        // Check if row 1 is a title row (not actual headers)
+        $firstHeader = reset($headerRow) ?: '';
+        if (in_array($firstHeader, ['names_of_sweettooth_staffs', 'title', 's_n', 'sn']) || empty(array_filter($headerRow))) {
+            // Use row 2 as header row
+            $headerRow = [];
+            for ($column = 1; $column <= $highestColumn; $column++) {
+                $headerRow[$column] = $this->normalizeHeaderName((string) $sheet->getCellByColumnAndRow($column, 2)->getFormattedValue());
+            }
+            $dataStartRow = 3;
+        } else {
+            $dataStartRow = 2;
+        }
+
+        $nameColumn = $this->findColumn($headerRow, ['name', 'staff_name', 'employee_name', 'full_name', 'names', 'management_staff']);
         $firstNameColumn = $this->findColumn($headerRow, ['first_name', 'firstname', 'first name']);
         $lastNameColumn = $this->findColumn($headerRow, ['last_name', 'lastname', 'surname', 'last name']);
         $resumptionColumn = $this->findColumn($headerRow, [
             'resumption_date', 'resumption', 'date_of_resumption', 'date_joined', 'employment_date', 'hire_date',
         ]);
-        $jobColumn = $this->findColumn($headerRow, ['job_description', 'job_title', 'designation', 'position', 'role']);
+        $jobColumn = $this->findColumn($headerRow, ['job_description', 'job_title', 'designation', 'position', 'role', 'job', 'units']);
         $dobColumn = $this->findColumn($headerRow, ['dob', 'date_of_birth', 'birth_date']);
         $emailColumn = $this->findColumn($headerRow, ['email', 'email_address']);
         $addressColumn = $this->findColumn($headerRow, ['home_address', 'address', 'residential_address']);
@@ -233,7 +246,7 @@ class ImportHrUsers extends Command
         $departmentColumn = $this->findColumn($headerRow, ['department', 'dept']);
 
         $records = [];
-        for ($row = 2; $row <= $highestRow; $row++) {
+        for ($row = $dataStartRow; $row <= $highestRow; $row++) {
             $name = '';
             if ($nameColumn !== null) {
                 $name = trim((string) $sheet->getCellByColumnAndRow($nameColumn, $row)->getFormattedValue());
@@ -285,7 +298,7 @@ class ImportHrUsers extends Command
 
     private function normalizeHeaderName(string $value): string
     {
-        return Str::snake(Str::of($value)->trim()->replaceMatches('/\s+/', ' ')->toString());
+        return Str::snake(Str::lower(Str::of($value)->trim()->replaceMatches('/\s+/', ' ')->toString()));
     }
 
     private function findColumn(array $headers, array $candidates): ?int
@@ -293,6 +306,12 @@ class ImportHrUsers extends Command
         foreach ($headers as $column => $header) {
             if (in_array($header, $candidates, true)) {
                 return $column;
+            }
+            // Also check for partial matches
+            foreach ($candidates as $candidate) {
+                if (strpos($header, $candidate) !== false) {
+                    return $column;
+                }
             }
         }
 

@@ -76,6 +76,11 @@ class Sale extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(Receipt::class);
+    }
+
     public function glEntry(): BelongsTo
     {
         return $this->belongsTo(GlEntry::class, 'gl_entry_id');

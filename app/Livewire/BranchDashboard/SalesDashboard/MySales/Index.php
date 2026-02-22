@@ -3,6 +3,7 @@
 namespace App\Livewire\BranchDashboard\SalesDashboard\MySales;
 
 use App\Livewire\BaseComponent;
+use App\Models\Receipt;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Payment;
@@ -10,6 +11,7 @@ use App\Models\Branch;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\User;
+use App\Services\PosDocumentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\{Layout, Url, Computed, On};
@@ -147,6 +149,47 @@ class Index extends BaseComponent
                 $this->dateFrom = now()->subMonth()->startOfMonth()->format('Y-m-d H:i:s');
                 $this->dateTo = now()->subMonth()->endOfMonth()->format('Y-m-d H:i:s');
                 break;
+        }
+    }
+
+    public function printReceipt(int $saleId): void
+    {
+        try {
+            $sale = Sale::query()
+                ->with(['saleItems.product', 'receipts'])
+                ->where('id', $saleId)
+                ->where('branch_id', $this->branchId)
+                ->where('department_id', $this->departmentId)
+                ->where('sold_by_id', $this->employeeId)
+                ->whereIn('sold_by_type', $this->soldByTypes)
+                ->first();
+
+            if (! $sale) {
+                $this->toast()->error('Sale not found.')->send();
+                return;
+            }
+
+            $receipt = $sale->receipts()->latest()->first();
+            if (! $receipt) {
+                $documentService = new PosDocumentService();
+                $receiptHtml = $documentService->generateBrandedReceiptHtml($sale);
+
+                $receipt = Receipt::create([
+                    'sale_id' => $sale->id,
+                    'content' => $receiptHtml,
+                    'subtotal' => $sale->subtotal,
+                    'tax' => $sale->tax,
+                    'discount' => $sale->discount,
+                    'total' => $sale->total,
+                    'payments' => [],
+                    'change_due' => 0,
+                    'meta' => ['source' => 'my-sales'],
+                ]);
+            }
+
+            $this->dispatch('print-receipt', html: $receipt->content);
+        } catch (\Throwable $e) {
+            $this->toast()->error('Failed to generate receipt: ' . $e->getMessage())->send();
         }
     }
 

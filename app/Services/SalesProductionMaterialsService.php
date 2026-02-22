@@ -14,6 +14,7 @@ use App\Models\SalesProductionRequestItem;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Services\UomConversionService;
 
 class SalesProductionMaterialsService
 {
@@ -23,6 +24,7 @@ class SalesProductionMaterialsService
             $item = SalesProductionRequestItem::query()
                 ->with([
                     'request',
+                    'product',
                     'recipe.ingredients',
                     'productionDepartment',
                     'latestMaterialRequest.itemRequest',
@@ -60,8 +62,9 @@ class SalesProductionMaterialsService
                 throw new DomainException("No active recipe found for sales request item {$item->id}.");
             }
 
+            $requestedBaseQuantity = $this->resolveRequestedBaseQuantity($item);
             $plannedQuantity = $this->calculatePlannedQuantity(
-                (float) $item->quantity_requested,
+                $requestedBaseQuantity,
                 (float) ($recipe->yield_quantity ?? 0)
             );
             $ingredients = $recipe->calculateIngredientsForQuantity($plannedQuantity);
@@ -222,6 +225,33 @@ class SalesProductionMaterialsService
         return $synced;
     }
 
+    protected function resolveRequestedBaseQuantity(SalesProductionRequestItem $item): float
+    {
+        $requested = (float) ($item->quantity_requested ?? 0);
+        $product = $item->product;
+        if (! $product) {
+            return $requested;
+        }
+
+        $salesUomId = $product->sales_uom_id;
+        $baseUomId = $product->uom_id;
+        if (! $salesUomId || ! $baseUomId || (int) $salesUomId === (int) $baseUomId) {
+            return $requested;
+        }
+
+        $converted = app(UomConversionService::class)->tryConvert(
+            $requested,
+            (int) $salesUomId,
+            (int) $baseUomId,
+            [
+                'product_id' => (int) $product->id,
+                'branch_id' => (string) ($item->request?->branch_id ?? ''),
+            ]
+        );
+
+        return $converted ?? $requested;
+    }
+
     private function resolveRecipe(SalesProductionRequestItem $item): ?Recipe
     {
         if ($item->recipe_id) {
@@ -314,4 +344,3 @@ class SalesProductionMaterialsService
         return $current . PHP_EOL . PHP_EOL . $note;
     }
 }
-

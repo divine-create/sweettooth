@@ -235,8 +235,8 @@ class ImportProductsFromProductionData extends Command
             return 'skipped';
         }
 
-        // Try to find existing product
-        $query = Product::query();
+        // Try to find existing product - MUST filter by branch_id
+        $query = Product::query()->where('branch_id', $branchId);
         if ($externalId) {
             $query->where('sku', $externalId);
         } else {
@@ -355,12 +355,13 @@ class ImportProductsFromProductionData extends Command
 
         // Map location names from production data to actual department names
         $locationMap = [
-            'HOT KITCHEN' => 'Hot Kitchen Production',
-            'PASTRY' => 'Pastry Production',
-            'GELATO' => 'Gelato Production',
+            'HOT KITCHEN' => 'HOT KITCHEN',
+            'PASTRY' => 'PASTRY',
+            'GELATO' => 'GELATO',
             'CORNER STORE' => 'Corner Store',
             'TILL' => 'Till Sales',
             'CONCESSION' => 'Concession',
+            'TILL CONCESSION' => 'Till Sales',
             'CORNERSTORE' => 'Corner Store',
         ];
         
@@ -373,13 +374,23 @@ class ImportProductsFromProductionData extends Command
             return $this->departmentCache[$locKey];
         }
 
-        $department = Department::whereRaw('UPPER(name) = ?', [$mappedLocation])->first();
+        // MUST filter by branch_id to get the correct department for this branch
+        $department = Department::where('branch_id', $branchId)
+            ->whereRaw('UPPER(name) = ?', [$mappedLocation])
+            ->first();
+        
+        // If not found, try global departments (no branch_id)
+        if (! $department) {
+            $department = Department::whereNull('branch_id')
+                ->whereRaw('UPPER(name) = ?', [$mappedLocation])
+                ->first();
+        }
         
         // Cache the result (even if null to avoid repeated lookups)
         $this->departmentCache[$locKey] = $department?->id;
         
         if (! $department) {
-            $this->warn("Department not found for location: {$location} (mapped to: {$mappedLocation})");
+            $this->warn("Department not found for location: {$location} (mapped to: {$mappedLocation}) in branch");
         }
         
         return $department?->id;

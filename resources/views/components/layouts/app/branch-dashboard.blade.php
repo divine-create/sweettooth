@@ -526,8 +526,10 @@
 
                     // Filter departments based on user role
                     if (!$sidebarService::isProductionAdminRole($currentUser)) {
-                        if ($userDepartment && $currentUser->hasAnyRole($departmentRestrictedRoles)) {
+                        if ($userDepartment) {
                             $departments = $departments->filter(fn($d) => $d->id === $userDepartment->id);
+                        } else {
+                            $departments = collect();
                         }
                     }
 
@@ -573,6 +575,18 @@
                                 && ((request()->route('deptSlug') ?? request()->get('dept_slug')) == $dept->slug)"
                             wire:navigate>
                             {{ __('Sales Requests Review') }}
+                        </flux:navlist.item>
+
+                        <flux:navlist.item icon="document-chart-bar"
+                            :href="branch_route('branch-dashboard.production.records.index', [
+                                'deptSlug' => $dept->slug,
+                                'dept_slug' => $dept->slug,
+                                'page' => 'Production Records' . '_' . $dept->slug
+                            ])"
+                            :current="request()->routeIs('branch-dashboard.production.records.*')
+                                && ((request()->route('deptSlug') ?? request()->get('dept_slug')) == $dept->slug)"
+                            wire:navigate>
+                            {{ __('Production Records') }}
                         </flux:navlist.item>
 
                         @forelse($dept->pages as $page)

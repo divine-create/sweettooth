@@ -125,7 +125,23 @@
                                 {{ $item->productionDepartment?->name ?? 'N/A' }}
                             </td>
                             <td class="px-4 py-3 text-center text-sm text-zinc-700 dark:text-zinc-300">
-                                {{ number_format((float) $item->quantity_requested, 2) }}
+                                @php
+                                    $qtyDisplay = $this->getQuantityDisplay($item);
+                                @endphp
+                                <div class="font-semibold text-zinc-900 dark:text-zinc-100">
+                                    {{ number_format((float) $qtyDisplay['production_qty'], 2) }}
+                                    @if($qtyDisplay['production_symbol'])
+                                        <span class="text-xs text-zinc-500 dark:text-zinc-400">
+                                            {{ $qtyDisplay['production_symbol'] }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                    {{ number_format((float) $qtyDisplay['sales_qty'], 2) }}
+                                    @if($qtyDisplay['sales_symbol'])
+                                        {{ $qtyDisplay['sales_symbol'] }}
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-4 py-3 text-sm text-zinc-700 dark:text-zinc-300">
                                 @if($item->latestMaterialRequest?->itemRequest)

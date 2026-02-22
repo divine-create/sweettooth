@@ -44,25 +44,25 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm text-zinc-700 dark:text-zinc-300 mb-1">Recipe</label>
-                        <select wire:model.live="selectedRecipeId"
-                                wire:key="recipe-select-{{ (string) ($selectedProductionDepartmentId ?? 'none') }}"
+                        <label class="block text-sm text-zinc-700 dark:text-zinc-300 mb-1">Product</label>
+                        <select wire:model.live="selectedProductId"
+                                wire:key="product-select-{{ (string) ($selectedProductionDepartmentId ?? 'none') }}"
                                 class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700"
                                 @disabled(!$selectedProductionDepartmentId)>
-                            <option value="">Select recipe</option>
-                            @foreach($availableRecipes as $recipe)
-                                <option value="{{ $recipe['id'] }}">
-                                    {{ $recipe['recipe_name'] }}
-                                    @if($recipe['yield_quantity'] > 0)
-                                        • Yield {{ number_format($recipe['yield_quantity'], 2) }} {{ $recipe['uom'] ?? '' }}
+                            <option value="">Select product</option>
+                            @foreach($availableProducts as $product)
+                                <option value="{{ $product['id'] }}">
+                                    {{ $product['product_name'] }}
+                                    @if($product['uom'])
+                                        • {{ $product['uom'] }}
                                     @endif
-                                    @if($recipe['sku'])
-                                        ({{ $recipe['sku'] }})
+                                    @if($product['sku'])
+                                        ({{ $product['sku'] }})
                                     @endif
                                 </option>
                             @endforeach
                         </select>
-                        @error('selectedRecipeId')
+                        @error('selectedProductId')
                             <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                         @enderror
                     </div>
@@ -122,7 +122,7 @@
                     <thead class="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase">Department</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase">Recipe</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase">Product</th>
                             <th class="px-4 py-3 text-center text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase">Quantity</th>
                             <th class="px-4 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase">Action</th>
                         </tr>
@@ -132,15 +132,10 @@
                             <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
                                 <td class="px-4 py-3 text-sm text-zinc-800 dark:text-zinc-200">{{ $item['production_department_name'] }}</td>
                                 <td class="px-4 py-3 text-sm text-zinc-800 dark:text-zinc-200">
-                                    {{ $item['recipe_name'] }}
-                                    @if($item['yield_quantity'] > 0)
+                                    {{ $item['product_name'] ?? '-' }}
+                                    @if($item['uom'])
                                         <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                            Yield: {{ number_format($item['yield_quantity'], 2) }} {{ $item['uom'] ?? '' }}
-                                        </div>
-                                    @endif
-                                    @if($item['product_name'])
-                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                            Product: {{ $item['product_name'] }}
+                                            UOM: {{ $item['uom'] }}
                                         </div>
                                     @endif
                                     @if($item['sku'])

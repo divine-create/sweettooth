@@ -70,21 +70,21 @@
             </div>
         </div>
     @endif
-    <!-- Product Picker -->
+    <!-- Product Filters -->
     <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700 p-4 space-y-3">
         <div class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Select Product</h2>
+            <h2 class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Products</h2>
             <div class="flex items-center gap-2">
                 <span class="text-xs px-2 py-1 rounded bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
-                    {{ count($stockOpenings) }} selected
+                    {{ count($stockOpenings) }} products
                 </span>
-                <span wire:loading.flex wire:target="selectedProductId, loadStockOpeningData"
+                <span wire:loading.flex wire:target="search, filterProductType, loadStockOpeningData"
                       class="items-center gap-1.5 text-xs text-blue-700 dark:text-blue-300">
                     <svg class="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Adding product...
+                    Loading...
                 </span>
             </div>
         </div>
@@ -101,30 +101,15 @@
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Search + Select Product</label>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Search Products</label>
                 <input type="text" wire:model.live.debounce.400ms="search"
                     placeholder="Type product name or SKU to filter..."
-                    class="mb-2 w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-blue-500">
-                <div class="relative">
-                    <select wire:model.live="selectedProductId"
-                        class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-blue-500">
-                        <option value="">Select a product</option>
-                        @foreach ($productLookupOptions as $option)
-                            <option value="{{ $option['id'] }}">{{ $option['label'] }}</option>
-                        @endforeach
-                    </select>
-                    <div wire:loading wire:target="selectedProductId, loadStockOpeningData" class="absolute right-8 top-1/2 transform -translate-y-1/2">
-                        <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </div>
-                </div>
+                    class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-blue-500">
             </div>
         </div>
 
         <p class="text-xs text-zinc-600 dark:text-zinc-400">
-            Only product and SKU are loaded first. Detailed stock metrics load when a product is selected.
+            All products are listed below. Use filters to narrow the view; verification will apply to the currently listed products.
         </p>
     </div>
 
@@ -189,136 +174,190 @@
 
         <div x-show="openDetails" x-collapse class="p-3 space-y-3">
         @if (count($rows) > 0)
-        <!-- Stock Opening Table -->
-        <x-table :$headers :$rows striped paginate persist collapsible :quantity="[10, 20, 50, 100]">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                @foreach ($rows as $row)
+                    @php
+                        $variance = $row->variance;
+                        $varianceClass = $variance == 0 ? 'text-green-600 dark:text-green-400' : ($variance > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400');
+                        $varianceIcon = $variance == 0 ? '=' : ($variance > 0 ? '↑' : '↓');
+                    @endphp
+                    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 space-y-3 shadow-sm">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $row->product_name }}</div>
+                                <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $row->product_sku ?? '-' }}</div>
+                            </div>
+                            <div class="text-xs px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
+                                {{ $row->product_uom ?? 'unit' }}
+                            </div>
+                        </div>
 
-        @interact('column_product', $row)
-            <div>
-                <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $row->product_name }}</div>
-                <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $row->product_sku }}</div>
-            </div>
-        @endinteract
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="rounded-lg bg-zinc-50 dark:bg-zinc-800/60 p-2">
+                                <div class="text-zinc-500 dark:text-zinc-400">Previous Closing</div>
+                                <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                    {{ number_format($row->yesterday_closing, 2) }}
+                                </div>
+                                @if(!empty($row->is_carried_forward))
+                                    <div class="text-[10px] text-amber-700 dark:text-amber-300">
+                                        carried from {{ $row->previous_closing_source ?? '-' }}
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="rounded-lg bg-zinc-50 dark:bg-zinc-800/60 p-2">
+                                <div class="text-zinc-500 dark:text-zinc-400">Production Sent</div>
+                                <div class="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                    {{ number_format($row->today_additions, 2) }}
+                                </div>
+                                @if(($row->dispatch_count ?? 0) > 0)
+                                    <div class="text-[10px] text-blue-700 dark:text-blue-300">
+                                        {{ number_format($row->dispatch_count) }} dispatch{{ $row->dispatch_count == 1 ? '' : 'es' }}
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="rounded-lg bg-zinc-50 dark:bg-zinc-800/60 p-2">
+                                <div class="text-zinc-500 dark:text-zinc-400">Expected Opening</div>
+                                <div class="text-sm font-semibold text-green-600 dark:text-green-400">
+                                    {{ number_format($row->expected_opening, 2) }}
+                                </div>
+                            </div>
+                            <div class="rounded-lg bg-zinc-50 dark:bg-zinc-800/60 p-2">
+                                <div class="text-zinc-500 dark:text-zinc-400">Variance</div>
+                                <div class="text-sm font-semibold {{ $varianceClass }}">
+                                    {{ $varianceIcon }} {{ number_format(abs($variance), 2) }}
+                                </div>
+                            </div>
+                        </div>
 
-        @interact('column_yesterday_closing', $row)
-            <div class="text-center">
-                <span class="font-medium text-zinc-700 dark:text-zinc-300">
-                    {{ number_format($row->yesterday_closing, 2) }} {{ $row->product_uom }}
-                </span>
-                @if(!empty($row->is_carried_forward))
-                    <div class="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
-                        carried from {{ $row->previous_closing_source ?? '-' }}
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Actual Opening</label>
+                                <input type="number" step="0.01" min="0"
+                                    wire:model.blur="stockOpenings.{{ $row->index }}.actual_opening"
+                                    wire:change="updateActualOpening({{ $row->product_id }}, $event.target.value)"
+                                    @if($row->is_saved) readonly @endif
+                                    class="w-full px-2 py-1.5 border border-zinc-300 dark:border-zinc-600 rounded
+                                        @if($row->is_saved) bg-zinc-100 dark:bg-zinc-800 cursor-not-allowed @else bg-white dark:bg-zinc-900 @endif
+                                        text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Production Date</label>
+                                <input type="date"
+                                    wire:model.blur="stockOpenings.{{ $row->index }}.production_date"
+                                    wire:change="updateProductionDate({{ $row->product_id }}, $event.target.value)"
+                                    @if($row->is_saved) readonly @endif
+                                    class="w-full px-2 py-1.5 border border-zinc-300 dark:border-zinc-600 rounded
+                                        @if($row->is_saved) bg-zinc-100 dark:bg-zinc-800 cursor-not-allowed @else bg-white dark:bg-zinc-900 @endif
+                                        text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 text-sm">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="text-xs text-zinc-500 dark:text-zinc-400">Shelf Life</div>
+                                <div class="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                                    {{ $row->shelf_life_days }} days
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Notes</label>
+                                <input type="text"
+                                    wire:model.blur="stockOpenings.{{ $row->index }}.notes"
+                                    wire:change="updateNotes({{ $row->product_id }}, $event.target.value)"
+                                    @if($row->is_saved) readonly @endif
+                                    placeholder="Add notes..."
+                                    class="w-full px-2 py-1.5 border border-zinc-300 dark:border-zinc-600 rounded
+                                        @if($row->is_saved) bg-zinc-100 dark:bg-zinc-800 cursor-not-allowed @else bg-white dark:bg-zinc-900 @endif
+                                        text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 text-sm">
+                            </div>
+                        </div>
+
+                        @if($row->variance != 0)
+                            <div class="text-[11px]">
+                                <span class="px-2 py-1 rounded-full font-medium {{ $row->variance > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }}">
+                                    {{ $row->variance_source }}
+                                </span>
+                            </div>
+                        @endif
                     </div>
-                @endif
+                @endforeach
             </div>
-        @endinteract
-
-        @interact('column_today_additions', $row)
-            <div class="text-center">
-                <span class="font-medium text-blue-600 dark:text-blue-400">
-                    {{ number_format($row->today_additions, 2) }} {{ $row->product_uom }}
-                </span>
-                @if(($row->dispatch_count ?? 0) > 0)
-                    <div class="mt-1 text-xs text-blue-700 dark:text-blue-300">
-                        {{ number_format($row->dispatch_count) }} dispatch{{ $row->dispatch_count == 1 ? '' : 'es' }} received
+            @if ($productsPaginator)
+                <div class="mt-4 space-y-2">
+                    <div class="text-xs text-zinc-600 dark:text-zinc-400">
+                        Page {{ $productsPaginator->currentPage() }} of {{ $productsPaginator->lastPage() }}
                     </div>
-                @endif
-            </div>
-        @endinteract
-
-        @interact('column_expected_opening', $row)
-            <div class="text-center">
-                <span class="font-semibold text-green-600 dark:text-green-400">
-                    {{ number_format($row->expected_opening, 2) }} {{ $row->product_uom }}
-                </span>
-            </div>
-        @endinteract
-
-        @interact('column_actual_opening', $row)
-            <div class="flex justify-center">
-                <input type="number" step="0.01" min="0"
-                    wire:model.blur="stockOpenings.{{ $row->index }}.actual_opening"
-                    wire:change="updateActualOpening({{ $row->product_id }}, $event.target.value)"
-                    @if($row->is_saved) readonly @endif
-                    class="w-24 px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded text-center
-                        @if($row->is_saved) bg-zinc-100 dark:bg-zinc-700 cursor-not-allowed @else bg-white dark:bg-zinc-800 @endif
-                        text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500">
-            </div>
-        @endinteract
-
-        @interact('column_variance', $row)
-            @php
-                $variance = $row->variance;
-                $varianceClass = $variance == 0 ? 'text-green-600 dark:text-green-400' : ($variance > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400');
-                $varianceIcon = $variance == 0 ? '=' : ($variance > 0 ? '↑' : '↓');
-            @endphp
-            <div class="text-center">
-                <span class="font-semibold {{ $varianceClass }}">
-                    {{ $varianceIcon }} {{ number_format(abs($variance), 2) }}
-                </span>
-            </div>
-        @endinteract
-
-        @interact('column_variance_source', $row)
-            <div class="text-center">
-                @if($row->variance != 0)
-                    <span class="px-2 py-1 rounded-full text-xs font-medium {{ $row->variance > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }}">
-                        {{ $row->variance_source }}
-                    </span>
-                @else
-                    <span class="text-zinc-400 dark:text-zinc-600">-</span>
-                @endif
-            </div>
-        @endinteract
-
-        @interact('column_production_date', $row)
-            <div class="flex justify-center">
-                <input type="date"
-                    wire:model.blur="stockOpenings.{{ $row->index }}.production_date"
-                    wire:change="updateProductionDate({{ $row->product_id }}, $event.target.value)"
-                    @if($row->is_saved) readonly @endif
-                    class="w-36 px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded text-center
-                        @if($row->is_saved) bg-zinc-100 dark:bg-zinc-700 cursor-not-allowed @else bg-white dark:bg-zinc-800 @endif
-                        text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500">
-            </div>
-        @endinteract
-
-        @interact('column_shelf_life', $row)
-            <div class="text-center">
-                <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200">
-                    {{ $row->shelf_life_days }} days
-                </span>
-            </div>
-        @endinteract
-
-        @interact('column_notes', $row)
-            <div>
-                <input type="text"
-                    wire:model.blur="stockOpenings.{{ $row->index }}.notes"
-                    wire:change="updateNotes({{ $row->product_id }}, $event.target.value)"
-                    @if($row->is_saved) readonly @endif
-                    placeholder="Add notes..."
-                    class="w-full px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded
-                        @if($row->is_saved) bg-zinc-100 dark:bg-zinc-700 cursor-not-allowed @else bg-white dark:bg-zinc-800 @endif
-                        text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 text-sm">
-            </div>
-        @endinteract
-
-        @interact('column_action', $row)
-            <div class="flex justify-center">
-                <button type="button"
-                    wire:click="removeProduct('{{ $row->product_id }}')"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 transition">
-                    Remove
-                </button>
-            </div>
-        @endinteract
-
-        </x-table>
+                    <nav role="navigation" aria-label="Pagination Navigation" class="flex items-center justify-between">
+                        <div class="flex-1 flex items-center justify-between">
+                            <div>
+                                <span class="relative z-0 inline-flex rounded-md shadow-sm">
+                                    @if ($productsPaginator->onFirstPage())
+                                        <span class="relative inline-flex items-center px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-sm font-medium text-zinc-400 dark:text-zinc-500 bg-white dark:bg-zinc-900 cursor-default">
+                                            Previous
+                                        </span>
+                                    @else
+                                        <button type="button"
+                                            wire:click="gotoPage({{ $productsPaginator->currentPage() - 1 }}, 'stock_opening_page')"
+                                            class="relative inline-flex items-center px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                            Previous
+                                        </button>
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="hidden md:flex">
+                                <span class="relative z-0 inline-flex rounded-md shadow-sm">
+                                    @php
+                                        $currentPage = $productsPaginator->currentPage();
+                                        $lastPage = $productsPaginator->lastPage();
+                                        $startPage = max(1, $currentPage - 1);
+                                        $endPage = min($lastPage, $currentPage + 1);
+                                        if ($currentPage <= 2) {
+                                            $startPage = 1;
+                                            $endPage = min($lastPage, 3);
+                                        } elseif ($currentPage >= $lastPage - 1) {
+                                            $endPage = $lastPage;
+                                            $startPage = max(1, $lastPage - 2);
+                                        }
+                                    @endphp
+                                    @for ($page = $startPage; $page <= $endPage; $page++)
+                                        @if ($page == $currentPage)
+                                            <span class="relative inline-flex items-center px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30">
+                                                {{ $page }}
+                                            </span>
+                                        @else
+                                            <button type="button"
+                                                wire:click="gotoPage({{ $page }}, 'stock_opening_page')"
+                                                class="relative inline-flex items-center px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                                {{ $page }}
+                                            </button>
+                                        @endif
+                                    @endfor
+                                </span>
+                            </div>
+                            <div>
+                                <span class="relative z-0 inline-flex rounded-md shadow-sm">
+                                    @if ($productsPaginator->hasMorePages())
+                                        <button type="button"
+                                            wire:click="gotoPage({{ $productsPaginator->currentPage() + 1 }}, 'stock_opening_page')"
+                                            class="relative inline-flex items-center px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                            Next
+                                        </button>
+                                    @else
+                                        <span class="relative inline-flex items-center px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-sm font-medium text-zinc-400 dark:text-zinc-500 bg-white dark:bg-zinc-900 cursor-default">
+                                            Next
+                                        </span>
+                                    @endif
+                                </span>
+                            </div>
+                        </div>
+                    </nav>
+                </div>
+            @endif
         @else
             <div class="p-6 text-center">
                 <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">No Product Selected</h3>
                 <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                    Search and select a product to load its stock opening details.
+                    No products found for the current filters.
                 </p>
             </div>
         @endif

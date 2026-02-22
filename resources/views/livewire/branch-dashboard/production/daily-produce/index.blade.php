@@ -210,14 +210,27 @@
                             </span>
                         @endif
                         <span class="text-xs text-zinc-600 dark:text-zinc-400">
-                            Requested: <strong>{{ number_format($produce['requested_quantity'], 2) }}</strong>
+                            Requested (Production): <strong>{{ number_format($produce['requested_quantity'], 2) }}</strong>
+                            @if(!empty($produce['uom']))
+                                {{ $produce['uom'] }}
+                            @endif
                         </span>
                         @if(!empty($produce['requested_units']) && $produce['requested_units'] != $produce['requested_quantity'])
                             <span class="text-xs text-orange-600 dark:text-orange-400">
-                                Sales Requested: <strong>{{ number_format($produce['requested_units'], 2) }}</strong>
+                                Sales Requested:
+                                <strong>{{ number_format($produce['requested_units'], 2) }}</strong>
+                                @if(!empty($produce['sales_uom']))
+                                    {{ $produce['sales_uom'] }}
+                                @endif
+                                <span class="text-xs text-zinc-500 dark:text-zinc-400">
+                                    ({{ number_format($produce['requested_quantity'], 2) }} {{ $produce['uom'] }})
+                                </span>
                             </span>
                             <span class="text-xs text-emerald-600 dark:text-emerald-400">
                                 Excess to Stock: <strong>{{ number_format($produce['excess_to_stock'], 2) }}</strong>
+                                @if(!empty($produce['uom']))
+                                    {{ $produce['uom'] }}
+                                @endif
                             </span>
                         @endif
                         <span class="text-xs text-blue-600 dark:text-blue-400">
@@ -321,17 +334,35 @@
                                 <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ number_format($produce['opening_quantity'], 2) }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-zinc-600 dark:text-zinc-400">Requested:</span>
-                                <span class="font-semibold text-blue-600 dark:text-blue-400">{{ number_format($produce['requested_quantity'], 2) }}</span>
+                                <span class="text-zinc-600 dark:text-zinc-400">Requested (Production):</span>
+                                <span class="font-semibold text-blue-600 dark:text-blue-400">
+                                    {{ number_format($produce['requested_quantity'], 2) }}
+                                    @if(!empty($produce['uom']))
+                                        {{ $produce['uom'] }}
+                                    @endif
+                                </span>
                             </div>
                             @if(!empty($produce['requested_units']) && $produce['requested_units'] != $produce['requested_quantity'])
                             <div class="flex justify-between">
                                 <span class="text-zinc-600 dark:text-zinc-400">Sales Requested:</span>
-                                <span class="font-semibold text-orange-600 dark:text-orange-400">{{ number_format($produce['requested_units'], 2) }}</span>
+                                <span class="font-semibold text-orange-600 dark:text-orange-400">
+                                    {{ number_format($produce['requested_units'], 2) }}
+                                    @if(!empty($produce['sales_uom']))
+                                        {{ $produce['sales_uom'] }}
+                                    @endif
+                                    <span class="text-xs text-zinc-500 dark:text-zinc-400">
+                                        ({{ number_format($produce['requested_quantity'], 2) }} {{ $produce['uom'] }})
+                                    </span>
+                                </span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-zinc-600 dark:text-zinc-400">Excess to Stock:</span>
-                                <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ number_format($produce['excess_to_stock'], 2) }}</span>
+                                <span class="font-semibold text-emerald-600 dark:text-emerald-400">
+                                    {{ number_format($produce['excess_to_stock'], 2) }}
+                                    @if(!empty($produce['uom']))
+                                        {{ $produce['uom'] }}
+                                    @endif
+                                </span>
                             </div>
                             @endif
                             <div class="flex justify-between pt-2 border-t border-zinc-200 dark:border-zinc-700">
@@ -362,14 +393,26 @@
                                 <span class="font-bold text-green-600 dark:text-green-400">{{ number_format($produce['net_available'], 2) }}</span>
                             </div>
                             <div>
-                                <label class="text-xs text-zinc-600 dark:text-zinc-400 font-medium">Sent Out:</label>
+                                <label class="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
+                                    Sent Out
+                                    @if(!empty($produce['uom']))
+                                        ({{ $produce['uom'] }})
+                                    @endif
+                                    :
+                                </label>
                                 <input type="number" step="0.01" min="0"
                                        wire:model.live="editingQuantities.{{ $produce['id'] }}.sent_out_quantity"
                                        wire:change="updateQuantity({{ $produce['id'] }}, 'sent_out_quantity')"
                                        class="w-full mt-1 px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500">
                             </div>
                             <div>
-                                <label class="text-xs text-zinc-600 dark:text-zinc-400 font-medium">For Order:</label>
+                                <label class="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
+                                    For Order
+                                    @if(!empty($produce['uom']))
+                                        ({{ $produce['uom'] }})
+                                    @endif
+                                    :
+                                </label>
                                 <input type="number" step="0.01" min="0"
                                        wire:model.live="editingQuantities.{{ $produce['id'] }}.order_quantity"
                                        wire:change="updateQuantity({{ $produce['id'] }}, 'order_quantity')"
@@ -513,12 +556,24 @@
                                 <thead class="bg-blue-100 dark:bg-blue-900/50">
                                      <tr>
                                          <th class="px-3 py-2 text-left font-semibold text-blue-900 dark:text-blue-100">Batch #</th>
-                                         <th class="px-3 py-2 text-center font-semibold text-blue-900 dark:text-blue-100">Produced</th>
-                                         <th class="px-3 py-2 text-center font-semibold text-blue-900 dark:text-blue-100">Approved</th>
-                                         <th class="px-3 py-2 text-center font-semibold text-blue-900 dark:text-blue-100">Rejected</th>
-                                         <th class="px-3 py-2 text-center font-semibold text-green-900 dark:text-green-100 bg-green-50 dark:bg-green-900/20">Dispatch Allocations</th>
-                                         <th class="px-3 py-2 text-center font-semibold text-purple-900 dark:text-purple-100 bg-purple-50 dark:bg-purple-900/20">For Order</th>
-                                         <th class="px-3 py-2 text-center font-semibold text-blue-900 dark:text-blue-100">Remaining</th>
+                                         <th class="px-3 py-2 text-center font-semibold text-blue-900 dark:text-blue-100">
+                                             Produced @if(!empty($produce['uom'])) ({{ $produce['uom'] }}) @endif
+                                         </th>
+                                         <th class="px-3 py-2 text-center font-semibold text-blue-900 dark:text-blue-100">
+                                             Approved @if(!empty($produce['uom'])) ({{ $produce['uom'] }}) @endif
+                                         </th>
+                                         <th class="px-3 py-2 text-center font-semibold text-blue-900 dark:text-blue-100">
+                                             Rejected @if(!empty($produce['uom'])) ({{ $produce['uom'] }}) @endif
+                                         </th>
+                                         <th class="px-3 py-2 text-center font-semibold text-green-900 dark:text-green-100 bg-green-50 dark:bg-green-900/20">
+                                             Dispatch Allocations @if(!empty($produce['uom'])) ({{ $produce['uom'] }}) @endif
+                                         </th>
+                                         <th class="px-3 py-2 text-center font-semibold text-purple-900 dark:text-purple-100 bg-purple-50 dark:bg-purple-900/20">
+                                             For Order @if(!empty($produce['uom'])) ({{ $produce['uom'] }}) @endif
+                                         </th>
+                                         <th class="px-3 py-2 text-center font-semibold text-blue-900 dark:text-blue-100">
+                                             Remaining @if(!empty($produce['uom'])) ({{ $produce['uom'] }}) @endif
+                                         </th>
                                          <th class="px-3 py-2 text-center font-semibold text-blue-900 dark:text-blue-100">Status</th>
                                          <th class="px-3 py-2 text-left font-semibold text-blue-900 dark:text-blue-100">Details</th>
                                      </tr>
@@ -606,12 +661,15 @@
                                                                      @endif
                                                                  @endif
                                                              </select>
-                                                             <input type="number" step="0.01" min="0" max="{{ $remainingForThisDispatch }}"
-                                                                    wire:model.live="batchDispatches.{{ $batch['id'] }}.{{ $index }}.quantity"
-                                                                    @disabled($dispatchDisabled)
-                                                                    class="w-16 px-1 py-0.5 text-center border border-green-300 dark:border-green-600 rounded bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 {{ $dispatchDisabled ? 'opacity-50 cursor-not-allowed' : '' }}">
-                                                             <button type="button" wire:click="removeBatchDispatch({{ $batch['id'] }}, {{ $index }})"
-                                                                     class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
+                                                            <input type="number" step="0.01" min="0" max="{{ $remainingForThisDispatch }}"
+                                                                   wire:model.live="batchDispatches.{{ $batch['id'] }}.{{ $index }}.quantity"
+                                                                   @disabled($dispatchDisabled)
+                                                                   class="w-16 px-1 py-0.5 text-center border border-green-300 dark:border-green-600 rounded bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 {{ $dispatchDisabled ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                                            @if(!empty($produce['uom']))
+                                                                <span class="text-[10px] text-zinc-500 dark:text-zinc-400">{{ $produce['uom'] }}</span>
+                                                            @endif
+                                                            <button type="button" wire:click="removeBatchDispatch({{ $batch['id'] }}, {{ $index }})"
+                                                                    class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
                                                                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                                                  </svg>

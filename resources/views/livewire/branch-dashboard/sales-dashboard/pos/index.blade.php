@@ -284,62 +284,102 @@
 
             <!-- Grid View -->
             <div x-show="productView === 'grid'" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                @foreach($this->products as $product)
+                @forelse($this->products as $product)
                     @php
                         $available = $this->getAvailableForProduct($product->id);
+                        $stockDisplay = $this->getPosStockDisplay($product);
                     @endphp
                     <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 flex flex-col gap-2 bg-white dark:bg-zinc-900">
                         <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $product->name }}</div>
-                        <div class="text-xs text-zinc-500">{{ $this->formatCurrency($product->price ?? 0) }}</div>
+                        <div class="text-xs text-zinc-500">
+                            {{ $this->formatCurrency($product->price ?? 0) }}
+                            <span class="ml-2 text-[11px] text-zinc-400">/ {{ $product['sales_uom'] ?? $product['base_uom'] ?? 'unit' }}</span>
+                        </div>
                         <div class="text-xs">
-                            @if($available === 0)
+                            @if($stockDisplay['sales_qty'] === 0.0)
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30">Out of Stock</span>
-                            @elseif($available < 10)
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-orange-700 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30">Low Stock ({{ $available }})</span>
+                            @elseif($stockDisplay['sales_qty'] < 10)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-orange-700 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30">
+                                    Low Stock ({{ number_format($stockDisplay['sales_qty'], 2) }} {{ $stockDisplay['sales_symbol'] }})
+                                </span>
                             @else
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/30">In Stock ({{ $available }})</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/30">
+                                    In Stock ({{ number_format($stockDisplay['sales_qty'], 2) }} {{ $stockDisplay['sales_symbol'] }})
+                                </span>
+                            @endif
+                            @if($stockDisplay['converted'] && $stockDisplay['base_symbol'])
+                                <div class="mt-1 text-[11px] text-zinc-400">
+                                    ({{ number_format($stockDisplay['base_qty'], 2) }} {{ $stockDisplay['base_symbol'] }})
+                                </div>
                             @endif
                         </div>
                         <button type="button" wire:click="addToCart('{{ $product->id }}')"
-                            @if($available <= 0) disabled @endif
+                            @if($stockDisplay['sales_qty'] <= 0) disabled @endif
                             class="mt-auto inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-zinc-400">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M12 4.5a.75.75 0 0 1 .75.75v6h6a.75.75 0 0 1 0 1.5h-6v6a.75.75 0 0 1-1.5 0v-6h-6a.75.75 0 0 1 0-1.5h6v-6A.75.75 0 0 1 12 4.5Z" clip-rule="evenodd"/></svg>
                             Add
                         </button>
                     </div>
-                @endforeach
+                @empty
+                    <div class="col-span-full text-center py-10 text-zinc-500 dark:text-zinc-400">
+                        <div class="text-sm font-medium">No products found</div>
+                        <div class="text-xs mt-1">Try a different search or check stock availability.</div>
+                    </div>
+                @endforelse
             </div>
 
             <!-- List View -->
             <div x-show="productView === 'list'" class="space-y-2">
-                @foreach($this->products as $product)
+                @forelse($this->products as $product)
                     @php
                         $available = $this->getAvailableForProduct($product->id);
+                        $stockDisplay = $this->getPosStockDisplay($product);
                     @endphp
                     <div class="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 flex items-center gap-4">
                         <div class="flex-1">
                             <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $product->name }}</div>
                             <div class="flex items-center gap-3 mt-1">
-                                <span class="text-sm text-zinc-500">{{ $this->formatCurrency($product->price ?? 0) }}</span>
+                                <span class="text-sm text-zinc-500">
+                                    {{ $this->formatCurrency($product->price ?? 0) }}
+                                    <span class="ml-1 text-[11px] text-zinc-400">/ {{ $product['sales_uom'] ?? $product['base_uom'] ?? 'unit' }}</span>
+                                </span>
                                 <span class="text-xs">
-                                    @if($available === 0)
+                                    @if($stockDisplay['sales_qty'] === 0.0)
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-md text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30">Out of Stock</span>
-                                    @elseif($available < 10)
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-orange-700 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30">Low Stock ({{ $available }})</span>
+                                    @elseif($stockDisplay['sales_qty'] < 10)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-orange-700 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30">
+                                            Low Stock ({{ number_format($stockDisplay['sales_qty'], 2) }} {{ $stockDisplay['sales_symbol'] }})
+                                        </span>
                                     @else
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/30">In Stock ({{ $available }})</span>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/30">
+                                            In Stock ({{ number_format($stockDisplay['sales_qty'], 2) }} {{ $stockDisplay['sales_symbol'] }})
+                                        </span>
                                     @endif
                                 </span>
+                                @if($stockDisplay['converted'] && $stockDisplay['base_symbol'])
+                                    <span class="text-[11px] text-zinc-400">
+                                        ({{ number_format($stockDisplay['base_qty'], 2) }} {{ $stockDisplay['base_symbol'] }})
+                                    </span>
+                                @endif
                             </div>
                         </div>
                         <button type="button" wire:click="addToCart('{{ $product->id }}')"
-                            @if($available <= 0) disabled @endif
+                            @if($stockDisplay['sales_qty'] <= 0) disabled @endif
                             class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-zinc-400">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M12 4.5a.75.75 0 0 1 .75.75v6h6a.75.75 0 0 1 0 1.5h-6v6a.75.75 0 0 1-1.5 0v-6h-6a.75.75 0 0 1 0-1.5h6v-6A.75.75 0 0 1 12 4.5Z" clip-rule="evenodd"/></svg>
                             Add to Cart
                         </button>
                     </div>
-                @endforeach
+                @empty
+                    <div class="text-center py-10 text-zinc-500 dark:text-zinc-400">
+                        <div class="text-sm font-medium">No products found</div>
+                        <div class="text-xs mt-1">Try a different search or check stock availability.</div>
+                    </div>
+                @endforelse
+            </div>
+
+            <div class="mt-4">
+                {{ $this->products->links() }}
             </div>
         </div>
 
