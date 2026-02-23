@@ -23,6 +23,7 @@ class Create extends Component
     public $selectedProductionDepartmentId = null;
     public $selectedProductId = null;
     public $quantityRequested = 1;
+    public string $productSearch = '';
     public string $priority = 'normal';
     public string $notes = '';
     public string $submitError = '';
@@ -66,6 +67,12 @@ class Create extends Component
         }
 
         $this->selectedProductId = null;
+        $this->productSearch = '';
+        $this->loadProductsForDepartment();
+    }
+
+    public function updatedProductSearch(): void
+    {
         $this->loadProductsForDepartment();
     }
 
@@ -107,10 +114,15 @@ class Create extends Component
             return;
         }
 
+        $productionDepartmentIds = $this->resolveEquivalentProductionDepartmentIds((int) $this->selectedProductionDepartmentId);
+
         $productsQuery = Product::query()
             ->active()
             ->available()
             ->whereIn('sales_department_id', $salesDepartmentIds)
+            ->whereHas('productType', function ($query) use ($productionDepartmentIds) {
+                $query->whereIn('department_id', $productionDepartmentIds);
+            })
             ->when($branchId, function ($query) use ($branchId) {
                 $query->where(function ($subQuery) use ($branchId) {
                     $subQuery->where('branch_id', $branchId)
@@ -120,6 +132,13 @@ class Create extends Component
             ->with(['unitOfMeasure:id,symbol', 'salesUom:id,symbol']);
 
         $this->availableProducts = $productsQuery
+            ->when($this->productSearch !== '', function ($query) {
+                $term = '%' . $this->productSearch . '%';
+                $query->where(function ($sub) use ($term) {
+                    $sub->where('name', 'like', $term)
+                        ->orWhere('sku', 'like', $term);
+                });
+            })
             ->orderBy('name')
             ->get()
             ->unique('id')

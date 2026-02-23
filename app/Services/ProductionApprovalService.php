@@ -130,6 +130,74 @@ class ProductionApprovalService
     }
 
     /**
+     * Execute approved product assignments (sales department and/or recipe)
+     */
+    public static function executeProductAssignments(ApprovalAuditRequest $request): array
+    {
+        $payload = $request->payload;
+        $type = $payload['type'] ?? null;
+        $productIds = $payload['product_ids'] ?? [];
+        $productId = $payload['product_id'] ?? null;
+        $salesDepartmentId = $payload['sales_department_id'] ?? null;
+        $recipeId = $payload['recipe_id'] ?? null;
+        $departmentId = $payload['department_id'] ?? null;
+
+        if ($type === 'sales_department' && empty($productIds)) {
+            throw new \Exception("No product IDs found in approval request");
+        }
+
+        if ($type === 'recipe' && ! $productId) {
+            throw new \Exception("No product ID found in approval request");
+        }
+
+        $results = [
+            'products_updated' => 0,
+            'recipe_updated' => false,
+        ];
+
+        try {
+            if ($type === 'sales_department') {
+                if (! $salesDepartmentId) {
+                    throw new \Exception("No sales department provided");
+                }
+
+                $results['products_updated'] = Product::whereIn('id', $productIds)
+                    ->update(['sales_department_id' => $salesDepartmentId]);
+            }
+
+            if ($type === 'recipe') {
+                if (! $recipeId) {
+                    throw new \Exception("No recipe provided");
+                }
+
+                $product = Product::findOrFail($productId);
+                $recipe = Recipe::findOrFail($recipeId);
+
+                if ($request->branch_id && $recipe->branch_id !== $request->branch_id) {
+                    throw new \Exception("Recipe branch mismatch");
+                }
+
+                if ($departmentId && $recipe->department_id !== $departmentId) {
+                    throw new \Exception("Recipe department mismatch");
+                }
+
+                $recipe->update([
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'sku' => $product->sku,
+                    'product_type_id' => $product->product_type_id,
+                ]);
+
+                $results['recipe_updated'] = true;
+            }
+
+            return $results;
+        } catch (\Exception $e) {
+            throw new \Exception("Failed to execute product assignments: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Execute approved recipe creation
      */
     public static function executeRecipeCreation(ApprovalAuditRequest $request): ?Recipe

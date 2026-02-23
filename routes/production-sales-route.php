@@ -43,6 +43,8 @@ use Illuminate\Support\Facades\Route;
                 Route::get('recipes/{deptSlug}/{id}/edit', App\Livewire\BranchDashboard\Production\Recipes\Edit::class)->name('recipes.edit');
                 Route::get('recipes/{deptSlug}/{id}', App\Livewire\BranchDashboard\Production\RecipeDetail::class)->name('recipes.detail');
 
+                // Product Assignments
+                Route::get('product-assignments/{deptSlug?}', \App\Livewire\BranchDashboard\Production\ProductAssignments::class)->name('product-assignments');
 
                 // Raw Material Tracking
                 Route::get('raw-material-tracking', \App\Livewire\BranchDashboard\Production\RawMaterialTracking::class)->name('raw-material-tracking');

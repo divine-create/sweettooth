@@ -45,6 +45,11 @@
 
                     <div>
                         <label class="block text-sm text-zinc-700 dark:text-zinc-300 mb-1">Product</label>
+                        <input type="text"
+                               wire:model.live.debounce.250ms="productSearch"
+                               placeholder="Search product..."
+                               class="w-full px-3 py-2 mb-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700"
+                               @disabled(!$selectedProductionDepartmentId)>
                         <select wire:model.live="selectedProductId"
                                 wire:key="product-select-{{ (string) ($selectedProductionDepartmentId ?? 'none') }}"
                                 class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700"

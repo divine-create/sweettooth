@@ -778,6 +778,7 @@ class Index extends Component
             'edit' => ProductionApprovalService::executeProductUpdate($request),
             'delete' => ProductionApprovalService::executeProductDeletion($request),
             'bulk_delete' => ProductionApprovalService::executeProductBulkDeletion($request),
+            'assignments' => ProductionApprovalService::executeProductAssignments($request),
             default => throw new \Exception("Unknown product action: {$subAction}"),
         };
     }

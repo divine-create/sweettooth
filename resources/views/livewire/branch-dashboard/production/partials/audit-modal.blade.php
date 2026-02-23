@@ -29,6 +29,9 @@
                         @case('delete_recipe')
                             Request Recipe Deletion
                             @break
+                        @case('assignments')
+                            Request Product Assignments
+                            @break
                         @default
                             Approval Required
                     @endswitch
@@ -52,6 +55,9 @@
                             @break
                         @case('delete_recipe')
                             This recipe will be permanently removed. This action cannot be undone.
+                            @break
+                        @case('assignments')
+                            Please explain the assignment changes being requested.
                             @break
                         @default
                             Your request will be reviewed by an administrator.

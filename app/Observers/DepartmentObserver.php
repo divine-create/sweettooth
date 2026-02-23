@@ -91,6 +91,13 @@ class DepartmentObserver
                 'icon' => 'book-open',
                 'order' => 3,
             ],
+            [
+                'name' => 'Product Assignments',
+                'slug' => 'product-assignments',
+                'route_name' => "branch-dashboard.production.product-assignments",
+                'icon' => 'clipboard-document-check',
+                'order' => 4,
+            ],
 
             // Production Operations
             [
@@ -98,14 +105,14 @@ class DepartmentObserver
                 'slug' => 'production-requests',
                 'route_name' => "branch-dashboard.production.request.index",
                 'icon' => 'clipboard',
-                'order' => 4,
+                'order' => 5,
             ],
             [
                 'name' => 'Daily Produce',
                 'slug' => 'daily-produce',
                 'route_name' => "branch-dashboard.production.daily-produce.index",
                 'icon' => 'calendar',
-                'order' => 5,
+                'order' => 6,
             ],
 
             // Inventory & Tracking
@@ -114,7 +121,7 @@ class DepartmentObserver
                 'slug' => 'raw-material-tracking',
                 'route_name' => "branch-dashboard.production.raw-material-tracking",
                 'icon' => 'chart-bar',
-                'order' => 6,
+                'order' => 7,
             ],
 
             // Shift Closing
@@ -123,7 +130,7 @@ class DepartmentObserver
                 'slug' => 'shift-closing',
                 'route_name' => "branch-dashboard.production.shift-closing.index",
                 'icon' => 'clock',
-                'order' => 7,
+                'order' => 8,
             ],
 
             // Callbacks Section
@@ -132,14 +139,14 @@ class DepartmentObserver
                 'slug' => 'callbacks-index',
                 'route_name' => "branch-dashboard.production.callbacks.index",
                 'icon' => 'arrow-path',
-                'order' => 8,
+                'order' => 9,
             ],
             [
                 'name' => 'Approve Sales Callbacks',
                 'slug' => 'callbacks-approve',
                 'route_name' => "branch-dashboard.production.callbacks.approve-sales-callbacks",
                 'icon' => 'check-circle',
-                'order' => 9,
+                'order' => 10,
             ],
 
 
