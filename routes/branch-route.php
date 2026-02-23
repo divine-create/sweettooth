@@ -23,7 +23,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
     // Legacy Role-Specific Dashboards (kept for backward compatibility)
     Route::middleware('role_or_permission:view-inventory')->get('/dashboard/inventory', App\Livewire\Dashboards\InventoryDashboard::class)->name('dashboard.inventory');
     Route::middleware('role_or_permission:view-production')->get('/dashboard/production/{deptSlug?}', App\Livewire\Dashboards\ProductionDashboard::class)->name('dashboard.production');
-    Route::middleware('role_or_permission:view-sales')->get('/dashboard/sales/{salesDeptSlug?}', App\Livewire\Dashboards\SalesDashboard::class)->name('dashboard.sales');
+    Route::middleware('role_or_permission:view-sales|Sales Manager|Sales Staff|Floor Manager|Assistant Shop Floor Manager|Cashier|Wait Staff|Lobby Host|Lobby Host Supervisor|Coffee Barista|Coffee Barista Trainer|Consession Attendant|Consession Supervisor|Cornerstore Supervisor|Till Supervisor')->get('/dashboard/sales/{salesDeptSlug?}', App\Livewire\Dashboards\SalesDashboard::class)->name('dashboard.sales');
     Route::middleware('role_or_permission:view-sales')->get('/dashboard/corner-store', App\Livewire\Dashboards\CornerStoreDashboard::class)->name('dashboard.corner-store');
     Route::middleware('role_or_permission:manage-organization')->get('/dashboard/hr', \App\Livewire\Dashboards\HRDashboard::class)->name('dashboard.hr');
     Route::middleware('role_or_permission:manage-branches')->get('/dashboard/admin', \App\Livewire\Dashboards\BranchAdminDashboard::class)->name('dashboard.admin');
@@ -257,9 +257,13 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             });
 
             // Manual Journal Entry (Super Admin, Managing Director, Accountant, Admin)
-            Route::middleware('role_or_permission:create_journal_entries')->group(function () {
+            Route::middleware('role_or_permission:create_journal_entries|Accounting Manager|Accountant|Cost Accountant|Managing Director|Admin|Super Admin')->group(function () {
                 Route::get('/journal-entry', \App\Livewire\BranchDashboard\Accounting\Simple\Journals::class)->name('journal-entry');
             });
+
+            // Quick Expense (single-entry)
+            Route::get('/quick-expense', \App\Livewire\BranchDashboard\Accounting\Simple\QuickExpense::class)
+                ->name('quick-expense');
 
             // Posting Status Monitor
             Route::get('/posting-status', \App\Livewire\BranchDashboard\Accounting\Simple\Transactions::class)->name('posting-status');

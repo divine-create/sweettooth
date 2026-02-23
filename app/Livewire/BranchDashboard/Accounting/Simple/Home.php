@@ -26,7 +26,9 @@ class Home extends Component
     public function render()
     {
         $branchId = $this->getBranchId();
-        $period = AccountingPeriod::current()->first();
+        $period = AccountingPeriod::current()->first()
+            ?? AccountingPeriod::open()->orderByDesc('period_start')->first()
+            ?? AccountingPeriod::orderByDesc('period_start')->first();
 
         $adjustmentsQuery = StockMovement::query()
             ->where(function ($query) {
@@ -62,7 +64,9 @@ class Home extends Component
             ],
         ];
 
-        $bankAccounts = BankAccount::active()->get();
+        $bankAccounts = BankAccount::active()
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->get();
 
         return view('livewire.branch-dashboard.accounting.simple.home', [
             'period' => $period,

@@ -47,6 +47,13 @@ class Journals extends Component
     ];
     public int $perPage = 25;
 
+    public ?float $quickExpenseAmount = null;
+    public ?int $quickExpenseAccountId = null;
+    public ?int $quickPaymentAccountId = null;
+    public string $quickExpenseDescription = '';
+    public string $quickExpenseDate = '';
+    public bool $quickExpensePostNow = true;
+
     public function mount()
     {
         $this->entryDate = now()->format('Y-m-d');
@@ -54,6 +61,7 @@ class Journals extends Component
             ->where('period_start', '<=', now())
             ->where('period_end', '>=', now())
             ->first()?->id;
+        $this->quickExpenseDate = $this->entryDate;
     }
 
     public function render()
@@ -166,6 +174,75 @@ class Journals extends Component
             ['account_id' => null, 'debit' => null, 'credit' => null, 'description' => ''],
             ['account_id' => null, 'debit' => null, 'credit' => null, 'description' => ''],
         ];
+    }
+
+    public function submitQuickExpense(): void
+    {
+        $branchId = $this->getBranchId();
+        $referenceColumn = $this->referenceColumn();
+
+        $this->validate([
+            'periodId' => 'required|exists:accounting_periods,id',
+            'quickExpenseAmount' => 'required|numeric|min:0.01',
+            'quickExpenseAccountId' => 'required|exists:gl_accounts,id',
+            'quickPaymentAccountId' => 'required|exists:gl_accounts,id',
+            'quickExpenseDescription' => 'required|string|max:500',
+            'quickExpenseDate' => 'required|date',
+        ]);
+
+        if ($this->quickExpenseAccountId === $this->quickPaymentAccountId) {
+            throw ValidationException::withMessages([
+                'quickPaymentAccountId' => 'Expense and payment accounts must be different.',
+            ]);
+        }
+
+        $amount = (float) $this->quickExpenseAmount;
+
+        if (trim($this->reference) === '') {
+            $this->reference = $this->generateReference();
+        }
+
+        $entries = [
+            [
+                'gl_account_id' => $this->quickExpenseAccountId,
+                'debit' => $amount,
+                'credit' => 0,
+            ],
+            [
+                'gl_account_id' => $this->quickPaymentAccountId,
+                'debit' => 0,
+                'credit' => $amount,
+            ],
+        ];
+
+        foreach ($entries as $entryData) {
+            $entry = GlEntry::create([
+                'accounting_period_id' => $this->periodId,
+                'gl_account_id' => $entryData['gl_account_id'],
+                'entry_type' => 'manual',
+                'debit' => $entryData['debit'],
+                'credit' => $entryData['credit'],
+                'description' => $this->quickExpenseDescription,
+                'entry_date' => $this->quickExpenseDate,
+                'status' => 'draft',
+                'entered_by_id' => auth()->id(),
+                'entered_by_type' => auth()->user()?->getMorphClass() ?? \App\Models\User::class,
+                'branch_id' => $branchId ?? current_branch_id(),
+                $referenceColumn => $this->reference,
+            ]);
+
+            if ($this->quickExpensePostNow) {
+                $entry->post(auth()->id() ?? 1);
+            }
+        }
+
+        session()->flash('message', 'Quick expense recorded.');
+
+        $this->quickExpenseAmount = null;
+        $this->quickExpenseAccountId = null;
+        $this->quickPaymentAccountId = null;
+        $this->quickExpenseDescription = '';
+        $this->quickExpenseDate = now()->format('Y-m-d');
     }
 
     private function generateReference(): string

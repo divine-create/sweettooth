@@ -129,6 +129,59 @@
 
         <div class="space-y-4">
             <div class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                <h3 class="text-sm font-semibold text-zinc-600 dark:text-zinc-300">Quick Expense</h3>
+                <p class="mt-2 text-xs text-zinc-500">Record a single expense. This creates a balanced 2-line journal entry.</p>
+
+                <div class="mt-4 space-y-3">
+                    <div>
+                        <label class="text-xs uppercase tracking-wide text-zinc-500">Amount</label>
+                        <input class="mt-2 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900" type="number" step="0.01" wire:model="quickExpenseAmount" />
+                        @error('quickExpenseAmount') <div class="mt-1 text-xs text-rose-500">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase tracking-wide text-zinc-500">Expense Account</label>
+                        <select class="mt-2 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900" wire:model="quickExpenseAccountId">
+                            <option value="">Select expense account</option>
+                            @foreach ($accounts as $account)
+                                <option value="{{ $account->id }}">
+                                    {{ $account->account_number }} - {{ $account->account_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('quickExpenseAccountId') <div class="mt-1 text-xs text-rose-500">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase tracking-wide text-zinc-500">Payment Account</label>
+                        <select class="mt-2 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900" wire:model="quickPaymentAccountId">
+                            <option value="">Select cash/bank account</option>
+                            @foreach ($accounts as $account)
+                                <option value="{{ $account->id }}">
+                                    {{ $account->account_number }} - {{ $account->account_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('quickPaymentAccountId') <div class="mt-1 text-xs text-rose-500">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase tracking-wide text-zinc-500">Date</label>
+                        <input class="mt-2 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900" type="date" wire:model="quickExpenseDate" />
+                        @error('quickExpenseDate') <div class="mt-1 text-xs text-rose-500">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase tracking-wide text-zinc-500">Description</label>
+                        <input class="mt-2 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900" type="text" wire:model="quickExpenseDescription" />
+                        @error('quickExpenseDescription') <div class="mt-1 text-xs text-rose-500">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900">
+                        <input type="checkbox" wire:model="quickExpensePostNow" />
+                        <span>Post immediately</span>
+                    </div>
+                    <button class="w-full rounded-full bg-zinc-900 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-zinc-800" type="button" wire:click="submitQuickExpense">
+                        Save Expense
+                    </button>
+                </div>
+            </div>
+            <div class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                 <h3 class="text-sm font-semibold text-zinc-600 dark:text-zinc-300">Quick Rules</h3>
                 <div class="mt-3 space-y-2 text-xs text-zinc-600 dark:text-zinc-300">
                     <div class="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/60">At least 2 lines required.</div>

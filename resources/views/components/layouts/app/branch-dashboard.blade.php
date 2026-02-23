@@ -327,6 +327,10 @@
                     :current="request()->routeIs('branch-dashboard.accounting.journal-entry')" wire:navigate>
                     {{ __('Journal Entries') }}
                 </flux:navlist.item>
+                <flux:navlist.item icon="banknotes" :href="branch_route('branch-dashboard.accounting.quick-expense')"
+                    :current="request()->routeIs('branch-dashboard.accounting.quick-expense', 'branch-dashboard.accounting.journal-entry')" wire:navigate>
+                    {{ __('Quick Expense') }}
+                </flux:navlist.item>
 
                 <flux:navlist.item icon="rectangle-stack" :href="branch_route('branch-dashboard.accounting.posting-status')"
                     :current="request()->routeIs('branch-dashboard.accounting.posting-status')" wire:navigate>

@@ -23,9 +23,9 @@ class SuperAdminOrPermission
             return $next($request);
         }
 
-        // Check if user has any of the required permissions
+        // Check if user has any of the required permissions or roles
         foreach ($permissions as $permission) {
-            if (has_permission($permission)) {
+            if (has_permission($permission) || has_role($permission)) {
                 return $next($request);
             }
         }

@@ -487,6 +487,7 @@ class SidebarVisibilityService
         $user = $user ?? auth()->user();
         $level = self::getRoleLevel($user);
         $category = self::getDepartmentCategory($user);
+        $accountingRoles = ['Accounting Manager', 'Accountant', 'Cost Accountant'];
 
         // Super admins can see sales management regardless of department
         if (self::isSuperAdmin($user)) {
@@ -496,6 +497,11 @@ class SidebarVisibilityService
         // Admins can see sales management
         if ($level >= self::LEVEL_ADMIN) {
             return true;
+        }
+
+        // Accounting roles should not see sales management
+        if ($user && $user->hasAnyRole($accountingRoles)) {
+            return false;
         }
 
         // Managers can only see sales management if they are in sales department
@@ -522,6 +528,7 @@ class SidebarVisibilityService
         $user = $user ?? auth()->user();
         $level = self::getRoleLevel($user);
         $category = self::getDepartmentCategory($user);
+        $accountingRoles = ['Accounting Manager', 'Accountant', 'Cost Accountant'];
 
         // Super admins can see reporting regardless of department
         if (self::isSuperAdmin($user)) {
@@ -531,6 +538,11 @@ class SidebarVisibilityService
         // Admins can see reporting
         if ($level >= self::LEVEL_ADMIN) {
             return true;
+        }
+
+        // Accounting roles should not see reporting
+        if ($user && $user->hasAnyRole($accountingRoles)) {
+            return false;
         }
 
         // Managers can only see reporting if they are in relevant departments
