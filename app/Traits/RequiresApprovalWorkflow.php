@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\ApprovalAuditRequest;
+use App\Helpers\CleanError;
 use App\Services\AuditService;
 use Illuminate\Support\Str;
 
@@ -129,7 +130,19 @@ trait RequiresApprovalWorkflow
         $branchId = $this->getCurrentBranchId();
 
         if (!$actor) {
-            throw new \Exception('No authenticated user found');
+            $userMessage = 'No authenticated user found. Please log in again.';
+            CleanError::show($userMessage, null, [
+                'action' => $action,
+                'resource_type' => $resourceType,
+                'resource_id' => $resourceId,
+                'branch_id' => $branchId,
+            ], $this);
+
+            return [
+                'approved' => false,
+                'request_id' => null,
+                'message' => $userMessage,
+            ];
         }
 
         // SUPER ADMIN: Execute immediately, no approval needed
@@ -151,7 +164,7 @@ trait RequiresApprovalWorkflow
                     'request_id' => null,
                     'message' => ucfirst($action) . ' completed immediately'
                 ];
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 AuditService::log(
                     $actor,
                     "{$action}_failed",
@@ -159,7 +172,22 @@ trait RequiresApprovalWorkflow
                     "Super admin execution failed: {$e->getMessage()}",
                     'failed'
                 );
-                throw $e;
+
+                $userMessage = ucfirst($action) . ' failed. Please try again.';
+                CleanError::show($userMessage, $e, [
+                    'action' => $action,
+                    'resource_type' => $resourceType,
+                    'resource_id' => $resourceId,
+                    'branch_id' => $branchId,
+                    'actor_id' => $actor->id,
+                    'actor_type' => get_class($actor),
+                ], $this);
+
+                return [
+                    'approved' => false,
+                    'request_id' => null,
+                    'message' => $userMessage,
+                ];
             }
         }
 
@@ -189,15 +217,30 @@ trait RequiresApprovalWorkflow
                 'request_id' => $request->id,
                 'message' => 'Your request has been submitted for approval'
             ];
-        } catch (\Exception $e) {
-            AuditService::log(
-                $actor,
-                "request_{$action}_failed",
-                null,
-                "Request creation failed: {$e->getMessage()}",
-                'failed'
-            );
-            throw $e;
+        } catch (\Throwable $e) {
+                AuditService::log(
+                    $actor,
+                    "request_{$action}_failed",
+                    null,
+                    "Request creation failed: {$e->getMessage()}",
+                    'failed'
+                );
+
+                $userMessage = 'Unable to submit request for approval. Please try again.';
+                CleanError::show($userMessage, $e, [
+                    'action' => $action,
+                    'resource_type' => $resourceType,
+                    'resource_id' => $resourceId,
+                    'branch_id' => $branchId,
+                    'actor_id' => $actor->id,
+                    'actor_type' => get_class($actor),
+                ], $this);
+
+                return [
+                    'approved' => false,
+                    'request_id' => null,
+                'message' => $userMessage,
+            ];
         }
     }
 
