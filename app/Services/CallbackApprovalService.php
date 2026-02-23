@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Models\ApprovalAuditRequest;
 use App\Models\ProductDispatchCallback;
 use App\Models\ProductionCallback;
@@ -57,33 +58,46 @@ class CallbackApprovalService
     public static function executeInventoryCallback(
         ApprovalAuditRequest $request,
         $approver = null
-    ): ProductDispatchCallback {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
-            $callbackId = $payload['callback_id'] ?? null;
+    ): ?ProductDispatchCallback {
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
+                $callbackId = $payload['callback_id'] ?? null;
 
-            if (!$callbackId) {
-                throw new \Exception('Invalid callback ID in approval payload');
-            }
+                if (!$callbackId) {
+                    CleanError::show('Invalid callback ID in approval payload.');
+                    return null;
+                }
 
-            $callback = ProductDispatchCallback::findOrFail($callbackId);
+                $callback = ProductDispatchCallback::find($callbackId);
+                if (!$callback) {
+                    CleanError::show('Callback not found. Please refresh and try again.');
+                    return null;
+                }
 
-            // Approve, receive, and complete the callback with stock updates
-            if (!$callback->approveReceiveAndComplete($approver)) {
-                throw new \Exception('Failed to process inventory callback');
-            }
+                // Approve, receive, and complete the callback with stock updates
+                if (!$callback->approveReceiveAndComplete($approver)) {
+                    CleanError::show('Failed to process inventory callback.');
+                    return null;
+                }
 
-            AuditService::log(
-                $approver,
-                'callback:inventory_completed',
-                $callback,
-                "Inventory callback approved and completed for {$callback->quantity} {$callback->uom} of '{$callback->product?->name}'",
-                'completed'
-            );
+                AuditService::log(
+                    $approver,
+                    'callback:inventory_completed',
+                    $callback,
+                    "Inventory callback approved and completed for {$callback->quantity} {$callback->uom} of '{$callback->product?->name}'",
+                    'completed'
+                );
 
-            return $callback;
-        });
+                return $callback;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to process inventory callback.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     // ==========================================
@@ -140,40 +154,53 @@ class CallbackApprovalService
     public static function executeProductionCallback(
         ApprovalAuditRequest $request,
         $approver = null
-    ): ProductionCallback {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
-            $callbackId = $payload['callback_id'] ?? null;
+    ): ?ProductionCallback {
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
+                $callbackId = $payload['callback_id'] ?? null;
 
-            if (!$callbackId) {
-                throw new \Exception('Invalid callback ID in approval payload');
-            }
+                if (!$callbackId) {
+                    CleanError::show('Invalid callback ID in approval payload.');
+                    return null;
+                }
 
-            $callback = ProductionCallback::findOrFail($callbackId);
+                $callback = ProductionCallback::find($callbackId);
+                if (!$callback) {
+                    CleanError::show('Callback not found. Please refresh and try again.');
+                    return null;
+                }
 
-            // Approve the callback with automatic stock updates
-            if (!$callback->approve($approver)) {
-                throw new \Exception('Failed to approve production callback');
-            }
+                // Approve the callback with automatic stock updates
+                if (!$callback->approve($approver)) {
+                    CleanError::show('Failed to approve production callback.');
+                    return null;
+                }
 
-            // Complete the callback
-            $callback->complete();
+                // Complete the callback
+                $callback->complete();
 
-            $itemName = $callback->isRawMaterial()
-                ? $callback->item?->name
-                : $callback->product?->name;
+                $itemName = $callback->isRawMaterial()
+                    ? $callback->item?->name
+                    : $callback->product?->name;
 
-            AuditService::log(
-                $approver,
-                'callback:production_completed',
-                $callback,
-                "Production callback approved and completed for {$callback->quantity} {$callback->uom} of '{$itemName}'",
-                'completed'
-            );
+                AuditService::log(
+                    $approver,
+                    'callback:production_completed',
+                    $callback,
+                    "Production callback approved and completed for {$callback->quantity} {$callback->uom} of '{$itemName}'",
+                    'completed'
+                );
 
-            return $callback;
-        });
+                return $callback;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to process production callback.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
@@ -183,43 +210,55 @@ class CallbackApprovalService
         ApprovalAuditRequest $request,
         $approver,
         string $rejectionReason
-    ): ProductionCallback {
-        return DB::transaction(function () use ($request, $approver, $rejectionReason) {
-            $payload = $request->payload;
-            $callbackId = $payload['callback_id'] ?? null;
+    ): ?ProductionCallback {
+        try {
+            return DB::transaction(function () use ($request, $approver, $rejectionReason) {
+                $payload = $request->payload;
+                $callbackId = $payload['callback_id'] ?? null;
 
-            if (!$callbackId) {
-                throw new \Exception('Invalid callback ID in approval payload');
-            }
+                if (!$callbackId) {
+                    CleanError::show('Invalid callback ID in approval payload.');
+                    return null;
+                }
 
-            $callback = ProductionCallback::findOrFail($callbackId);
+                $callback = ProductionCallback::find($callbackId);
+                if (!$callback) {
+                    CleanError::show('Callback not found. Please refresh and try again.');
+                    return null;
+                }
 
-            // Reject the callback
-            $callback->reject($approver, $rejectionReason);
+                // Reject the callback
+                $callback->reject($approver, $rejectionReason);
 
-            // Update the approval request
-            $request->update([
-                'approver_id' => $approver->id,
-                'approver_type' => get_class($approver),
-                'status' => 'rejected',
-                'rejection_comment' => $rejectionReason,
-                'denied_at' => now(),
+                // Update the approval request
+                $request->update([
+                    'approver_id' => $approver->id,
+                    'approver_type' => get_class($approver),
+                    'status' => 'rejected',
+                    'rejection_comment' => $rejectionReason,
+                    'denied_at' => now(),
+                ]);
+
+                $itemName = $callback->isRawMaterial()
+                    ? $callback->item?->name
+                    : $callback->product?->name;
+
+                AuditService::log(
+                    $approver,
+                    'callback:production_rejected',
+                    $callback,
+                    "Production callback rejected for '{$itemName}'. Reason: {$rejectionReason}",
+                    'completed'
+                );
+
+                return $callback;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to reject production callback.', $e, [
+                'request_id' => $request->id,
             ]);
-
-            $itemName = $callback->isRawMaterial()
-                ? $callback->item?->name
-                : $callback->product?->name;
-
-            AuditService::log(
-                $approver,
-                'callback:production_rejected',
-                $callback,
-                "Production callback rejected for '{$itemName}'. Reason: {$rejectionReason}",
-                'completed'
-            );
-
-            return $callback;
-        });
+            return null;
+        }
     }
 
     // ==========================================

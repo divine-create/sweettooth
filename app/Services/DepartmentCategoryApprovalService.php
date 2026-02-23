@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Models\ApprovalAuditRequest;
 use App\Models\DepartmentCategory;
 use Illuminate\Support\Facades\DB;
@@ -11,10 +12,11 @@ class DepartmentCategoryApprovalService
     /**
      * Create a pending department category creation request
      */
-    public static function requestCreate(array $categoryData, string $reason): ApprovalAuditRequest
+    public static function requestCreate(array $categoryData, string $reason): ?ApprovalAuditRequest
     {
         if (empty($categoryData['name'])) {
-            throw new \Exception('Category name is required');
+            CleanError::show('Category name is required.');
+            return null;
         }
 
         $requester = current_actor();
@@ -43,33 +45,41 @@ class DepartmentCategoryApprovalService
     /**
      * Execute a pending department category creation after approval
      */
-    public static function executeCreate(ApprovalAuditRequest $request, $approver = null): DepartmentCategory
+    public static function executeCreate(ApprovalAuditRequest $request, $approver = null): ?DepartmentCategory
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
 
-            $category = DepartmentCategory::create($payload);
+                $category = DepartmentCategory::create($payload);
 
-            AuditService::log(
-                $approver,
-                'department_category:created',
-                $category,
-                "Department category '{$category->name}' created after approval",
-                'completed'
-            );
+                AuditService::log(
+                    $approver,
+                    'department_category:created',
+                    $category,
+                    "Department category '{$category->name}' created after approval",
+                    'completed'
+                );
 
-            return $category;
-        });
+                return $category;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to create department category.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
      * Create a pending department category update request
      */
-    public static function requestUpdate(DepartmentCategory $category, array $changes, string $reason): ApprovalAuditRequest
+    public static function requestUpdate(DepartmentCategory $category, array $changes, string $reason): ?ApprovalAuditRequest
     {
         if (!$category->exists) {
-            throw new \Exception('Department category does not exist');
+            CleanError::show('Department category does not exist.');
+            return null;
         }
 
         $requester = current_actor();
@@ -103,42 +113,55 @@ class DepartmentCategoryApprovalService
     /**
      * Execute a pending department category update after approval
      */
-    public static function executeUpdate(ApprovalAuditRequest $request, $approver = null): DepartmentCategory
+    public static function executeUpdate(ApprovalAuditRequest $request, $approver = null): ?DepartmentCategory
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
-            $categoryId = $payload['id'] ?? null;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
+                $categoryId = $payload['id'] ?? null;
 
-            if (!$categoryId) {
-                throw new \Exception('Invalid category ID in approval payload');
-            }
+                if (!$categoryId) {
+                    CleanError::show('Invalid category ID in approval payload.');
+                    return null;
+                }
 
-            $category = DepartmentCategory::findOrFail($categoryId);
+                $category = DepartmentCategory::find($categoryId);
+                if (!$category) {
+                    CleanError::show('Department category not found.');
+                    return null;
+                }
 
-            unset($payload['id'], $payload['original_values']);
+                unset($payload['id'], $payload['original_values']);
 
-            $category->update($payload);
+                $category->update($payload);
 
-            AuditService::log(
-                $approver,
-                'department_category:updated',
-                $category,
-                "Department category '{$category->name}' updated after approval",
-                'completed'
-            );
+                AuditService::log(
+                    $approver,
+                    'department_category:updated',
+                    $category,
+                    "Department category '{$category->name}' updated after approval",
+                    'completed'
+                );
 
-            return $category;
-        });
+                return $category;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to update department category.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
      * Create a pending department category deletion request
      */
-    public static function requestDelete(DepartmentCategory $category, string $reason): ApprovalAuditRequest
+    public static function requestDelete(DepartmentCategory $category, string $reason): ?ApprovalAuditRequest
     {
         if (!$category->exists) {
-            throw new \Exception('Department category does not exist');
+            CleanError::show('Department category does not exist.');
+            return null;
         }
 
         $requester = current_actor();
@@ -172,32 +195,44 @@ class DepartmentCategoryApprovalService
      */
     public static function executeDelete(ApprovalAuditRequest $request, $approver = null): bool
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
-            $categoryId = $payload['id'] ?? null;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
+                $categoryId = $payload['id'] ?? null;
 
-            if (!$categoryId) {
-                throw new \Exception('Invalid category ID in approval payload');
-            }
+                if (!$categoryId) {
+                    CleanError::show('Invalid category ID in approval payload.');
+                    return false;
+                }
 
-            $category = DepartmentCategory::findOrFail($categoryId);
-            $categoryName = $category->name;
+                $category = DepartmentCategory::find($categoryId);
+                if (!$category) {
+                    CleanError::show('Department category not found.');
+                    return false;
+                }
+                $categoryName = $category->name;
 
-            $category->delete();
+                $category->delete();
 
-            AuditService::log(
-                $approver,
-                'department_category:deleted',
-                null,
-                "Department category '{$categoryName}' deleted after approval",
-                'completed',
-                null,
-                ['deleted_category' => $categoryName]
-            );
+                AuditService::log(
+                    $approver,
+                    'department_category:deleted',
+                    null,
+                    "Department category '{$categoryName}' deleted after approval",
+                    'completed',
+                    null,
+                    ['deleted_category' => $categoryName]
+                );
 
-            return true;
-        });
+                return true;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to delete department category.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return false;
+        }
     }
 
     /**

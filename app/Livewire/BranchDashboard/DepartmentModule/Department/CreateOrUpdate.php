@@ -270,7 +270,7 @@ class CreateOrUpdate extends Component
                 'name' => 'required|string|max:255|unique:departments,name,' . $this->selectedDepartmentId,
                 'category_id' => 'required|exists:department_categories,id',
                 'description' => 'nullable|string',
-                'bank_account_id' => 'required|exists:bank_accounts,id',
+                'bank_account_id' => 'nullable|exists:bank_accounts,id',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->dispatch('notify', message: 'Please fix validation errors', type: 'error');
@@ -355,7 +355,7 @@ class CreateOrUpdate extends Component
             'name' => 'required|string|max:255|unique:departments,name,' . $this->selectedDepartmentId,
             'category_id' => 'required|exists:department_categories,id',
             'description' => 'nullable|string',
-            'bank_account_id' => 'required|exists:bank_accounts,id',
+            'bank_account_id' => 'nullable|exists:bank_accounts,id',
             // Reason is required for employees, optional for super admin
             'creationReason' => is_super_admin() ? 'nullable|string' : 'required|string|min:5',
         ]);

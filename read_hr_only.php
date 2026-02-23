@@ -10,7 +10,8 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 $hrFilePath = __DIR__.'/real data/HR.xlsx';
 
 if (!file_exists($hrFilePath)) {
-    die("HR.xlsx file does not exist at $hrFilePath\n");
+    echo "HR.xlsx file does not exist at $hrFilePath\n";
+    return;
 }
 
 try {

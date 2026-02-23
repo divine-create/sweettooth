@@ -76,6 +76,12 @@ class Router extends Component
             }
         }
 
+        // Route by ROLE (explicit mapping to avoid mis-categorized departments)
+        $route = $this->routeByRole($currentUser, $branchId, $deptSlug);
+        if ($route) {
+            return $route;
+        }
+
         // Route by DEPARTMENT CATEGORY
         return match ($category) {
             'Production' => $this->routeProduction($branchId, $deptSlug),
@@ -83,6 +89,71 @@ class Router extends Component
             'Support' => $this->routeSupport($branchId, $currentUser),
             default => $this->routeFallback($branchId, $currentUser, $roleLevel, $category),
         };
+    }
+
+    /**
+     * Explicit role-based routing (highest priority for non-admin users).
+     */
+    private function routeByRole($user, string $branchId, ?string $deptSlug)
+    {
+        if (! $user) {
+            return null;
+        }
+
+        $salesRoles = [
+            'Sales Manager', 'Sales Staff', 'Floor Manager', 'Assistant Shop Floor Manager',
+            'Cashier', 'Wait Staff', 'Lobby Host', 'Lobby Host Supervisor',
+            'Coffee Barista', 'Coffee Barista Trainer', 'Consession Attendant',
+            'Consession Supervisor', 'Cornerstore Supervisor', 'Till Supervisor',
+        ];
+
+        $productionRoles = [
+            'Production Manager', 'Production Staff', 'Head Chef', 'Gelato Chef',
+            'Hot Kitchen Chef', 'Pastry Chef', 'Kitchen Assistant', 'Kitchen Assistant Supervisor',
+        ];
+
+        $inventoryRoles = [
+            'Inventory Manager', 'Inventory Team Lead', 'Inventory Staff', 'Store Keeper', 'Procurement Officer',
+        ];
+
+        $hrRoles = [
+            'HR Manager', 'HR Officer', 'Data Processor',
+        ];
+
+        $accountingRoles = [
+            'Accounting Manager', 'Accountant', 'Cost Accountant',
+        ];
+
+        $supportRoles = [
+            'Chief Security Officer', 'Security Officer', 'Facility Officer', 'Cleaners Supervisor',
+            'Driver', 'Social Media Manager',
+        ];
+
+        if ($user->hasAnyRole($salesRoles)) {
+            return $this->routeSales($branchId, $deptSlug);
+        }
+
+        if ($user->hasAnyRole($productionRoles)) {
+            return $this->routeProduction($branchId, $deptSlug);
+        }
+
+        if ($user->hasAnyRole($inventoryRoles)) {
+            return Redirect::route('branch-dashboard.dashboard.inventory', ['b_id' => $branchId]);
+        }
+
+        if ($user->hasAnyRole($hrRoles)) {
+            return Redirect::route('branch-dashboard.dashboard.hr', ['b_id' => $branchId]);
+        }
+
+        if ($user->hasAnyRole($accountingRoles)) {
+            return Redirect::route('branch-dashboard.accounting.dashboard', ['b_id' => $branchId]);
+        }
+
+        if ($user->hasAnyRole($supportRoles)) {
+            return $this->routeSupport($branchId, $user);
+        }
+
+        return null;
     }
 
     /**

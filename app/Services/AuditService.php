@@ -73,9 +73,9 @@ class AuditService
                 'action' => $action,
                 'status' => $status,
                 'causer_id' => $causer?->id,
-                'causer_type' => $causer ? get_class($causer) : null,
+                'causer_type' => $causer ? (is_object($causer) ? get_class($causer) : gettype($causer)) : null,
                 'auditable_id' => $auditable?->id,
-                'auditable_type' => $auditable ? get_class($auditable) : null,
+                'auditable_type' => $auditable ? (is_object($auditable) ? get_class($auditable) : gettype($auditable)) : null,
             ]);
 
             // Extract branch_id from auditable model if available
@@ -93,9 +93,9 @@ class AuditService
 
             $auditLog = AuditLog::create([
                 'branch_id' => $branchId,
-                'causer_type' => $causer ? get_class($causer) : null,
+                'causer_type' => $causer ? (is_object($causer) ? get_class($causer) : gettype($causer)) : null,
                 'causer_id' => $causer?->id,
-                'auditable_type' => $auditable ? get_class($auditable) : null,
+                'auditable_type' => $auditable ? (is_object($auditable) ? get_class($auditable) : gettype($auditable)) : null,
                 'auditable_id' => $auditable?->id,
                 'action' => $action,
                 'description' => $description,
@@ -107,8 +107,8 @@ class AuditService
                 'approval_request_id' => $approvalRequest?->id,
                 'logged_at' => now(),
                 'details' => array_merge($metadata, [
-                    'causer' => $causer ? get_class($causer) : null,
-                    'auditable' => $auditable ? get_class($auditable) : null,
+                    'causer' => $causer ? (is_object($causer) ? get_class($causer) : gettype($causer)) : null,
+                    'auditable' => $auditable ? (is_object($auditable) ? get_class($auditable) : gettype($auditable)) : null,
                 ]),
             ]);
 
@@ -163,10 +163,10 @@ class AuditService
             // Create approval request
             $approvalRequest = ApprovalRequest::create([
                 'requested_by_id' => $causer->id,
-                'requested_by_type' => get_class($causer),
+                'requested_by_type' => is_object($causer) ? get_class($causer) : gettype($causer),
                 'action' => $action,
                 'auditable_id' => $auditable->id,
-                'auditable_type' => get_class($auditable),
+                'auditable_type' => is_object($auditable) ? get_class($auditable) : gettype($auditable),
                 'status' => 'pending',
                 'reason' => $reason,
                 'metadata' => $context,
@@ -245,7 +245,7 @@ class AuditService
             // Update the morphic columns
             $target->update([
                 $relationshipName . '_id' => $actor->id,
-                $relationshipName . '_type' => get_class($actor),
+                $relationshipName . '_type' => is_object($actor) ? get_class($actor) : gettype($actor),
             ]);
 
             // Log the change
@@ -294,7 +294,7 @@ class AuditService
         return DB::transaction(function () use ($modelClass, $ids, $relationshipName, $actor, $description) {
             $updated = $modelClass::whereIn('id', $ids)->update([
                 $relationshipName . '_id' => $actor->id,
-                $relationshipName . '_type' => get_class($actor),
+                $relationshipName . '_type' => is_object($actor) ? get_class($actor) : gettype($actor),
             ]);
 
             // Log bulk action
@@ -340,7 +340,7 @@ class AuditService
             $approvalRequest->update([
                 'executed_at' => now(),
                 'executed_by_id' => $approver?->id,
-                'executed_by_type' => $approver ? get_class($approver) : null,
+                'executed_by_type' => $approver ? (is_object($approver) ? get_class($approver) : gettype($approver)) : null,
             ]);
 
             // Log execution
@@ -370,7 +370,7 @@ class AuditService
      */
     public static function getLogsFor(Model $auditable, ?string $action = null, int $limit = 100)
     {
-        $query = AuditLog::where('auditable_type', get_class($auditable))
+        $query = AuditLog::where('auditable_type', is_object($auditable) ? get_class($auditable) : gettype($auditable))
             ->where('auditable_id', $auditable->id);
 
         if ($action) {
@@ -393,7 +393,7 @@ class AuditService
      */
     public static function getLogsByActor(Model $causer, ?string $action = null, int $limit = 100)
     {
-        $query = AuditLog::where('causer_type', get_class($causer))
+        $query = AuditLog::where('causer_type', is_object($causer) ? get_class($causer) : gettype($causer))
             ->where('causer_id', $causer->id);
 
         if ($action) {
@@ -418,7 +418,7 @@ class AuditService
         $query = ApprovalRequest::where('status', 'pending');
 
         if ($actor) {
-            $query->where('requested_by_type', get_class($actor))
+            $query->where('requested_by_type', is_object($actor) ? get_class($actor) : gettype($actor))
                   ->where('requested_by_id', $actor->id);
         }
 
@@ -473,15 +473,15 @@ class AuditService
             'updated' => $updated,
             'sync_data' => $syncData,
             'previous_data' => $previousData,
-            'causer' => $causer ? get_class($causer) : null,
-            'auditable' => $auditable ? get_class($auditable) : null,
+            'causer' => $causer ? (is_object($causer) ? get_class($causer) : gettype($causer)) : null,
+            'auditable' => $auditable ? (is_object($auditable) ? get_class($auditable) : gettype($auditable)) : null,
         ];
 
         return AuditLog::create([
             'branch_id' => $branchId,
-            'causer_type' => $causer ? get_class($causer) : null,
+            'causer_type' => $causer ? (is_object($causer) ? get_class($causer) : gettype($causer)) : null,
             'causer_id' => $causer?->id,
-            'auditable_type' => get_class($auditable),
+            'auditable_type' => is_object($auditable) ? get_class($auditable) : gettype($auditable),
             'auditable_id' => $auditable->id,
             'action' => "sync_{$relationship}",
             'description' => $description ?? "Synced {$relationship}",

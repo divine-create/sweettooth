@@ -149,7 +149,7 @@ class Edit extends BaseComponent
         $this->emergency_contact_phone = $employee->emergency_contact_phone;
         $this->hire_date = $employee->hire_date ? (is_string($employee->hire_date) ? Carbon::parse($employee->hire_date)->format('Y-m-d') : $employee->hire_date->format('Y-m-d')) : null;
         $this->termination_date = $employee->termination_date ? (is_string($employee->termination_date) ? Carbon::parse($employee->termination_date)->format('Y-m-d') : $employee->termination_date->format('Y-m-d')) : null;
-        $this->status = $employee->status ?? 'active';
+        $this->status = $employee->employment_status ?? ($employee->is_active ? 'active' : 'inactive');
         $this->probation_end_date = $employee->probation_end_date ? (is_string($employee->probation_end_date) ? Carbon::parse($employee->probation_end_date)->format('Y-m-d') : $employee->probation_end_date->format('Y-m-d')) : null;
         $this->shift_preference = $employee->shift_preference;
         $this->salary = $employee->salary;
@@ -340,7 +340,8 @@ class Edit extends BaseComponent
                 'emergency_contact_phone' => $this->emergency_contact_phone,
                 'hire_date' => $this->hire_date,
                 'termination_date' => $this->termination_date,
-                'status' => $this->status,
+                'employment_status' => $this->status,
+                'is_active' => $this->status === 'active',
                 'probation_end_date' => $this->probation_end_date,
                 'shift_preference' => $this->shift_preference,
                 'salary' => $this->salary,

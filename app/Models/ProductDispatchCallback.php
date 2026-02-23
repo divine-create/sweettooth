@@ -2,15 +2,13 @@
 
 namespace App\Models;
 
+use App\Helpers\CleanError;
 use App\Enums\CallbackStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
-use InvalidArgumentException;
-use Illuminate\Validation\ValidationException;
 
 /**
  * ProductDispatchCallback Model
@@ -239,7 +237,8 @@ class ProductDispatchCallback extends Model
 
             $actor = $actor ?? current_actor();
             if (! $actor) {
-                throw new RuntimeException('No authenticated actor found');
+                CleanError::show('No authenticated actor found.');
+                return false;
             }
 
             $locked->update([
@@ -283,7 +282,8 @@ class ProductDispatchCallback extends Model
 
             $actor = $actor ?? current_actor();
             if (! $actor) {
-                throw new RuntimeException('No authenticated actor found');
+                CleanError::show('No authenticated actor found.');
+                return false;
             }
 
             $locked->update([
@@ -422,11 +422,13 @@ class ProductDispatchCallback extends Model
     public function validateQuantity(): bool
     {
         if (! $this->product_dispatch_id) {
-            throw new RuntimeException('Product dispatch reference is required for callbacks');
+            CleanError::show('Product dispatch reference is required for callbacks.');
+            return false;
         }
 
         if (! $this->productDispatch) {
-            throw new RuntimeException('No dispatch found for callback');
+            CleanError::show('No dispatch found for callback.');
+            return false;
         }
 
         $totalCallbacks = self::where('product_dispatch_id', $this->product_dispatch_id)
@@ -442,9 +444,10 @@ class ProductDispatchCallback extends Model
         $available = $this->productDispatch->received_quantity - $totalCallbacks;
 
         if ($this->quantity > $available) {
-            throw new ValidationException(
-                "Callback quantity ({$this->quantity}) exceeds available ({$available})"
+            CleanError::show(
+                "Callback quantity ({$this->quantity}) exceeds available ({$available})."
             );
+            return false;
         }
 
         return true;
@@ -478,9 +481,10 @@ class ProductDispatchCallback extends Model
     public function completeWithStockUpdate(): bool
     {
         if ($this->status !== CallbackStatus::RECEIVED_BY_PRODUCTION) {
-            throw new RuntimeException(
+            CleanError::show(
                 'Callback must be received before completion. Current status: '.$this->formatted_status
             );
+            return false;
         }
 
         return DB::transaction(function () {
@@ -505,9 +509,10 @@ class ProductDispatchCallback extends Model
             ->first();
 
         if (! $productStock) {
-            throw new RuntimeException(
+            CleanError::show(
                 'Product stock record not found for sales shift: '.$this->sales_shift_id
             );
+            return;
         }
 
         $totalCallbacks = self::where('sales_shift_id', $this->sales_shift_id)
@@ -535,12 +540,14 @@ class ProductDispatchCallback extends Model
         // Find the original production that created this product
         $productDispatch = $this->productDispatch;
         if (! $productDispatch || ! $productDispatch->shift_id) {
-            throw new RuntimeException('Product dispatch or shift not found for callback');
+            CleanError::show('Product dispatch or shift not found for callback.');
+            return;
         }
 
         $recipe = Recipe::where('product_id', $this->product_id)->first();
         if (! $recipe) {
-            throw new RuntimeException('Recipe not found for product: '.$this->product_id);
+            CleanError::show('Recipe not found for product: '.$this->product_id);
+            return;
         }
 
         $dailyProduce = DailyProduce::where('shift_id', $productDispatch->shift_id)
@@ -553,11 +560,12 @@ class ProductDispatchCallback extends Model
             $dailyProduce->increment('closing_quantity', $this->quantity);
             $dailyProduce->updateCalculations();
         } else {
-            throw new RuntimeException(
+            CleanError::show(
                 'DailyProduce not found for callback. Cannot complete stock update. ' .
                 'Shift ID: ' . $productDispatch->shift_id .
                 ', Recipe ID: ' . $recipe->id
             );
+            return;
         }
     }
 }

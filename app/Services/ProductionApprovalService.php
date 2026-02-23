@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Models\Product;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
@@ -38,8 +39,11 @@ class ProductionApprovalService
             ]);
 
             return $product;
-        } catch (\Exception $e) {
-            throw new \Exception("Failed to create product: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to create product.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
         }
     }
 
@@ -52,11 +56,16 @@ class ProductionApprovalService
         $productId = $payload['id'] ?? null;
 
         if (!$productId) {
-            throw new \Exception("Product ID not found in approval request");
+            CleanError::show('Product ID not found in approval request.');
+            return null;
         }
 
         try {
-            $product = Product::findOrFail($productId);
+            $product = Product::find($productId);
+            if (!$product) {
+                CleanError::show('Product not found. Please refresh and try again.');
+                return null;
+            }
 
             $product->update([
                 'name' => $payload['name'],
@@ -78,8 +87,11 @@ class ProductionApprovalService
             ]);
 
             return $product;
-        } catch (\Exception $e) {
-            throw new \Exception("Failed to update product: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to update product.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
         }
     }
 
@@ -91,15 +103,23 @@ class ProductionApprovalService
         $productId = $request->payload['id'] ?? null;
 
         if (!$productId) {
-            throw new \Exception("Product ID not found in approval request");
+            CleanError::show('Product ID not found in approval request.');
+            return null;
         }
 
         try {
-            $product = Product::findOrFail($productId);
+            $product = Product::find($productId);
+            if (!$product) {
+                CleanError::show('Product not found. Please refresh and try again.');
+                return null;
+            }
             $product->delete();
             return $product;
-        } catch (\Exception $e) {
-            throw new \Exception("Failed to delete product: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to delete product.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
         }
     }
 
@@ -111,7 +131,8 @@ class ProductionApprovalService
         $ids = $request->payload['ids'] ?? [];
 
         if (empty($ids)) {
-            throw new \Exception("No product IDs found in approval request");
+            CleanError::show('No product IDs found in approval request.');
+            return [];
         }
 
         try {
@@ -124,8 +145,11 @@ class ProductionApprovalService
                 }
             }
             return $deleted;
-        } catch (\Exception $e) {
-            throw new \Exception("Failed to delete products: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to delete products.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return [];
         }
     }
 
@@ -143,11 +167,13 @@ class ProductionApprovalService
         $departmentId = $payload['department_id'] ?? null;
 
         if ($type === 'sales_department' && empty($productIds)) {
-            throw new \Exception("No product IDs found in approval request");
+            CleanError::show('No product IDs found in approval request.');
+            return ['products_updated' => 0, 'recipe_updated' => false];
         }
 
         if ($type === 'recipe' && ! $productId) {
-            throw new \Exception("No product ID found in approval request");
+            CleanError::show('No product ID found in approval request.');
+            return ['products_updated' => 0, 'recipe_updated' => false];
         }
 
         $results = [
@@ -158,7 +184,8 @@ class ProductionApprovalService
         try {
             if ($type === 'sales_department') {
                 if (! $salesDepartmentId) {
-                    throw new \Exception("No sales department provided");
+                    CleanError::show('No sales department provided.');
+                    return $results;
                 }
 
                 $results['products_updated'] = Product::whereIn('id', $productIds)
@@ -167,18 +194,29 @@ class ProductionApprovalService
 
             if ($type === 'recipe') {
                 if (! $recipeId) {
-                    throw new \Exception("No recipe provided");
+                    CleanError::show('No recipe provided.');
+                    return $results;
                 }
 
-                $product = Product::findOrFail($productId);
-                $recipe = Recipe::findOrFail($recipeId);
+                $product = Product::find($productId);
+                if (!$product) {
+                    CleanError::show('Product not found. Please refresh and try again.');
+                    return $results;
+                }
+                $recipe = Recipe::find($recipeId);
+                if (!$recipe) {
+                    CleanError::show('Recipe not found. Please refresh and try again.');
+                    return $results;
+                }
 
                 if ($request->branch_id && $recipe->branch_id !== $request->branch_id) {
-                    throw new \Exception("Recipe branch mismatch");
+                    CleanError::show('Recipe branch mismatch.');
+                    return $results;
                 }
 
                 if ($departmentId && $recipe->department_id !== $departmentId) {
-                    throw new \Exception("Recipe department mismatch");
+                    CleanError::show('Recipe department mismatch.');
+                    return $results;
                 }
 
                 $recipe->update([
@@ -192,8 +230,11 @@ class ProductionApprovalService
             }
 
             return $results;
-        } catch (\Exception $e) {
-            throw new \Exception("Failed to execute product assignments: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to execute product assignments.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return ['products_updated' => 0, 'recipe_updated' => false];
         }
     }
 
@@ -311,14 +352,17 @@ class ProductionApprovalService
             ]);
 
             return $recipe;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('❌ [RECIPE CREATION] Recipe creation failed', [
                 'error_message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            throw new \Exception("Failed to create recipe: " . $e->getMessage());
+            CleanError::show('Failed to create recipe.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
         }
     }
 
@@ -337,11 +381,13 @@ class ProductionApprovalService
             $actor = $request->requester;  // Use property, not method
 
             if (!$recipeId) {
-                throw new \Exception("Recipe ID not found in approval request");
+                CleanError::show('Recipe ID not found in approval request.');
+                return null;
             }
 
             if (!$actor) {
-                throw new \Exception("Requester not found for recipe update");
+                CleanError::show('Requester not found for recipe update.');
+                return null;
             }
 
             \Log::info('✅ [RECIPE UPDATE] Validation passed', [
@@ -350,7 +396,11 @@ class ProductionApprovalService
             ]);
 
             \Log::info('🔵 [RECIPE UPDATE] Fetching recipe', ['recipe_id' => $recipeId]);
-            $recipe = Recipe::findOrFail($recipeId);
+            $recipe = Recipe::find($recipeId);
+            if (!$recipe) {
+                CleanError::show('Recipe not found. Please refresh and try again.');
+                return null;
+            }
 
             \Log::info('✅ [RECIPE UPDATE] Recipe found, starting transaction');
             DB::transaction(function () use ($recipe, $payload, $actor) {
@@ -403,14 +453,17 @@ class ProductionApprovalService
             ]);
 
             return $recipe;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('❌ [RECIPE UPDATE] Recipe update failed', [
                 'error_message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            throw new \Exception("Failed to update recipe: " . $e->getMessage());
+            CleanError::show('Failed to update recipe.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
         }
     }
 
@@ -428,11 +481,13 @@ class ProductionApprovalService
             $actor = $request->requester;  // Use property, not method
 
             if (!$recipeId) {
-                throw new \Exception("Recipe ID not found in approval request");
+                CleanError::show('Recipe ID not found in approval request.');
+                return null;
             }
 
             if (!$actor) {
-                throw new \Exception("Requester not found for recipe deletion");
+                CleanError::show('Requester not found for recipe deletion.');
+                return null;
             }
 
             \Log::info('✅ [RECIPE DELETION] Validation passed', [
@@ -441,7 +496,11 @@ class ProductionApprovalService
             ]);
 
             \Log::info('🔵 [RECIPE DELETION] Fetching recipe', ['recipe_id' => $recipeId]);
-            $recipe = Recipe::findOrFail($recipeId);
+            $recipe = Recipe::find($recipeId);
+            if (!$recipe) {
+                CleanError::show('Recipe not found. Please refresh and try again.');
+                return null;
+            }
 
             \Log::info('✅ [RECIPE DELETION] Recipe found, starting deletion', [
                 'product_name' => $recipe->product_name,
@@ -470,14 +529,17 @@ class ProductionApprovalService
             ]);
 
             return $recipe;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('❌ [RECIPE DELETION] Recipe deletion failed', [
                 'error_message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            throw new \Exception("Failed to delete recipe: " . $e->getMessage());
+            CleanError::show('Failed to delete recipe.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
         }
     }
 
@@ -495,11 +557,13 @@ class ProductionApprovalService
             $actor = $request->requester;
 
             if (empty($ids)) {
-                throw new \Exception("No recipe IDs found in approval request");
+                CleanError::show('No recipe IDs found in approval request.');
+                return [];
             }
 
             if (!$actor) {
-                throw new \Exception("Requester not found for recipe bulk deletion");
+                CleanError::show('Requester not found for recipe bulk deletion.');
+                return [];
             }
 
             \Log::info('✅ [RECIPE BULK DELETION] Validation passed', [
@@ -543,14 +607,17 @@ class ProductionApprovalService
             ]);
 
             return $deleted;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('❌ [RECIPE BULK DELETION] Bulk deletion failed', [
                 'error_message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            throw new \Exception("Failed to delete recipes: " . $e->getMessage());
+            CleanError::show('Failed to delete recipes.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return [];
         }
     }
 

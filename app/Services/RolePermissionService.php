@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Models\User;
 use App\Models\RoleCategoryConstraint;
 use Illuminate\Database\Eloquent\Model;
@@ -74,19 +75,22 @@ class RolePermissionService
         string $guardName,
         array $permissions = [],
         string $description = ''
-    ): Role {
+    ): ?Role {
         // Validate role name
         if (empty(trim($name))) {
-            throw new \Exception('Role name cannot be empty');
+            CleanError::show('Role name cannot be empty.');
+            return null;
         }
 
         if (strlen($name) > 255) {
-            throw new \Exception('Role name too long (max 255 characters)');
+            CleanError::show('Role name too long (max 255 characters).');
+            return null;
         }
 
         // Check if role already exists
         if (Role::where('name', $name)->where('guard_name', $guardName)->exists()) {
-            throw new \Exception("Role '{$name}' already exists for guard '{$guardName}'");
+            CleanError::show("Role '{$name}' already exists for guard '{$guardName}'.");
+            return null;
         }
 
         // Log role creation
@@ -119,13 +123,18 @@ class RolePermissionService
      *
      * @throws \Exception
      */
-    public static function updateRole(int $roleId, array $updates): Role
+    public static function updateRole(int $roleId, array $updates): ?Role
     {
-        $role = Role::findOrFail($roleId);
+        $role = Role::find($roleId);
+        if (!$role) {
+            CleanError::show('Role not found. Please refresh and try again.');
+            return null;
+        }
 
         // Prevent modifying protected roles
         if ($role->is_protected && ! self::isSuperAdmin()) {
-            throw new \Exception("Cannot modify protected role: {$role->name}");
+            CleanError::show("Cannot modify protected role: {$role->name}.");
+            return null;
         }
 
         // Log update
@@ -150,20 +159,25 @@ class RolePermissionService
      */
     public static function deleteRole(int $roleId): bool
     {
-        $role = Role::findOrFail($roleId);
+        $role = Role::find($roleId);
+        if (!$role) {
+            CleanError::show('Role not found. Please refresh and try again.');
+            return false;
+        }
 
         // Prevent deleting protected roles
         if ($role->is_protected) {
-            throw new \Exception("Cannot delete protected role: {$role->name}");
+            CleanError::show("Cannot delete protected role: {$role->name}.");
+            return false;
         }
 
         // Check if role is assigned to users
         $userCount = $role->users()->count();
         if ($userCount > 0) {
-            throw new \Exception(
-                "Cannot delete role assigned to {$userCount} user(s). ".
-                'Remove the role from all users first.'
+            CleanError::show(
+                "Cannot delete role assigned to {$userCount} user(s). Remove the role from all users first."
             );
+            return false;
         }
 
         // Log deletion
@@ -187,17 +201,22 @@ class RolePermissionService
      */
     public static function assignRoleToUser(Model $user, string $roleName): bool
     {
-        $role = Role::where('name', $roleName)->firstOrFail();
+        $role = Role::where('name', $roleName)->first();
+        if (!$role) {
+            CleanError::show("Role '{$roleName}' not found.");
+            return false;
+        }
 
         // Check authorization
         if (! self::canAssignRole($role)) {
-            throw new \Exception(
-                "You don't have permission to assign '{$roleName}' role"
-            );
+            CleanError::show("You don't have permission to assign '{$roleName}' role.");
+            return false;
         }
 
         // Validate department-role compatibility
-        self::validateRoleForDepartment($user, $roleName);
+        if (! self::validateRoleForDepartment($user, $roleName)) {
+            return false;
+        }
 
         // Log assignment
         Log::info('Role assigned to user', [
@@ -221,7 +240,11 @@ class RolePermissionService
      */
     public static function removeRoleFromUser(Model $user, string $roleName): bool
     {
-        $role = Role::where('name', $roleName)->firstOrFail();
+        $role = Role::where('name', $roleName)->first();
+        if (!$role) {
+            CleanError::show("Role '{$roleName}' not found.");
+            return false;
+        }
 
         // Prevent removing protected roles from last admin
         if ($role->is_protected && $user->hasRole($roleName)) {
@@ -231,10 +254,10 @@ class RolePermissionService
                 ->users_count ?? 0;
 
             if ($adminCount <= 1) {
-                throw new \Exception(
-                    "Cannot remove last '{$roleName}' from the system. ".
-                    'At least one user must have this role.'
+                CleanError::show(
+                    "Cannot remove last '{$roleName}' from the system. At least one user must have this role."
                 );
+                return false;
             }
         }
 
@@ -277,13 +300,18 @@ class RolePermissionService
      *
      * @throws \Exception
      */
-    public static function syncRolePermissions(int $roleId, array $permissionIds): Role
+    public static function syncRolePermissions(int $roleId, array $permissionIds): ?Role
     {
-        $role = Role::findOrFail($roleId);
+        $role = Role::find($roleId);
+        if (!$role) {
+            CleanError::show('Role not found. Please refresh and try again.');
+            return null;
+        }
 
         // Prevent modifying protected roles
         if ($role->is_protected && ! self::isSuperAdmin()) {
-            throw new \Exception("Cannot modify permissions for protected role: {$role->name}");
+            CleanError::show("Cannot modify permissions for protected role: {$role->name}.");
+            return null;
         }
 
         $permissions = Permission::whereIn('id', $permissionIds)
@@ -315,24 +343,26 @@ class RolePermissionService
         string $guardName,
         string $description = '',
         string $category = 'general'
-    ): Permission {
+    ): ?Permission {
         if (empty(trim($name))) {
-            throw new \Exception('Permission name cannot be empty');
+            CleanError::show('Permission name cannot be empty.');
+            return null;
         }
 
         if (strlen($name) > 255) {
-            throw new \Exception('Permission name too long (max 255 characters)');
+            CleanError::show('Permission name too long (max 255 characters).');
+            return null;
         }
 
         // Validate permission naming convention
         if (! preg_match('/^[a-z0-9\-]+$/', $name)) {
-            throw new \Exception(
-                'Permission name must contain only lowercase letters, numbers, and hyphens'
-            );
+            CleanError::show('Permission name must contain only lowercase letters, numbers, and hyphens.');
+            return null;
         }
 
         if (Permission::where('name', $name)->where('guard_name', $guardName)->exists()) {
-            throw new \Exception("Permission '{$name}' already exists");
+            CleanError::show("Permission '{$name}' already exists.");
+            return null;
         }
 
         // Log creation
@@ -364,20 +394,25 @@ class RolePermissionService
      */
     public static function deletePermission(int $permissionId): bool
     {
-        $permission = Permission::findOrFail($permissionId);
+        $permission = Permission::find($permissionId);
+        if (!$permission) {
+            CleanError::show('Permission not found. Please refresh and try again.');
+            return false;
+        }
 
         // Prevent deleting protected permissions
         if ($permission->is_protected) {
-            throw new \Exception("Cannot delete protected permission: {$permission->name}");
+            CleanError::show("Cannot delete protected permission: {$permission->name}.");
+            return false;
         }
 
         // Check if permission is in use
         $roleCount = $permission->roles()->count();
         if ($roleCount > 0) {
-            throw new \Exception(
-                "Cannot delete permission assigned to {$roleCount} role(s). ".
-                'Remove the permission from all roles first.'
+            CleanError::show(
+                "Cannot delete permission assigned to {$roleCount} role(s). Remove the permission from all roles first."
             );
+            return false;
         }
 
         // Log deletion
@@ -502,7 +537,10 @@ class RolePermissionService
      */
     public static function getRolePermissions(int $roleId): array
     {
-        $role = Role::findOrFail($roleId);
+        $role = Role::find($roleId);
+        if (!$role) {
+            return [];
+        }
 
         return $role->permissions()->get()->toArray();
     }
@@ -512,7 +550,10 @@ class RolePermissionService
      */
     public static function roleHasAllPermissions(int $roleId, array $permissionNames): bool
     {
-        $role = Role::findOrFail($roleId);
+        $role = Role::find($roleId);
+        if (!$role) {
+            return false;
+        }
         $rolePermissions = $role->permissions()->pluck('name')->toArray();
 
         foreach ($permissionNames as $permission) {
@@ -671,11 +712,11 @@ class RolePermissionService
      *
      * @throws \Exception
      */
-    public static function validateRoleForDepartment(Model $user, string $roleName): void
+    public static function validateRoleForDepartment(Model $user, string $roleName): bool
     {
         // Super admins can assign any role regardless of department constraints
         if (self::isSuperAdmin()) {
-            return;
+            return true;
         }
 
         // If there are no active constraints for this role, allow assignment
@@ -684,38 +725,39 @@ class RolePermissionService
             ->get();
 
         if ($constraints->isEmpty()) {
-            return;
+            return true;
         }
 
         if (! isset($user->department_id) || ! $user->department_id) {
-            throw new \Exception('User must be assigned to a department before assigning roles');
+            CleanError::show('User must be assigned to a department before assigning roles.');
+            return false;
         }
 
         $department = \App\Models\Department::find($user->department_id);
         if (! $department) {
-            throw new \Exception('User department not found');
+            CleanError::show('User department not found.');
+            return false;
         }
 
         foreach ($constraints as $constraint) {
             if ($constraint->department_type === 'branch_wide') {
-                return;
+                return true;
             }
 
             if ($constraint->department_type === 'category_wide') {
                 if (! $constraint->category_id || $department->category_id === $constraint->category_id) {
-                    return;
+                    return true;
                 }
             }
 
             if ($constraint->department_type === 'specific') {
                 if (in_array($department->slug, $constraint->allowed_department_slugs ?? [], true)) {
-                    return;
+                    return true;
                 }
             }
         }
 
-        throw new \Exception(
-            "The \"{$roleName}\" role is not allowed for this employee's department."
-        );
+        CleanError::show("The \"{$roleName}\" role is not allowed for this employee's department.");
+        return false;
     }
 }

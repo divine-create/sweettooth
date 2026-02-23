@@ -343,9 +343,10 @@
                     'on_probation' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
                     'on_leave' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
                 ];
+                $statusLabel = $row->employment_status ?? ($row->is_active ? 'active' : 'inactive');
             @endphp
-            <span class="px-2 py-1 text-xs font-semibold rounded-full border border-zinc-300 dark:border-zinc-600 {{ $statusColors[$row->status] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' }}">
-                {{ ucfirst(str_replace('_', ' ', $row->status)) }}
+            <span class="px-2 py-1 text-xs font-semibold rounded-full border border-zinc-300 dark:border-zinc-600 {{ $statusColors[$statusLabel] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' }}">
+                {{ ucfirst(str_replace('_', ' ', $statusLabel)) }}
             </span>
         @endinteract
 

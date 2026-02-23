@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\DepartmentReport;
 use App\Services\Reports\Definitions\SalesPerformanceDefinition;
 use App\Services\Reports\SalesPerformanceReportService;
+use App\Services\SidebarVisibilityService;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -43,6 +44,11 @@ class Index extends Component
 
     public function mount(?string $salesDeptSlug = null)
     {
+        $user = auth()->user();
+        if (!SidebarVisibilityService::isSalesAdminRole($user) && !SidebarVisibilityService::isAdmin($user) && !SidebarVisibilityService::isSuperAdmin($user)) {
+            abort(403, 'Sales report access is restricted to Sales Managers.');
+        }
+
         $this->branchId = current_branch_id();
         $this->salesDeptSlug = $salesDeptSlug;
         $this->initSalesDepartments($this->branchId);

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboards;
 
+use App\Helpers\CleanError;
 use App\Helpers\Settings;
 use App\Services\CurrencyFormattingService;
 use Livewire\Component;
@@ -274,6 +275,15 @@ abstract class BaseDashboard extends Component
             'exception' => $e,
         ]);
 
-        session()->flash('error', "Failed to load {$operation}. Please try again.");
+        $message = "Failed to load {$operation}. Please try again.";
+        session()->flash('error', $message);
+
+        if (method_exists($this, 'toast')) {
+            CleanError::show($message, $e, [
+                'operation' => $operation,
+                'branch_id' => $this->getBranchId(),
+                'user_id' => $userId,
+            ], $this);
+        }
     }
 }

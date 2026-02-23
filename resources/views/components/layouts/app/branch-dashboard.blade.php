@@ -138,10 +138,6 @@
                     :current="request()->routeIs('branch-dashboard.shift-management.configuration')" wire:navigate>
                     {{ __('Shift Configuration') }}
                 </flux:navlist.item>
-                <flux:navlist.item icon="user-group" :href="branch_route('branch-dashboard.shift-management.assignment')"
-                    :current="request()->routeIs('branch-dashboard.shift-management.assignment')" wire:navigate>
-                    {{ __('Shift Assignment') }}
-                </flux:navlist.item>
             </flux:navlist.group>
             @endif
             {{-- ==================== END SHIFT MANAGEMENT ==================== --}}
@@ -679,7 +675,7 @@
                 $isSalesManager = $currentUser?->hasRole('Sales Manager') ?? false;
                 $isSalesStaff = $currentUser?->hasRole('Sales Staff') ?? false;
                 $canSeeAllSalesDepartments = $isSuperAdmin || $isAdmin || $isSalesSupervisor;
-                $canSeeSalesReports = !$isSalesStaff;
+                $canSeeSalesReports = $sidebarService::isSalesAdminRole($currentUser) || $isSuperAdmin || $isAdmin;
 
                 if (!$isHrOnly && ($branchId || $isSuperAdmin) && $sidebarService::canSeeSalesManagement($currentUser)) {
                     $excludedSalesRoutes = [

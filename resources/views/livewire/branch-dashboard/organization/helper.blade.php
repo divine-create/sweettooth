@@ -415,35 +415,6 @@
                         </div>
                     </div>
 
-                    {{-- Shift Assignment --}}
-                    <div class="bg-gray-50 dark:bg-zinc-700 rounded-lg p-4 border-t-4 border-green-500">
-                        <div class="flex items-center mb-3">
-                            <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                </svg>
-                            </div>
-                            <h3 class="font-semibold text-gray-900 dark:text-white">Shift Assignment</h3>
-                        </div>
-                        <div class="space-y-2 text-sm text-gray-600 dark:text-gray-300 mb-3">
-                            <div>• Assign shifts to employees</div>
-                            <div>• Schedule by date</div>
-                            <div>• Filter by department</div>
-                            <div>• View assigned shifts</div>
-                            <div>• Remove assignments</div>
-                        </div>
-                        <div class="bg-white dark:bg-zinc-600 rounded p-2 text-xs">
-                            <strong>📋 Assignment Process:</strong>
-                            <ol class="mt-1 space-y-1 list-decimal list-inside">
-                                <li>Select employee</li>
-                                <li>Choose shift date</li>
-                                <li>Pick shift configuration</li>
-                                <li>Select department</li>
-                                <li>Add notes (optional)</li>
-                            </ol>
-                        </div>
-                    </div>
-
                     {{-- Shift Monitoring --}}
                     <div class="bg-gray-50 dark:bg-zinc-700 rounded-lg p-4 border-t-4 border-purple-500">
                         <div class="flex items-center mb-3">

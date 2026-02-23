@@ -145,7 +145,16 @@ class Index extends BaseComponent
                 });
             })
             ->when($this->filterStatus, function ($query) {
-                $query->where('status', $this->filterStatus);
+                $status = $this->filterStatus;
+
+                if (in_array($status, ['active', 'inactive'], true)) {
+                    $query->where(function ($q) use ($status) {
+                        $q->where('employment_status', $status)
+                            ->orWhere('is_active', $status === 'active');
+                    });
+                } else {
+                    $query->where('employment_status', $status);
+                }
             })
             ->when($this->filterDepartment, function ($query) {
                 $query->where('department_id', $this->filterDepartment);
@@ -297,7 +306,8 @@ class Index extends BaseComponent
         foreach ($employees as $employee) {
             $branchName = $employee->branch ? $employee->branch->name : 'N/A';
             $deptName = $employee->department ? $employee->department->name : 'N/A';
-            $csv .= "\"{$employee->employee_number}\",\"{$employee->name}\",\"{$employee->email}\",\"{$employee->position}\",\"{$deptName}\",\"{$branchName}\",\"{$employee->status}\",\"{$employee->hire_date}\",\"{$employee->salary}\"\n";
+            $status = $employee->employment_status ?? ($employee->is_active ? 'active' : 'inactive');
+            $csv .= "\"{$employee->employee_number}\",\"{$employee->name}\",\"{$employee->email}\",\"{$employee->position}\",\"{$deptName}\",\"{$branchName}\",\"{$status}\",\"{$employee->hire_date}\",\"{$employee->salary}\"\n";
         }
 
         return response()->streamDownload(function () use ($csv) {

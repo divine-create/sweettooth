@@ -35,7 +35,7 @@ class AdminDashboard extends Component
             'total_employees' => Employee::when($currentBranchId, function($q) use ($currentBranchId) {
                 return $q->where('branch_id', $currentBranchId);
             })->count(),
-            'active_employees' => Employee::where('status', 'active')->when($currentBranchId, function($q) use ($currentBranchId) {
+            'active_employees' => Employee::where('is_active', true)->when($currentBranchId, function($q) use ($currentBranchId) {
                 return $q->where('branch_id', $currentBranchId);
             })->count(),
             'branches_managed' => Branch::count(),

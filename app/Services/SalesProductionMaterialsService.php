@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Enums\ProductionRequestSourceType;
 use App\Enums\SalesProductionRequestStatus;
 use App\Models\Department;
@@ -11,14 +12,13 @@ use App\Models\ProductionRequest;
 use App\Models\Recipe;
 use App\Models\SalesProductionItemMaterialRequest;
 use App\Models\SalesProductionRequestItem;
-use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Services\UomConversionService;
 
 class SalesProductionMaterialsService
 {
-    public function requestMaterials(SalesProductionRequestItem $item): SalesProductionItemMaterialRequest
+    public function requestMaterials(SalesProductionRequestItem $item): ?SalesProductionItemMaterialRequest
     {
         return DB::transaction(function () use ($item) {
             $item = SalesProductionRequestItem::query()
@@ -30,10 +30,15 @@ class SalesProductionMaterialsService
                     'latestMaterialRequest.itemRequest',
                 ])
                 ->lockForUpdate()
-                ->findOrFail($item->id);
+                ->find($item->id);
+            if (! $item) {
+                CleanError::show('Sales request item not found. Please refresh and try again.');
+                return null;
+            }
 
             if (! $item->request) {
-                throw new DomainException('Sales request header is missing for this item.');
+                CleanError::show('Sales request header is missing for this item.');
+                return null;
             }
 
             $currentStatus = $this->normalizeStatus($item->status);
@@ -41,9 +46,10 @@ class SalesProductionMaterialsService
                 $currentStatus !== SalesProductionRequestStatus::APPROVED_BY_PRODUCTION
                 && $currentStatus !== SalesProductionRequestStatus::MATERIALS_REQUESTED
             ) {
-                throw new DomainException(
+                CleanError::show(
                     "Materials can only be requested from approved items. Current status: {$currentStatus->value}"
                 );
+                return null;
             }
 
             $existingLink = $item->latestMaterialRequest;
@@ -59,7 +65,8 @@ class SalesProductionMaterialsService
 
             $recipe = $this->resolveRecipe($item);
             if (! $recipe) {
-                throw new DomainException("No active recipe found for sales request item {$item->id}.");
+                CleanError::show("No active recipe found for sales request item {$item->id}.");
+                return null;
             }
 
             $requestedBaseQuantity = $this->resolveRequestedBaseQuantity($item);
@@ -70,20 +77,23 @@ class SalesProductionMaterialsService
             $ingredients = $recipe->calculateIngredientsForQuantity($plannedQuantity);
 
             if (empty($ingredients)) {
-                throw new DomainException(
+                CleanError::show(
                     "Recipe '{$recipe->product_name}' has no ingredients defined. Add ingredients before requesting materials."
                 );
+                return null;
             }
 
             $actor = current_actor();
             if (! $actor) {
-                throw new DomainException('Unable to determine current actor for material request creation.');
+                CleanError::show('Unable to determine current actor for material request creation.');
+                return null;
             }
 
             $branchId = (string) $item->request->branch_id;
             $department = $item->productionDepartment ?? Department::query()->find($item->production_department_id);
             if (! $department) {
-                throw new DomainException('Production department is missing for this sales request item.');
+                CleanError::show('Production department is missing for this sales request item.');
+                return null;
             }
 
             $deptCode = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $department->name) ?: 'PROD', 0, 4));
@@ -120,9 +130,10 @@ class SalesProductionMaterialsService
                 $uomId = isset($ingredient['uom_id']) ? (int) $ingredient['uom_id'] : 0;
 
                 if ($ingredientItemId <= 0 || $quantity <= 0 || $uomId <= 0) {
-                    throw new DomainException(
+                    CleanError::show(
                         "Invalid ingredient mapping detected for recipe '{$recipe->product_name}'. Check item and UOM setup."
                     );
+                    return null;
                 }
 
                 ItemRequestDetail::create([
@@ -138,7 +149,8 @@ class SalesProductionMaterialsService
             }
 
             if ($detailsCreated === 0) {
-                throw new DomainException('No item request details were created for the material request.');
+                CleanError::show('No item request details were created for the material request.');
+                return null;
             }
 
             $link = SalesProductionItemMaterialRequest::create([
@@ -159,11 +171,15 @@ class SalesProductionMaterialsService
         });
     }
 
-    public function syncItemMaterialsApproval(SalesProductionRequestItem $item): SalesProductionRequestItem
+    public function syncItemMaterialsApproval(SalesProductionRequestItem $item): ?SalesProductionRequestItem
     {
         $item = SalesProductionRequestItem::query()
             ->with(['latestMaterialRequest.itemRequest', 'request'])
-            ->findOrFail($item->id);
+            ->find($item->id);
+        if (! $item) {
+            CleanError::show('Sales request item not found. Please refresh and try again.');
+            return null;
+        }
 
         if ($this->normalizeStatus($item->status) !== SalesProductionRequestStatus::MATERIALS_REQUESTED) {
             return $item;
@@ -277,7 +293,8 @@ class SalesProductionMaterialsService
     private function calculatePlannedQuantity(float $requestedUnits, float $yieldQuantity): float
     {
         if ($requestedUnits <= 0) {
-            throw new DomainException('Requested quantity must be greater than zero.');
+            CleanError::show('Requested quantity must be greater than zero.');
+            return 0.0;
         }
 
         if ($yieldQuantity <= 0) {

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Models\ApprovalAuditRequest;
 use App\Models\Employee;
 use App\Models\User;
@@ -16,14 +17,19 @@ class InventoryApprovalService
     /**
      * Create a pending stock adjustment request
      */
-    public static function requestStockAdjustment(Employee|User $requester, int $stockId, array $adjustments, string $reason): ApprovalAuditRequest
+    public static function requestStockAdjustment(Employee|User $requester, int $stockId, array $adjustments, string $reason): ?ApprovalAuditRequest
     {
         // Validate stock exists
         if (!$stockId) {
-            throw new \Exception('Stock ID is required for adjustment request');
+            CleanError::show('Stock ID is required for adjustment request.');
+            return null;
         }
 
-        $stock = Stock::with('item')->findOrFail($stockId);
+        $stock = Stock::with('item')->find($stockId);
+        if (!$stock) {
+            CleanError::show('Stock not found. Please refresh and try again.');
+            return null;
+        }
 
         $request = ApprovalAuditRequest::create([
             'branch_id' => $requester instanceof User ? current_branch_id() : $requester->branch_id,
@@ -69,20 +75,26 @@ class InventoryApprovalService
     /**
      * Execute a pending stock adjustment after approval
      */
-    public static function executeStockAdjustment(ApprovalAuditRequest $request): Stock
+    public static function executeStockAdjustment(ApprovalAuditRequest $request): ?Stock
     {
-        return DB::transaction(function () use ($request) {
-            $approver =  current_actor();
-            $payload = $request->payload;
-            $stockItemId = $payload['stock_item_id'] ?? null;
+        try {
+            return DB::transaction(function () use ($request) {
+                $approver =  current_actor();
+                $payload = $request->payload;
+                $stockItemId = $payload['stock_item_id'] ?? null;
 
-            if (!$stockItemId) {
-                throw new \Exception('Invalid stock item ID in approval payload');
-            }
+                if (!$stockItemId) {
+                    CleanError::show('Invalid stock item ID in approval payload.');
+                    return null;
+                }
 
-            $stock = Stock::where('id', $stockItemId)
-                ->where('branch_id', $request->branch_id)
-                ->firstOrFail();
+                $stock = Stock::where('id', $stockItemId)
+                    ->where('branch_id', $request->branch_id)
+                    ->first();
+                if (!$stock) {
+                    CleanError::show('Stock not found for approval request.');
+                    return null;
+                }
 
             $oldQuantity = (float) $stock->quantity_available;
             $newQuantity = (float) ($payload['quantity_available'] ?? 0);
@@ -155,8 +167,14 @@ class InventoryApprovalService
                 ]);
             }
 
-            return $stock;
-        });
+                return $stock;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to execute stock adjustment.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
@@ -176,11 +194,12 @@ class InventoryApprovalService
     /**
      * Create a pending item creation request
      */
-    public static function requestItemCreation(Employee|User $requester, array $itemData, string $reason): ApprovalAuditRequest
+    public static function requestItemCreation(Employee|User $requester, array $itemData, string $reason): ?ApprovalAuditRequest
     {
         // Validate required fields
         if (empty($itemData['name']) || empty($itemData['sku'])) {
-            throw new \Exception('Item name and SKU are required for creation request');
+            CleanError::show('Item name and SKU are required for creation request.');
+            return null;
         }
 
         $request = ApprovalAuditRequest::create([
@@ -221,11 +240,12 @@ class InventoryApprovalService
     /**
      * Execute a pending item creation after approval
      */
-    public static function executeItemCreation(ApprovalAuditRequest $request): Item
+    public static function executeItemCreation(ApprovalAuditRequest $request): ?Item
     {
-        return DB::transaction(function () use ($request) {
+        try {
+            return DB::transaction(function () use ($request) {
 
-            $payload = $request->payload;
+                $payload = $request->payload;
 
             $item = Item::create([
                 'branch_id' => $request->branch_id,
@@ -250,21 +270,32 @@ class InventoryApprovalService
                 'health_status' => 'good',
             ]);
 
-            return $item;
-        });
+                return $item;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to create item.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
      * Create a pending item update request
      */
-    public static function requestItemUpdate(Employee|User $requester, int $itemId, array $changes, string $reason): ApprovalAuditRequest
+    public static function requestItemUpdate(Employee|User $requester, int $itemId, array $changes, string $reason): ?ApprovalAuditRequest
     {
         // Validate item exists
         if (!$itemId) {
-            throw new \Exception('Item ID is required for update request');
+            CleanError::show('Item ID is required for update request.');
+            return null;
         }
 
-        $item = Item::findOrFail($itemId);
+        $item = Item::find($itemId);
+        if (!$item) {
+            CleanError::show('Item not found. Please refresh and try again.');
+            return null;
+        }
 
         $request = ApprovalAuditRequest::create([
             'branch_id' => $requester instanceof User ? current_branch_id() : $requester->branch_id,
@@ -297,15 +328,25 @@ class InventoryApprovalService
     /**
      * Execute a pending item update after approval
      */
-    public static function executeItemUpdate(ApprovalAuditRequest $request): Item
+    public static function executeItemUpdate(ApprovalAuditRequest $request): ?Item
     {
-        return DB::transaction(function () use ($request) {
-            $payload = $request->payload;
-            $itemId = $payload['item_id'];
+        try {
+            return DB::transaction(function () use ($request) {
+                $payload = $request->payload;
+                $itemId = $payload['item_id'] ?? null;
 
-            $item = Item::where('id', $itemId)
-                ->where('branch_id', $request->branch_id)
-                ->firstOrFail();
+                if (!$itemId) {
+                    CleanError::show('Invalid item ID in approval payload.');
+                    return null;
+                }
+
+                $item = Item::where('id', $itemId)
+                    ->where('branch_id', $request->branch_id)
+                    ->first();
+                if (!$item) {
+                    CleanError::show('Item not found for approval request.');
+                    return null;
+                }
 
             // Remove item_id from payload for update
             $updateData = array_filter($payload, fn($key) => $key !== 'item_id', ARRAY_FILTER_USE_KEY);
@@ -320,14 +361,20 @@ class InventoryApprovalService
 
             $item->update($updateData);
 
-            return $item;
-        });
+                return $item;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to update item.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
      * Create a pending item deletion request
      */
-    public static function requestItemDeletion(Employee|User $requester, int $itemId, string $reason, array $deletionData = []): ApprovalAuditRequest
+    public static function requestItemDeletion(Employee|User $requester, int $itemId, string $reason, array $deletionData = []): ?ApprovalAuditRequest
     {
         $payload = ['item_id' => $itemId];
 
@@ -347,7 +394,11 @@ class InventoryApprovalService
         ]);
 
         // Log the approval request
-        $item = Item::findOrFail($itemId);
+        $item = Item::find($itemId);
+        if (!$item) {
+            CleanError::show('Item not found. Please refresh and try again.');
+            return null;
+        }
         
         // Build log message with related data summary
         $logMessage = "Requested item deletion approval for '{$item->name}' (SKU: {$item->sku}). ";
@@ -393,15 +444,25 @@ class InventoryApprovalService
      * - Stock and purchase data are cascaded as configured in models
      * - Item request details are also deleted
      */
-    public static function executeItemDeletion(ApprovalAuditRequest $request, Employee|User $approver): void
+    public static function executeItemDeletion(ApprovalAuditRequest $request, Employee|User $approver): bool
     {
-        DB::transaction(function () use ($request, $approver) {
-            $payload = $request->payload;
-            $itemId = $payload['item_id'];
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $payload = $request->payload;
+                $itemId = $payload['item_id'] ?? null;
 
-            $item = Item::where('id', $itemId)
-                ->where('branch_id', $request->branch_id)
-                ->firstOrFail();
+                if (!$itemId) {
+                    CleanError::show('Invalid item ID in approval payload.');
+                    return false;
+                }
+
+                $item = Item::where('id', $itemId)
+                    ->where('branch_id', $request->branch_id)
+                    ->first();
+                if (!$item) {
+                    CleanError::show('Item not found for approval request.');
+                    return false;
+                }
 
             $itemName = $item->name;
             $itemSku = $item->sku;
@@ -458,19 +519,26 @@ class InventoryApprovalService
             );
 
             // Mark request as approved
-            $request->update([
+                $request->update([
                 'approver_id' => $approver->id,
                 'approver_type' => Employee::class,
                 'status' => 'approved',
                 'approved_at' => now(),
             ]);
-        });
+                return true;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to delete item.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return false;
+        }
     }
 
     /**
      * Create a pending purchase creation request
      */
-    public static function requestPurchaseCreation(Employee|User $requester, array $purchaseData, string $reason): ApprovalAuditRequest
+    public static function requestPurchaseCreation(Employee|User $requester, array $purchaseData, string $reason): ?ApprovalAuditRequest
     {
         $request = ApprovalAuditRequest::create([
             'branch_id' => $requester instanceof User ? current_branch_id() : $requester->branch_id,
@@ -516,7 +584,7 @@ class InventoryApprovalService
     /**
      * Create a pending purchase deletion request
      */
-    public static function requestPurchaseDeletion(Employee|User $requester, int $purchaseId, string $reason): ApprovalAuditRequest
+    public static function requestPurchaseDeletion(Employee|User $requester, int $purchaseId, string $reason): ?ApprovalAuditRequest
     {
         $request = ApprovalAuditRequest::create([
             'branch_id' => $requester instanceof User ? current_branch_id() : $requester->branch_id,
@@ -529,7 +597,11 @@ class InventoryApprovalService
         ]);
 
         // Log the approval request
-        $purchase = Purchase::findOrFail($purchaseId);
+        $purchase = Purchase::find($purchaseId);
+        if (!$purchase) {
+            CleanError::show('Purchase not found. Please refresh and try again.');
+            return null;
+        }
         AuditService::log(
             $requester,
             'create',
@@ -545,25 +617,43 @@ class InventoryApprovalService
     /**
      * Execute a pending purchase deletion after approval
      */
-    public static function executePurchaseDeletion(ApprovalAuditRequest $request, Employee|User $approver): void
+    public static function executePurchaseDeletion(ApprovalAuditRequest $request, Employee|User $approver): bool
     {
-        DB::transaction(function () use ($request, $approver) {
-            $payload = $request->payload;
-            $purchaseId = $payload['purchase_id'];
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $payload = $request->payload;
+                $purchaseId = $payload['purchase_id'] ?? null;
 
-            $purchase = Purchase::where('id', $purchaseId)
-                ->where('branch_id', $request->branch_id)
-                ->firstOrFail();
+                if (!$purchaseId) {
+                    CleanError::show('Invalid purchase ID in approval payload.');
+                    return false;
+                }
 
-            $purchase->delete();
+                $purchase = Purchase::where('id', $purchaseId)
+                    ->where('branch_id', $request->branch_id)
+                    ->first();
+                if (!$purchase) {
+                    CleanError::show('Purchase not found for approval request.');
+                    return false;
+                }
 
-            // Mark request as approved
-            $request->update([
-                'approver_id' => $approver->id,
-                'approver_type' => Employee::class,
-                'status' => 'approved',
-                'approved_at' => now(),
+                $purchase->delete();
+
+                // Mark request as approved
+                $request->update([
+                    'approver_id' => $approver->id,
+                    'approver_type' => Employee::class,
+                    'status' => 'approved',
+                    'approved_at' => now(),
+                ]);
+
+                return true;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to delete purchase.', $e, [
+                'request_id' => $request->id,
             ]);
-        });
+            return false;
+        }
     }
 }

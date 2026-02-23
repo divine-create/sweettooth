@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Models\ApprovalAuditRequest;
 use App\Models\Employee;
 use Illuminate\Support\Facades\DB;
@@ -12,16 +13,19 @@ class EmployeeApprovalService
     /**
      * Create a pending employee creation request
      */
-    public static function requestCreate(array $employeeData, string $reason): ApprovalAuditRequest
+    public static function requestCreate(array $employeeData, string $reason): ?ApprovalAuditRequest
     {
         // Validate required fields
-        self::validateEmployeeData($employeeData);
+        if (! self::validateEmployeeData($employeeData)) {
+            return null;
+        }
 
         $requester = current_actor();
 
         // Validate requester
         if (!$requester) {
-            throw new \Exception('Invalid requester or requester not authenticated');
+            CleanError::show('Invalid requester or requester not authenticated.');
+            return null;
         }
 
         $request = ApprovalAuditRequest::create([
@@ -49,11 +53,12 @@ class EmployeeApprovalService
     /**
      * Execute a pending employee creation after approval
      */
-    public static function executeCreate(ApprovalAuditRequest $request, $approver = null): Employee
+    public static function executeCreate(ApprovalAuditRequest $request, $approver = null): ?Employee
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
 
             if (empty($payload['user_type'])) {
                 $payload['user_type'] = 'employee';
@@ -87,25 +92,33 @@ class EmployeeApprovalService
             // Log the creation
             EmployeeAuditService::logEmployeeCreation($employee, $approver);
 
-            return $employee;
-        });
+                return $employee;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to create employee.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
      * Create a pending employee update request
      */
-    public static function requestUpdate(Employee $employee, array $changes, string $reason, array $roleChanges = []): ApprovalAuditRequest
+    public static function requestUpdate(Employee $employee, array $changes, string $reason, array $roleChanges = []): ?ApprovalAuditRequest
     {
         // Validate employee exists
         if (!$employee->exists) {
-            throw new \Exception('Employee does not exist');
+            CleanError::show('Employee does not exist.');
+            return null;
         }
 
         $requester = current_actor();
 
         // Validate requester
         if (!$requester) {
-            throw new \Exception('Invalid requester or requester not authenticated');
+            CleanError::show('Invalid requester or requester not authenticated.');
+            return null;
         }
 
         // Build payload with employee ID and changes
@@ -141,18 +154,24 @@ class EmployeeApprovalService
     /**
      * Execute a pending employee update after approval
      */
-    public static function executeUpdate(ApprovalAuditRequest $request, $approver = null): Employee
+    public static function executeUpdate(ApprovalAuditRequest $request, $approver = null): ?Employee
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
-            $employeeId = $payload['id'] ?? null;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
+                $employeeId = $payload['id'] ?? null;
 
-            if (!$employeeId) {
-                throw new \Exception('Invalid employee ID in approval payload');
-            }
+                if (!$employeeId) {
+                    CleanError::show('Invalid employee ID in approval payload.');
+                    return null;
+                }
 
-            $employee = Employee::findOrFail($employeeId);
+                $employee = Employee::find($employeeId);
+                if (!$employee) {
+                    CleanError::show('Employee not found. Please refresh and try again.');
+                    return null;
+                }
 
             // Extract roles and original values from payload
             $selectedRoleIds = $payload['selectedRoles'] ?? [];
@@ -201,23 +220,31 @@ class EmployeeApprovalService
             // Log the update
             EmployeeAuditService::logEmployeeUpdate($employee, $changedFields, $approver);
 
-            return $employee;
-        });
+                return $employee;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to update employee.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
      * Create a pending employee deletion request
      */
-    public static function requestDelete(Employee $employee, string $reason): ApprovalAuditRequest
+    public static function requestDelete(Employee $employee, string $reason): ?ApprovalAuditRequest
     {
         // Validate employee exists
         if (!$employee->exists) {
-            throw new \Exception('Employee does not exist');
+            CleanError::show('Employee does not exist.');
+            return null;
         }
 
         // Check if employee has subordinates
         if ($employee->subordinates()->count() > 0) {
-            throw new \Exception('Cannot delete employee with active subordinates. Reassign subordinates first.');
+            CleanError::show('Cannot delete employee with active subordinates. Reassign subordinates first.');
+            return null;
         }
 
         $requester = current_actor();
@@ -254,17 +281,23 @@ class EmployeeApprovalService
      */
     public static function executeDelete(ApprovalAuditRequest $request, $approver = null): bool
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
-            $employeeId = $payload['id'] ?? null;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
+                $employeeId = $payload['id'] ?? null;
 
-            if (!$employeeId) {
-                throw new \Exception('Invalid employee ID in approval payload');
-            }
+                if (!$employeeId) {
+                    CleanError::show('Invalid employee ID in approval payload.');
+                    return false;
+                }
 
-            $employee = Employee::findOrFail($employeeId);
-            $employeeName = $employee->name;
+                $employee = Employee::find($employeeId);
+                if (!$employee) {
+                    CleanError::show('Employee not found. Please refresh and try again.');
+                    return false;
+                }
+                $employeeName = $employee->name;
 
             // Revoke all roles before deletion
             $employee->syncRoles([]);
@@ -275,18 +308,25 @@ class EmployeeApprovalService
             // Log the deletion
             EmployeeAuditService::logEmployeeDeactivation($employee, $approver, 'Employee deleted after approval');
 
-            return true;
-        });
+                return true;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to delete employee.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return false;
+        }
     }
 
     /**
      * Create a pending role sync request
      */
-    public static function requestRoleSync(Employee $employee, array $newRoleIds, string $reason): ApprovalAuditRequest
+    public static function requestRoleSync(Employee $employee, array $newRoleIds, string $reason): ?ApprovalAuditRequest
     {
         // Validate employee exists
         if (!$employee->exists) {
-            throw new \Exception('Employee does not exist');
+            CleanError::show('Employee does not exist.');
+            return null;
         }
 
         $requester = current_actor();
@@ -339,20 +379,26 @@ class EmployeeApprovalService
     /**
      * Execute a pending role sync after approval
      */
-    public static function executeRoleSync(ApprovalAuditRequest $request, $approver = null): Employee
+    public static function executeRoleSync(ApprovalAuditRequest $request, $approver = null): ?Employee
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
-            $employeeId = $payload['id'] ?? null;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
+                $employeeId = $payload['id'] ?? null;
 
-            if (!$employeeId) {
-                throw new \Exception('Invalid employee ID in approval payload');
-            }
+                if (!$employeeId) {
+                    CleanError::show('Invalid employee ID in approval payload.');
+                    return null;
+                }
 
-            $employee = Employee::findOrFail($employeeId);
-            $oldRoles = $payload['old_roles'] ?? [];
-            $newRoles = $payload['new_roles'] ?? [];
+                $employee = Employee::find($employeeId);
+                if (!$employee) {
+                    CleanError::show('Employee not found. Please refresh and try again.');
+                    return null;
+                }
+                $oldRoles = $payload['old_roles'] ?? [];
+                $newRoles = $payload['new_roles'] ?? [];
 
             // Sync roles
             $employee->syncRoles($newRoles);
@@ -366,18 +412,25 @@ class EmployeeApprovalService
                 $approver
             );
 
-            return $employee;
-        });
+                return $employee;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to sync roles.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
      * Create a pending permission sync request
      */
-    public static function requestPermissionSync(Employee $employee, array $newPermissions, string $reason): ApprovalAuditRequest
+    public static function requestPermissionSync(Employee $employee, array $newPermissions, string $reason): ?ApprovalAuditRequest
     {
         // Validate employee exists
         if (!$employee->exists) {
-            throw new \Exception('Employee does not exist');
+            CleanError::show('Employee does not exist.');
+            return null;
         }
 
         $requester = current_actor();
@@ -412,20 +465,26 @@ class EmployeeApprovalService
     /**
      * Execute a pending permission sync after approval
      */
-    public static function executePermissionSync(ApprovalAuditRequest $request, $approver = null): Employee
+    public static function executePermissionSync(ApprovalAuditRequest $request, $approver = null): ?Employee
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
-            $employeeId = $payload['id'] ?? null;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
+                $employeeId = $payload['id'] ?? null;
 
-            if (!$employeeId) {
-                throw new \Exception('Invalid employee ID in approval payload');
-            }
+                if (!$employeeId) {
+                    CleanError::show('Invalid employee ID in approval payload.');
+                    return null;
+                }
 
-            $employee = Employee::findOrFail($employeeId);
-            $oldPermissions = $payload['old_permissions'] ?? [];
-            $newPermissions = $payload['new_permissions'] ?? [];
+                $employee = Employee::find($employeeId);
+                if (!$employee) {
+                    CleanError::show('Employee not found. Please refresh and try again.');
+                    return null;
+                }
+                $oldPermissions = $payload['old_permissions'] ?? [];
+                $newPermissions = $payload['new_permissions'] ?? [];
 
             // Sync permissions
             $employee->syncPermissions($newPermissions);
@@ -442,8 +501,14 @@ class EmployeeApprovalService
                 EmployeeAuditService::logPermissionChange($employee, $permission, 'revoked', $request->description, $approver);
             }
 
-            return $employee;
-        });
+                return $employee;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to sync permissions.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
@@ -472,19 +537,21 @@ class EmployeeApprovalService
     /**
      * Validate employee data for creation/update
      */
-    private static function validateEmployeeData(array $data): void
+    private static function validateEmployeeData(array $data): bool
     {
         $requiredFields = ['name', 'email'];
 
         foreach ($requiredFields as $field) {
             if (empty($data[$field])) {
-                throw new \Exception("The {$field} field is required for employee creation");
+                CleanError::show("The {$field} field is required for employee creation.");
+                return false;
             }
         }
 
         // Validate email format
         if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            throw new \Exception('Invalid email format');
+            CleanError::show('Invalid email format.');
+            return false;
         }
 
         // Check email uniqueness (excluding current employee for updates)
@@ -493,7 +560,10 @@ class EmployeeApprovalService
             $existingEmployee->where('id', '!=', $data['id']);
         }
         if ($existingEmployee->exists()) {
-            throw new \Exception('An employee with this email already exists');
+            CleanError::show('An employee with this email already exists.');
+            return false;
         }
+
+        return true;
     }
 }

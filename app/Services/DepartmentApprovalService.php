@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Models\ApprovalAuditRequest;
 use App\Models\Department;
 use Illuminate\Support\Facades\DB;
@@ -12,11 +13,12 @@ class DepartmentApprovalService
     /**
      * Create a pending department creation request
      */
-    public static function requestCreate(array $departmentData, string $reason): ApprovalAuditRequest
+    public static function requestCreate(array $departmentData, string $reason): ?ApprovalAuditRequest
     {
         // Validate required fields
         if (empty($departmentData['name'])) {
-            throw new \Exception('Department name is required');
+            CleanError::show('Department name is required.');
+            return null;
         }
 
         $requester = current_actor();
@@ -46,11 +48,12 @@ class DepartmentApprovalService
     /**
      * Execute a pending department creation after approval
      */
-    public static function executeCreate(ApprovalAuditRequest $request, $approver = null): Department
+    public static function executeCreate(ApprovalAuditRequest $request, $approver = null): ?Department
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
 
             // Generate slug if not provided
             if (empty($payload['slug'])) {
@@ -69,17 +72,24 @@ class DepartmentApprovalService
                 'completed'
             );
 
-            return $department;
-        });
+                return $department;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to create department.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
      * Create a pending department update request
      */
-    public static function requestUpdate(Department $department, array $changes, string $reason): ApprovalAuditRequest
+    public static function requestUpdate(Department $department, array $changes, string $reason): ?ApprovalAuditRequest
     {
         if (!$department->exists) {
-            throw new \Exception('Department does not exist');
+            CleanError::show('Department does not exist.');
+            return null;
         }
 
         $requester = current_actor();
@@ -115,18 +125,24 @@ class DepartmentApprovalService
     /**
      * Execute a pending department update after approval
      */
-    public static function executeUpdate(ApprovalAuditRequest $request, $approver = null): Department
+    public static function executeUpdate(ApprovalAuditRequest $request, $approver = null): ?Department
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
-            $departmentId = $payload['id'] ?? null;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
+                $departmentId = $payload['id'] ?? null;
 
-            if (!$departmentId) {
-                throw new \Exception('Invalid department ID in approval payload');
-            }
+                if (!$departmentId) {
+                    CleanError::show('Invalid department ID in approval payload.');
+                    return null;
+                }
 
-            $department = Department::findOrFail($departmentId);
+                $department = Department::find($departmentId);
+                if (!$department) {
+                    CleanError::show('Department not found. Please refresh and try again.');
+                    return null;
+                }
 
             // Remove non-fillable fields
             unset($payload['id'], $payload['original_values']);
@@ -148,22 +164,30 @@ class DepartmentApprovalService
                 'completed'
             );
 
-            return $department;
-        });
+                return $department;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to update department.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
      * Create a pending department deletion request
      */
-    public static function requestDelete(Department $department, string $reason): ApprovalAuditRequest
+    public static function requestDelete(Department $department, string $reason): ?ApprovalAuditRequest
     {
         if (!$department->exists) {
-            throw new \Exception('Department does not exist');
+            CleanError::show('Department does not exist.');
+            return null;
         }
 
         // Check if department has employees
         if ($department->employees()->count() > 0) {
-            throw new \Exception('Cannot delete department with assigned employees. Reassign employees first.');
+            CleanError::show('Cannot delete department with assigned employees. Reassign employees first.');
+            return null;
         }
 
         $requester = current_actor();
@@ -199,17 +223,23 @@ class DepartmentApprovalService
      */
     public static function executeDelete(ApprovalAuditRequest $request, $approver = null): bool
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $approver = $approver ?? current_actor();
-            $payload = $request->payload;
-            $departmentId = $payload['id'] ?? null;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $approver = $approver ?? current_actor();
+                $payload = $request->payload;
+                $departmentId = $payload['id'] ?? null;
 
-            if (!$departmentId) {
-                throw new \Exception('Invalid department ID in approval payload');
-            }
+                if (!$departmentId) {
+                    CleanError::show('Invalid department ID in approval payload.');
+                    return false;
+                }
 
-            $department = Department::findOrFail($departmentId);
-            $departmentName = $department->name;
+                $department = Department::find($departmentId);
+                if (!$department) {
+                    CleanError::show('Department not found. Please refresh and try again.');
+                    return false;
+                }
+                $departmentName = $department->name;
 
             // Delete the department
             $department->delete();
@@ -225,8 +255,14 @@ class DepartmentApprovalService
                 ['deleted_department' => $departmentName]
             );
 
-            return true;
-        });
+                return true;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to delete department.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return false;
+        }
     }
 
     /**

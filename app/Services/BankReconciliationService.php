@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Models\BankAccount;
 use App\Models\BankReconciliation;
 use App\Models\BankReconciliationDetail;
@@ -23,8 +24,12 @@ class BankReconciliationService
         Carbon $reconciliationDate,
         float $bankBalance,
         string $branchId
-    ): BankReconciliation {
-        $account = BankAccount::findOrFail($bankAccountId);
+    ): ?BankReconciliation {
+        $account = BankAccount::find($bankAccountId);
+        if (!$account) {
+            CleanError::show('Bank account not found. Please refresh and try again.');
+            return null;
+        }
 
         $bookBalance = $this->getGlClosingBalance($account, $reconciliationDate);
         $difference = floatval($bankBalance) - floatval($bookBalance);
@@ -45,8 +50,16 @@ class BankReconciliationService
      */
     public function getUnreconciledGlEntries(int $bankAccountId, Carbon $asOfDate): Collection
     {
-        $account = BankAccount::findOrFail($bankAccountId);
+        $account = BankAccount::find($bankAccountId);
+        if (!$account) {
+            CleanError::show('Bank account not found. Please refresh and try again.');
+            return collect();
+        }
         $reconciliation = $this->getActiveReconciliationForAccount($bankAccountId);
+        if (!$reconciliation) {
+            CleanError::show('Active reconciliation not found for this account.');
+            return collect();
+        }
 
         return GlEntry::query()
             ->where('gl_account_id', $account->gl_account_id)
@@ -72,6 +85,10 @@ class BankReconciliationService
     public function getUnreconciledBankTransactions(int $bankAccountId, Carbon $asOfDate): Collection
     {
         $reconciliation = $this->getActiveReconciliationForAccount($bankAccountId);
+        if (!$reconciliation) {
+            CleanError::show('Active reconciliation not found for this account.');
+            return collect();
+        }
 
         return DailyBankTransaction::query()
             ->where('bank_account_id', $bankAccountId)
@@ -95,9 +112,39 @@ class BankReconciliationService
      */
     public function getReconciliationStats(int $reconciliationId): array
     {
-        $reconciliation = BankReconciliation::findOrFail($reconciliationId);
+        $reconciliation = BankReconciliation::find($reconciliationId);
+        if (!$reconciliation) {
+            CleanError::show('Reconciliation not found.');
+            return [
+                'bank_balance' => 0.0,
+                'book_balance' => 0.0,
+                'difference' => 0.0,
+                'matched_count' => 0,
+                'matched_amount' => 0.0,
+                'unmatched_gl_count' => 0,
+                'unmatched_bank_count' => 0,
+                'unmatched_gl_total' => 0.0,
+                'unmatched_bank_total' => 0.0,
+                'is_balanced' => false,
+            ];
+        }
         $asOfDate = Carbon::parse($reconciliation->reconciliation_date);
-        $account = BankAccount::findOrFail($reconciliation->bank_account_id);
+        $account = BankAccount::find($reconciliation->bank_account_id);
+        if (!$account) {
+            CleanError::show('Bank account not found for reconciliation.');
+            return [
+                'bank_balance' => floatval($reconciliation->bank_balance),
+                'book_balance' => 0.0,
+                'difference' => 0.0,
+                'matched_count' => 0,
+                'matched_amount' => 0.0,
+                'unmatched_gl_count' => 0,
+                'unmatched_bank_count' => 0,
+                'unmatched_gl_total' => 0.0,
+                'unmatched_bank_total' => 0.0,
+                'is_balanced' => false,
+            ];
+        }
 
         // Recalculate balances in case GL entries were posted after reconciliation started
         $bookBalance = $this->getGlClosingBalance($account, $asOfDate);
@@ -143,16 +190,25 @@ class BankReconciliationService
     /**
      * Manually match a GL entry and bank transaction
      */
-    public function matchTransaction(int $glEntryId, int $bankTransactionId): BankReconciliationDetail
+    public function matchTransaction(int $glEntryId, int $bankTransactionId): ?BankReconciliationDetail
     {
-        $glEntry = GlEntry::findOrFail($glEntryId);
-        $bankTransaction = DailyBankTransaction::findOrFail($bankTransactionId);
+        $glEntry = GlEntry::find($glEntryId);
+        if (!$glEntry) {
+            CleanError::show('GL entry not found. Please refresh and try again.');
+            return null;
+        }
+        $bankTransaction = DailyBankTransaction::find($bankTransactionId);
+        if (!$bankTransaction) {
+            CleanError::show('Bank transaction not found. Please refresh and try again.');
+            return null;
+        }
 
         $accountId = $bankTransaction->bank_account_id;
         $reconciliation = $this->getActiveReconciliationForAccount($accountId);
 
         if ($glEntry->gl_account_id !== $bankTransaction->bankAccount?->gl_account_id) {
-            throw new \InvalidArgumentException('GL entry does not match bank account.');
+            CleanError::show('GL entry does not match bank account.');
+            return null;
         }
 
         $alreadyMatched = BankReconciliationDetail::query()
@@ -165,7 +221,8 @@ class BankReconciliationService
             ->exists();
 
         if ($alreadyMatched) {
-            throw new \InvalidArgumentException('One of the selected items is already matched.');
+            CleanError::show('One of the selected items is already matched.');
+            return null;
         }
 
         $matchedAmount = floatval($bankTransaction->amount);
@@ -186,7 +243,11 @@ class BankReconciliationService
      */
     public function unmatchTransaction(int $detailId): void
     {
-        $detail = BankReconciliationDetail::findOrFail($detailId);
+        $detail = BankReconciliationDetail::find($detailId);
+        if (!$detail) {
+            CleanError::show('Match detail not found.');
+            return;
+        }
         $detail->delete();
 
         if ($detail->gl_entry_id) {
@@ -256,10 +317,15 @@ class BankReconciliationService
      */
     public function completeReconciliation(int $reconciliationId): void
     {
-        $reconciliation = BankReconciliation::findOrFail($reconciliationId);
+        $reconciliation = BankReconciliation::find($reconciliationId);
+        if (!$reconciliation) {
+            CleanError::show('Reconciliation not found.');
+            return;
+        }
 
         if ($reconciliation->status !== 'in_progress') {
-            throw new \InvalidArgumentException('Reconciliation is not in progress.');
+            CleanError::show('Reconciliation is not in progress.');
+            return;
         }
 
         $reconciliation->markCompleted(auth()->id());
@@ -675,7 +741,7 @@ class BankReconciliationService
             ->sum('gl_amount'));
     }
 
-    private function getActiveReconciliationForAccount(int $bankAccountId): BankReconciliation
+    private function getActiveReconciliationForAccount(int $bankAccountId): ?BankReconciliation
     {
         $reconciliation = BankReconciliation::query()
             ->where('bank_account_id', $bankAccountId)
@@ -684,7 +750,8 @@ class BankReconciliationService
             ->first();
 
         if (! $reconciliation) {
-            throw new \InvalidArgumentException('No active reconciliation found for this account.');
+            CleanError::show('No active reconciliation found for this account.');
+            return null;
         }
 
         return $reconciliation;

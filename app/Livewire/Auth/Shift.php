@@ -98,7 +98,11 @@ class Shift extends Component
             // If the user has assigned shift types, they must clock in with those types
             [$assignedConfigIds, $assignedTypes] = $this->getAssignedShiftConstraints($user);
             if (! empty($assignedConfigIds) || ! empty($assignedTypes)) {
-                $shiftConfig = ShiftConfiguration::findOrFail($this->shift_config_id);
+                $shiftConfig = ShiftConfiguration::find($this->shift_config_id);
+                if (! $shiftConfig) {
+                    $this->toast()->error('Invalid shift configuration selected')->send();
+                    return;
+                }
                 $normalizedType = strtolower((string) $shiftConfig->shift_type);
 
                 $configAllowed = empty($assignedConfigIds) || in_array($shiftConfig->id, $assignedConfigIds, true);
@@ -111,10 +115,18 @@ class Shift extends Component
             }
 
             // Get the Branch
-            $branch = Branch::findOrFail($this->b_id);
+            $branch = Branch::find($this->b_id);
+            if (! $branch) {
+                $this->toast()->error('Branch not found. Please contact administrator.')->send();
+                return;
+            }
 
             // Get the selected shift configuration
-            $shiftConfig = ShiftConfiguration::findOrFail($this->shift_config_id);
+            $shiftConfig = ShiftConfiguration::find($this->shift_config_id);
+            if (! $shiftConfig) {
+                $this->toast()->error('Invalid shift configuration selected')->send();
+                return;
+            }
 
             // Map the shift configuration's shift_type to a compatible enum value
             // This ensures compatibility with the database enum while using dynamic configurations
@@ -260,7 +272,11 @@ class Shift extends Component
             $this->dispatch('shift-updated');
 
             // Redirect to dashboard
-            $branch = Branch::findOrFail($this->b_id);
+            $branch = Branch::find($this->b_id);
+            if (! $branch) {
+                $this->toast()->error('Branch not found. Please contact administrator.')->send();
+                return;
+            }
 
             return $this->redirectToDashboard($branch);
 
@@ -341,7 +357,11 @@ class Shift extends Component
 
     public function continueToWork()
     {
-        $branch = Branch::findOrFail($this->b_id);
+        $branch = Branch::find($this->b_id);
+        if (! $branch) {
+            $this->toast()->error('Branch not found. Please contact administrator.')->send();
+            return;
+        }
         $user = Auth::user();
 
         // If user is still clocked in and belongs to sales, continue directly to POS.

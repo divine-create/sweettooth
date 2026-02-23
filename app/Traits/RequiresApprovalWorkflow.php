@@ -271,8 +271,25 @@ trait RequiresApprovalWorkflow
             'update' => $this->handleUpdate($resourceType, $resourceId, $payload),
             'delete' => $this->handleDelete($resourceType, $resourceId),
             'adjust' => $this->handleAdjust($resourceType, $resourceId, $payload),
-            default => throw new \Exception("Unknown action: {$action}")
+            default => $this->handleUnknownAction($action, $resourceType, $resourceId)
         };
+    }
+
+    /**
+     * Handle unknown action with a clean error response.
+     */
+    protected function handleUnknownAction(string $action, string $resourceType, ?string $resourceId): void
+    {
+        CleanError::show(
+            "Unknown action: {$action}. Please contact support.",
+            null,
+            [
+                'action' => $action,
+                'resource_type' => $resourceType,
+                'resource_id' => $resourceId,
+            ],
+            $this
+        );
     }
 
     /**
@@ -311,8 +328,13 @@ trait RequiresApprovalWorkflow
 
             // Create the model
             $modelClass::create($createData);
-        } catch (\Exception $e) {
-            throw new \Exception("Failed to create {$resourceType}: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            CleanError::show(
+                "Failed to create {$resourceType}. Please try again.",
+                $e,
+                ['resource_type' => $resourceType],
+                $this
+            );
         }
     }
 
@@ -332,7 +354,13 @@ trait RequiresApprovalWorkflow
     protected function handleUpdate(string $resourceType, ?string $resourceId, array $payload): void
     {
         if (!$resourceId) {
-            throw new \Exception("Resource ID required for update");
+            CleanError::show(
+                'Resource ID required for update.',
+                null,
+                ['resource_type' => $resourceType],
+                $this
+            );
+            return;
         }
 
         try {
@@ -340,7 +368,13 @@ trait RequiresApprovalWorkflow
             $model = $modelClass::find($resourceId);
 
             if (!$model) {
-                throw new \Exception("{$resourceType} with ID {$resourceId} not found");
+                CleanError::show(
+                    "{$resourceType} not found. Please refresh and try again.",
+                    null,
+                    ['resource_type' => $resourceType, 'resource_id' => $resourceId],
+                    $this
+                );
+                return;
             }
 
             $fillable = $model->getFillable();
@@ -349,8 +383,13 @@ trait RequiresApprovalWorkflow
             if (!empty($updateData)) {
                 $model->update($updateData);
             }
-        } catch (\Exception $e) {
-            throw new \Exception("Failed to update {$resourceType}: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            CleanError::show(
+                "Failed to update {$resourceType}. Please try again.",
+                $e,
+                ['resource_type' => $resourceType, 'resource_id' => $resourceId],
+                $this
+            );
         }
     }
 
@@ -368,7 +407,13 @@ trait RequiresApprovalWorkflow
     protected function handleDelete(string $resourceType, ?string $resourceId): void
     {
         if (!$resourceId) {
-            throw new \Exception("Resource ID required for delete");
+            CleanError::show(
+                'Resource ID required for delete.',
+                null,
+                ['resource_type' => $resourceType],
+                $this
+            );
+            return;
         }
 
         try {
@@ -376,12 +421,23 @@ trait RequiresApprovalWorkflow
             $model = $modelClass::find($resourceId);
 
             if (!$model) {
-                throw new \Exception("{$resourceType} with ID {$resourceId} not found");
+                CleanError::show(
+                    "{$resourceType} not found. Please refresh and try again.",
+                    null,
+                    ['resource_type' => $resourceType, 'resource_id' => $resourceId],
+                    $this
+                );
+                return;
             }
 
             $model->delete();
-        } catch (\Exception $e) {
-            throw new \Exception("Failed to delete {$resourceType}: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            CleanError::show(
+                "Failed to delete {$resourceType}. Please try again.",
+                $e,
+                ['resource_type' => $resourceType, 'resource_id' => $resourceId],
+                $this
+            );
         }
     }
 
@@ -419,7 +475,13 @@ trait RequiresApprovalWorkflow
     protected function handleAdjust(string $resourceType, ?string $resourceId, array $payload): void
     {
         if (!$resourceId) {
-            throw new \Exception("Resource ID required for adjust");
+            CleanError::show(
+                'Resource ID required for adjust.',
+                null,
+                ['resource_type' => $resourceType],
+                $this
+            );
+            return;
         }
 
         try {
@@ -427,7 +489,13 @@ trait RequiresApprovalWorkflow
             $model = $modelClass::find($resourceId);
 
             if (!$model) {
-                throw new \Exception("{$resourceType} with ID {$resourceId} not found");
+                CleanError::show(
+                    "{$resourceType} not found. Please refresh and try again.",
+                    null,
+                    ['resource_type' => $resourceType, 'resource_id' => $resourceId],
+                    $this
+                );
+                return;
             }
 
             // Resource-specific adjust logic
@@ -472,8 +540,13 @@ trait RequiresApprovalWorkflow
                         }
                     }
             }
-        } catch (\Exception $e) {
-            throw new \Exception("Failed to adjust {$resourceType}: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            CleanError::show(
+                "Failed to adjust {$resourceType}. Please try again.",
+                $e,
+                ['resource_type' => $resourceType, 'resource_id' => $resourceId],
+                $this
+            );
         }
     }
 
@@ -508,10 +581,13 @@ trait RequiresApprovalWorkflow
         ];
 
         if (!isset($models[$resourceType])) {
-            throw new \Exception(
-                "Unknown resource type: '{$resourceType}'. Registered types: "
-                . implode(', ', array_keys($models))
+            CleanError::show(
+                "Unknown resource type: '{$resourceType}'.",
+                null,
+                ['resource_type' => $resourceType],
+                $this
             );
+            return \App\Models\Item::class;
         }
 
         return $models[$resourceType];

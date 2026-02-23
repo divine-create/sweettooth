@@ -119,7 +119,7 @@ class Index extends Component
             }
 
             \Log::info('✅ [AUDIT APPROVAL] Action executed successfully', [
-                'auditable_type' => get_class($auditable),
+                'auditable_type' => is_object($auditable) ? get_class($auditable) : gettype($auditable),
                 'auditable_id' => $auditable->id ?? 'N/A',
             ]);
 
@@ -130,13 +130,13 @@ class Index extends Component
 
             \Log::info('🔵 [AUDIT APPROVAL] Updating request status to approved', [
                 'approver_id' => $approver->id,
-                'approver_type' => get_class($approver),
+                'approver_type' => is_object($approver) ? get_class($approver) : gettype($approver),
             ]);
 
             $request->update([
                 'status' => 'approved',
                 'approver_id' => $approver->id,
-                'approver_type' => get_class($approver),
+                'approver_type' => is_object($approver) ? get_class($approver) : gettype($approver),
                 'approved_at' => now(),
             ]);
 
@@ -268,7 +268,7 @@ class Index extends Component
 
             \Log::info('✅ [EXECUTE ACTION] Action executed successfully', [
                 'action' => $action,
-                'auditable_type' => $auditable ? get_class($auditable) : 'null',
+                'auditable_type' => $auditable ? (is_object($auditable) ? get_class($auditable) : gettype($auditable)) : 'null',
             ]);
 
             return $auditable;
@@ -280,7 +280,8 @@ class Index extends Component
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            throw new \Exception("Failed to execute action '{$request->action}': " . $e->getMessage());
+            \App\Helpers\CleanError::show("Failed to execute action '{$request->action}': " . $e->getMessage(), $e);
+            return null;
         }
     }
 
@@ -592,7 +593,7 @@ class Index extends Component
                 $request->update([
                     'status' => 'rejected',
                     'approver_id' => $approver->id,
-                    'approver_type' => get_class($approver),
+                    'approver_type' => is_object($approver) ? get_class($approver) : gettype($approver),
                     'denied_at' => now(),
                 ]);
             }
@@ -813,7 +814,7 @@ class Index extends Component
 
             \Log::info('✅ [HANDLE RECIPE ACTION] Recipe action completed', [
                 'sub_action' => $subAction,
-                'result_type' => is_array($result) ? 'array' : get_class($result),
+                'result_type' => is_object($result) ? get_class($result) : gettype($result),
             ]);
 
             return $result;

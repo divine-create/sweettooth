@@ -7,7 +7,7 @@ use App\Models\GlEntry;
 use App\Models\AccountingPeriod;
 use App\Models\StockMovement;
 use App\Models\Item;
-use Exception;
+use App\Helpers\CleanError;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -20,12 +20,12 @@ class InventoryAccountingService
     public function recordInventoryReceived(Item $item, float $quantity, float $unitCost, ?string $supplier = null): bool
     {
         try {
-            DB::beginTransaction();
-
             $period = $this->getCurrentPeriod();
             if (!$period || $period->status !== 'open') {
-                throw new Exception('No open accounting period found');
+                CleanError::show('No open accounting period found.');
+                return false;
             }
+            DB::beginTransaction();
 
             // Determine which inventory account based on item category
             $inventoryAccount = $this->getInventoryAccount($item);
@@ -62,7 +62,7 @@ class InventoryAccountingService
 
             DB::commit();
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Inventory received GL posting failed: ' . $e->getMessage(), [
                 'item_id' => $item->id,
@@ -79,12 +79,12 @@ class InventoryAccountingService
     public function recordInventoryMovement(StockMovement $movement): bool
     {
         try {
-            DB::beginTransaction();
-
             $period = $this->getCurrentPeriod();
             if (!$period || $period->status !== 'open') {
-                throw new Exception('No open accounting period found');
+                CleanError::show('No open accounting period found.');
+                return false;
             }
+            DB::beginTransaction();
 
             $item = $movement->item;
             $fromAccount = $this->getInventoryAccount($item);
@@ -124,7 +124,7 @@ class InventoryAccountingService
 
             DB::commit();
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Stock movement GL posting failed: ' . $e->getMessage(), [
                 'movement_id' => $movement->id,
@@ -198,12 +198,12 @@ class InventoryAccountingService
     public function recordInventoryWriteoff(Item $item, float $quantity, float $unitCost, string $reason): bool
     {
         try {
-            DB::beginTransaction();
-
             $period = $this->getCurrentPeriod();
             if (!$period || $period->status !== 'open') {
-                throw new Exception('No open accounting period found');
+                CleanError::show('No open accounting period found.');
+                return false;
             }
+            DB::beginTransaction();
 
             $inventoryAccount = $this->getInventoryAccount($item);
             $writeoffAccount = GlAccount::where('account_number', '5210')->firstOrFail();
@@ -237,7 +237,7 @@ class InventoryAccountingService
 
             DB::commit();
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Inventory writeoff GL posting failed: ' . $e->getMessage());
             return false;

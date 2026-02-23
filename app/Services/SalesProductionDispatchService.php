@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Enums\ProductionRequestSourceType;
 use App\Enums\SalesProductionRequestStatus;
 use App\Models\ProductDispatch;
 use App\Models\ProductionRequest;
 use App\Models\SalesProductionRequestItem;
-use DomainException;
 
 class SalesProductionDispatchService
 {
@@ -51,12 +51,12 @@ class SalesProductionDispatchService
         return $item;
     }
 
-    public function markItemAsDispatched(SalesProductionRequestItem $item): SalesProductionRequestItem
+    public function markItemAsDispatched(SalesProductionRequestItem $item): ?SalesProductionRequestItem
     {
         return $this->advanceItemTo($item, SalesProductionRequestStatus::DISPATCHED);
     }
 
-    public function markItemAsReceivedBySales(SalesProductionRequestItem $item): SalesProductionRequestItem
+    public function markItemAsReceivedBySales(SalesProductionRequestItem $item): ?SalesProductionRequestItem
     {
         return $this->advanceItemTo($item, SalesProductionRequestStatus::RECEIVED_BY_SALES);
     }
@@ -64,8 +64,12 @@ class SalesProductionDispatchService
     private function advanceItemTo(
         SalesProductionRequestItem $item,
         SalesProductionRequestStatus $targetStatus
-    ): SalesProductionRequestItem {
-        $item = SalesProductionRequestItem::query()->findOrFail($item->id);
+    ): ?SalesProductionRequestItem {
+        $item = SalesProductionRequestItem::query()->find($item->id);
+        if (! $item) {
+            CleanError::show('Sales request item not found. Please refresh and try again.');
+            return null;
+        }
         $currentStatus = $this->normalizeStatus($item->status);
 
         if ($currentStatus === $targetStatus) {
@@ -89,9 +93,10 @@ class SalesProductionDispatchService
         $targetIndex = array_search($targetStatus->value, $orderedValues, true);
 
         if ($currentIndex === false || $targetIndex === false) {
-            throw new DomainException(
+            CleanError::show(
                 "Cannot transition sales request item {$item->id} from {$currentStatus->value} to {$targetStatus->value}."
             );
+            return $item;
         }
 
         if ($currentIndex > $targetIndex) {
@@ -117,4 +122,3 @@ class SalesProductionDispatchService
         return SalesProductionRequestStatus::from($status);
     }
 }
-

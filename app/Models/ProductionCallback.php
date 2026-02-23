@@ -2,15 +2,13 @@
 
 namespace App\Models;
 
+use App\Helpers\CleanError;
 use App\Enums\CallbackStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
-use InvalidArgumentException;
-use Illuminate\Validation\ValidationException;
 
 /**
  * ProductionCallback Model
@@ -256,7 +254,8 @@ class ProductionCallback extends Model
 
         $actor = $actor ?? current_actor();
         if (! $actor) {
-            throw new RuntimeException('No authenticated actor found');
+            CleanError::show('No authenticated actor found.');
+            return false;
         }
 
         return DB::transaction(function () use ($actor) {
@@ -303,7 +302,8 @@ class ProductionCallback extends Model
 
         $actor = $actor ?? current_actor();
         if (! $actor) {
-            throw new RuntimeException('No authenticated actor found');
+            CleanError::show('No authenticated actor found.');
+            return false;
         }
 
         $notes = $this->notes;
@@ -395,7 +395,8 @@ class ProductionCallback extends Model
         // For finished products, validate against produced quantity
         if ($this->isFinishedProduct()) {
             if (! $this->product_id) {
-                throw new InvalidArgumentException('Finished product callback missing product_id');
+                CleanError::show('Finished product callback missing product_id.');
+                return false;
             }
 
             $dailyProduce = DailyProduce::whereHas('recipe', function ($q) {
@@ -405,15 +406,15 @@ class ProductionCallback extends Model
                 ->first();
 
             if (! $dailyProduce) {
-                throw new RuntimeException(
-                    'DailyProduce not found for product and shift'
-                );
+                CleanError::show('DailyProduce not found for product and shift.');
+                return false;
             }
 
             if ($this->quantity > $dailyProduce->produced_quantity) {
-                throw new ValidationException(
-                    "Callback quantity ({$this->quantity}) exceeds produced ({$dailyProduce->produced_quantity})"
+                CleanError::show(
+                    "Callback quantity ({$this->quantity}) exceeds produced ({$dailyProduce->produced_quantity})."
                 );
+                return false;
             }
         }
 
@@ -429,7 +430,8 @@ class ProductionCallback extends Model
     private function updateRawMaterialStock(): void
     {
         if (! $this->item_id) {
-            throw new InvalidArgumentException('Raw material callback missing item_id');
+            CleanError::show('Raw material callback missing item_id.');
+            return;
         }
 
         $stock = Stock::where('item_id', $this->item_id)
@@ -438,9 +440,8 @@ class ProductionCallback extends Model
             ->first();
 
         if (! $stock) {
-            throw new RuntimeException(
-                'Stock record not found for item: '.$this->item_id
-            );
+            CleanError::show('Stock record not found for item: '.$this->item_id);
+            return;
         }
 
         // Decrease available, increase damaged
@@ -469,12 +470,14 @@ class ProductionCallback extends Model
     private function updateFinishedProductStock(): void
     {
         if (! $this->product_id) {
-            throw new InvalidArgumentException('Finished product callback missing product_id');
+            CleanError::show('Finished product callback missing product_id.');
+            return;
         }
 
         $recipe = Recipe::where('product_id', $this->product_id)->first();
         if (! $recipe) {
-            throw new RuntimeException('Recipe not found for product: '.$this->product_id);
+            CleanError::show('Recipe not found for product: '.$this->product_id);
+            return;
         }
 
         $dailyProduce = DailyProduce::where('shift_id', $this->shift_id)
@@ -483,10 +486,11 @@ class ProductionCallback extends Model
             ->first();
 
         if (! $dailyProduce) {
-            throw new RuntimeException(
+            CleanError::show(
                 'DailyProduce not found for shift: '.$this->shift_id.
                 ', recipe: '.$recipe->id
             );
+            return;
         }
 
         $dailyProduce->callback_quantity += $this->quantity;

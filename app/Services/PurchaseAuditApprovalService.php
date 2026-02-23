@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
 use App\Models\ApprovalAuditRequest;
 use App\Models\Employee;
 use App\Models\Item;
@@ -16,7 +17,7 @@ class PurchaseAuditApprovalService
     /**
      * Create a pending purchase creation request via the audit approval system
      */
-    public static function requestPurchaseCreation(Employee|User $requester, array $purchaseData, string $reason): ApprovalAuditRequest
+    public static function requestPurchaseCreation(Employee|User $requester, array $purchaseData, string $reason): ?ApprovalAuditRequest
     {
         $request = ApprovalAuditRequest::create([
             'branch_id' => $requester instanceof User ? current_branch_id() : $requester->branch_id,
@@ -45,10 +46,11 @@ class PurchaseAuditApprovalService
     /**
      * Execute a pending purchase creation after approval
      */
-    public static function executePurchaseCreation(ApprovalAuditRequest $request, Employee|User $approver): Purchase
+    public static function executePurchaseCreation(ApprovalAuditRequest $request, Employee|User $approver): ?Purchase
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $payload = $request->payload;
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $payload = $request->payload;
 
             // Create the purchase
             $purchase = Purchase::create([
@@ -82,7 +84,8 @@ class PurchaseAuditApprovalService
                     $itemModel = $itemsById->get($itemId);
 
                     if (! $itemModel) {
-                        throw new \RuntimeException("Item #{$itemId} was not found for purchase approval.");
+                        CleanError::show("Item #{$itemId} was not found for purchase approval.");
+                        return null;
                     }
 
                     $baseQuantity = self::convertPurchaseQuantityToItemBase($itemModel, $quantity, $purchaseUom);
@@ -165,16 +168,26 @@ class PurchaseAuditApprovalService
                 'completed'
             );
 
-            return $purchase;
-        });
+                return $purchase;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to create purchase.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     /**
      * Create a pending purchase deletion request via the audit approval system
      */
-    public static function requestPurchaseDeletion(Employee|User $requester, int $purchaseId, string $reason): ApprovalAuditRequest
+    public static function requestPurchaseDeletion(Employee|User $requester, int $purchaseId, string $reason): ?ApprovalAuditRequest
     {
-        $purchase = Purchase::findOrFail($purchaseId);
+        $purchase = Purchase::find($purchaseId);
+        if (!$purchase) {
+            CleanError::show('Purchase not found. Please refresh and try again.');
+            return null;
+        }
 
         $request = ApprovalAuditRequest::create([
             'branch_id' => $requester instanceof User ? current_branch_id() : $requester->branch_id,
@@ -202,15 +215,25 @@ class PurchaseAuditApprovalService
     /**
      * Execute a pending purchase deletion after approval
      */
-    public static function executePurchaseDeletion(ApprovalAuditRequest $request, Employee|User $approver): void
+    public static function executePurchaseDeletion(ApprovalAuditRequest $request, Employee|User $approver): bool
     {
-        DB::transaction(function () use ($request, $approver) {
-            $payload = $request->payload;
-            $purchaseId = $payload['purchase_id'];
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $payload = $request->payload;
+                $purchaseId = $payload['purchase_id'] ?? null;
 
-            $purchase = Purchase::where('id', $purchaseId)
-                ->where('branch_id', $request->branch_id)
-                ->firstOrFail();
+                if (!$purchaseId) {
+                    CleanError::show('Invalid purchase ID in approval payload.');
+                    return false;
+                }
+
+                $purchase = Purchase::where('id', $purchaseId)
+                    ->where('branch_id', $request->branch_id)
+                    ->first();
+                if (!$purchase) {
+                    CleanError::show('Purchase not found for approval request.');
+                    return false;
+                }
 
             $purchaseNumber = $purchase->purchase_number;
             $supplierName = $purchase->supplier_name;
@@ -233,18 +256,30 @@ class PurchaseAuditApprovalService
                 "Deleted purchase #{$purchaseNumber} from {$supplierName} via approval.",
                 'completed'
             );
-        });
+                return true;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to delete purchase.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return false;
+        }
     }
 
     /**
      * Create a pending purchase approval request from draft
      */
-    public static function requestPurchaseApproval(Employee|User $requester, int $purchaseId, string $reason): ApprovalAuditRequest
+    public static function requestPurchaseApproval(Employee|User $requester, int $purchaseId, string $reason): ?ApprovalAuditRequest
     {
-        $purchase = Purchase::findOrFail($purchaseId);
+        $purchase = Purchase::find($purchaseId);
+        if (!$purchase) {
+            CleanError::show('Purchase not found. Please refresh and try again.');
+            return null;
+        }
 
         if ($purchase->status !== 'draft') {
-            throw new \Exception('Purchase must be in draft status to request approval');
+            CleanError::show('Purchase must be in draft status to request approval.');
+            return null;
         }
 
         $request = ApprovalAuditRequest::create([
@@ -276,16 +311,26 @@ class PurchaseAuditApprovalService
     /**
      * Execute a pending purchase approval request
      */
-    public static function approvePurchase(ApprovalAuditRequest $request, Employee|User $approver): Purchase
+    public static function approvePurchase(ApprovalAuditRequest $request, Employee|User $approver): ?Purchase
     {
-        return DB::transaction(function () use ($request, $approver) {
-            $payload = $request->payload;
-            $purchaseId = $payload['purchase_id'];
+        try {
+            return DB::transaction(function () use ($request, $approver) {
+                $payload = $request->payload;
+                $purchaseId = $payload['purchase_id'] ?? null;
 
-            $purchase = Purchase::where('id', $purchaseId)
-                ->where('branch_id', $request->branch_id)
-                ->with('purchaseItems.item.unitOfMeasure')
-                ->firstOrFail();
+                if (!$purchaseId) {
+                    CleanError::show('Invalid purchase ID in approval payload.');
+                    return null;
+                }
+
+                $purchase = Purchase::where('id', $purchaseId)
+                    ->where('branch_id', $request->branch_id)
+                    ->with('purchaseItems.item.unitOfMeasure')
+                    ->first();
+                if (!$purchase) {
+                    CleanError::show('Purchase not found for approval request.');
+                    return null;
+                }
 
             // Update purchase status to approved
             $purchase->update(['status' => 'approved']);
@@ -294,7 +339,8 @@ class PurchaseAuditApprovalService
             foreach ($purchase->purchaseItems as $purchaseItem) {
                 $itemModel = $purchaseItem->item;
                 if (! $itemModel) {
-                    throw new \RuntimeException("Item #{$purchaseItem->item_id} was not found for purchase approval.");
+                    CleanError::show("Item #{$purchaseItem->item_id} was not found for purchase approval.");
+                    return null;
                 }
 
                 $stock = Stock::firstOrCreate(
@@ -367,8 +413,14 @@ class PurchaseAuditApprovalService
                 'completed'
             );
 
-            return $purchase;
-        });
+                return $purchase;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to approve purchase.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 
     private static function convertPurchaseQuantityToItemBase(Item $item, float $quantity, ?string $purchaseUom): float
@@ -383,22 +435,25 @@ class PurchaseAuditApprovalService
 
         $purchaseUom = trim((string) $purchaseUom);
         if ($purchaseUom === '') {
-            throw new \RuntimeException("Purchase UOM is required for item '{$item->name}'.");
+            CleanError::show("Purchase UOM is required for item '{$item->name}'.");
+            return 0.0;
         }
 
         $converted = $item->convertToBaseUom($quantity, $purchaseUom);
         if ($converted === null) {
             $baseUom = $item->unitOfMeasure?->symbol ?? 'item base UOM';
-            throw new \RuntimeException(
+            CleanError::show(
                 "No UOM conversion found for item '{$item->name}' from {$purchaseUom} to {$baseUom}."
             );
+            return 0.0;
         }
 
         $baseQuantity = (float) $converted;
         if ($baseQuantity <= 0) {
-            throw new \RuntimeException(
+            CleanError::show(
                 "Invalid converted quantity for item '{$item->name}' using {$purchaseUom}."
             );
+            return 0.0;
         }
 
         return $baseQuantity;
@@ -407,15 +462,25 @@ class PurchaseAuditApprovalService
     /**
      * Reject a pending purchase approval request
      */
-    public static function rejectPurchase(ApprovalAuditRequest $request, Employee|User $approver, string $comment): Purchase
+    public static function rejectPurchase(ApprovalAuditRequest $request, Employee|User $approver, string $comment): ?Purchase
     {
-        return DB::transaction(function () use ($request, $approver, $comment) {
-            $payload = $request->payload;
-            $purchaseId = $payload['purchase_id'];
+        try {
+            return DB::transaction(function () use ($request, $approver, $comment) {
+                $payload = $request->payload;
+                $purchaseId = $payload['purchase_id'] ?? null;
 
-            $purchase = Purchase::where('id', $purchaseId)
-                ->where('branch_id', $request->branch_id)
-                ->firstOrFail();
+                if (!$purchaseId) {
+                    CleanError::show('Invalid purchase ID in approval payload.');
+                    return null;
+                }
+
+                $purchase = Purchase::where('id', $purchaseId)
+                    ->where('branch_id', $request->branch_id)
+                    ->first();
+                if (!$purchase) {
+                    CleanError::show('Purchase not found for approval request.');
+                    return null;
+                }
 
             // Update purchase status back to draft
             $purchase->update(['status' => 'draft']);
@@ -438,7 +503,13 @@ class PurchaseAuditApprovalService
                 'completed'
             );
 
-            return $purchase;
-        });
+                return $purchase;
+            });
+        } catch (\Throwable $e) {
+            CleanError::show('Failed to reject purchase.', $e, [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
     }
 }

@@ -7,7 +7,7 @@ use App\Models\GlEntry;
 use App\Models\AccountingPeriod;
 use App\Models\Sale;
 use App\Models\Payment;
-use Exception;
+use App\Helpers\CleanError;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -20,12 +20,12 @@ class AccountingService
     public function postSaleTransaction(Sale $sale): bool
     {
         try {
-            DB::beginTransaction();
-
             $period = $this->getCurrentPeriod();
             if (!$period || $period->status !== 'open') {
-                throw new Exception('No open accounting period found');
+                CleanError::show('No open accounting period found.');
+                return false;
             }
+            DB::beginTransaction();
 
             // Get department and validate GL accounts
             $department = $sale->department ?? $sale->branch->departments()->first();
@@ -128,7 +128,7 @@ class AccountingService
 
             DB::commit();
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Sale GL posting failed: ' . $e->getMessage(), [
                 'sale_id' => $sale->id,
@@ -151,12 +151,12 @@ class AccountingService
     public function postPaymentTransaction(Payment $payment): bool
     {
         try {
-            DB::beginTransaction();
-
             $period = $this->getCurrentPeriod();
             if (!$period || $period->status !== 'open') {
-                throw new Exception('No open accounting period found');
+                CleanError::show('No open accounting period found.');
+                return false;
             }
+            DB::beginTransaction();
 
             $amount = (float) $payment->amount;
             $paymentMethod = strtolower($payment->payment_method);
@@ -167,7 +167,9 @@ class AccountingService
             } elseif ($paymentMethod === 'pos' || $paymentMethod === 'transfer') {
                 $cashAccount = GlAccount::where('account_number', '1110')->firstOrFail();
             } else {
-                throw new Exception('Unknown payment method: ' . $payment->payment_method);
+                CleanError::show('Unknown payment method: ' . $payment->payment_method);
+                DB::rollBack();
+                return false;
             }
 
             // AR reduction
@@ -210,7 +212,7 @@ class AccountingService
 
             DB::commit();
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Payment GL posting failed: ' . $e->getMessage(), [
                 'payment_id' => $payment->id,
@@ -232,12 +234,12 @@ class AccountingService
     public function postCogsSale(Sale $sale, $cogsAmount): bool
     {
         try {
-            DB::beginTransaction();
-
             $period = $this->getCurrentPeriod();
             if (!$period || $period->status !== 'open') {
-                throw new Exception('No open accounting period found');
+                CleanError::show('No open accounting period found.');
+                return false;
             }
+            DB::beginTransaction();
 
             $cogsAccount = GlAccount::where('account_number', '5110')->firstOrFail();
             $fgAccount = GlAccount::where('account_number', '1330')->firstOrFail();
@@ -275,7 +277,7 @@ class AccountingService
 
             DB::commit();
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('COGS GL posting failed: ' . $e->getMessage(), [
                 'sale_id' => $sale->id,

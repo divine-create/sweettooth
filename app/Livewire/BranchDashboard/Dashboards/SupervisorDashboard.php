@@ -40,7 +40,7 @@ class SupervisorDashboard extends Component
             })->when($currentBranchId, function($q) use ($currentBranchId) {
                 return $q->where('branch_id', $currentBranchId);
             })->count(),
-            'on_shift_today' => Employee::where('status', 'active')->when($userDepartmentId, function($q) use ($userDepartmentId) {
+            'on_shift_today' => Employee::where('is_active', true)->when($userDepartmentId, function($q) use ($userDepartmentId) {
                 return $q->where('department_id', $userDepartmentId);
             })->when($currentBranchId, function($q) use ($currentBranchId) {
                 return $q->where('branch_id', $currentBranchId);

@@ -43,7 +43,7 @@ class ManagerDashboard extends Component
             })->when($currentBranchId, function($q) use ($currentBranchId) {
                 return $q->where('branch_id', $currentBranchId);
             })->count(),
-            'active_team_members' => Employee::where('status', 'active')->when($userDepartmentId, function($q) use ($userDepartmentId) {
+            'active_team_members' => Employee::where('is_active', true)->when($userDepartmentId, function($q) use ($userDepartmentId) {
                 return $q->where('department_id', $userDepartmentId);
             })->when($currentBranchId, function($q) use ($currentBranchId) {
                 return $q->where('branch_id', $currentBranchId);
