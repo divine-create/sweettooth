@@ -38,7 +38,16 @@
                         @if(is_numeric($value))
                             {{ number_format($value, 2) }}
                         @elseif(is_array($value))
-                            {{ json_encode($value) }}
+                            @if(array_key_exists('date', $value))
+                                {{ $value['date'] ?? '-' }}
+                            @else
+                                {{ collect($value)->map(function ($v, $k) {
+                                    if (is_array($v)) {
+                                        return $k . ': [data]';
+                                    }
+                                    return $k . ': ' . $v;
+                                })->implode(', ') }}
+                            @endif
                         @else
                             {{ $value }}
                         @endif

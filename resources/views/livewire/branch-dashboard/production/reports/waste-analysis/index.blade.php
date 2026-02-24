@@ -7,9 +7,9 @@
                 Track production waste, callbacks, and identify waste reduction opportunities
             </p>
         </div>
-        <x-button wire:click="generateReport" color="primary" icon="document-plus">
-            Generate & Save Report
-        </x-button>
+            <x-button wire:click="generateReport" color="primary" icon="document-plus" wire:loading.attr="disabled" wire:target="generateReport">
+                Generate & Save Report
+            </x-button>
     </div>
 
     {{-- Filters --}}

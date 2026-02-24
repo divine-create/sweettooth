@@ -18,7 +18,7 @@
                     Refreshing...
                 </span>
             </x-button>
-            <x-button wire:click="generateReport" color="primary" icon="document-plus">
+            <x-button wire:click="generateReport" color="primary" icon="document-plus" wire:loading.attr="disabled" wire:target="generateReport">
                 Generate & Save Report
             </x-button>
         </div>
@@ -278,10 +278,10 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex justify-end gap-2">
-                                        <x-button wire:click="viewReport('{{ $report->id }}')" size="sm" color="secondary" icon="eye">
+                                        <x-button wire:click="viewReport('{{ $report->id }}')" size="sm" color="secondary" icon="eye" wire:loading.attr="disabled" wire:target="viewReport">
                                             View
                                         </x-button>
-                                        <x-button wire:click="downloadReport('{{ $report->id }}')" size="sm" color="secondary" icon="document-arrow-down">
+                                        <x-button wire:click="downloadReport('{{ $report->id }}')" size="sm" color="secondary" icon="document-arrow-down" wire:loading.attr="disabled" wire:target="downloadReport">
                                             Download
                                         </x-button>
                                     </div>

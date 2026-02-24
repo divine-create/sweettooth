@@ -7,9 +7,9 @@
                 Track quality, rejection rates, and callback analysis
             </p>
         </div>
-        <x-button wire:click="generateReport" color="primary" icon="document-plus">
-            Generate & Save Report
-        </x-button>
+            <x-button wire:click="generateReport" color="primary" icon="document-plus" wire:loading.attr="disabled" wire:target="generateReport">
+                Generate & Save Report
+            </x-button>
     </div>
 
     {{-- Filters --}}
