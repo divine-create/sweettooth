@@ -242,8 +242,8 @@ class Generate extends Component
             $payload = $service->getReportData();
             $this->reportData = $payload['report_data'] ?? $payload;
             $this->summaryMetrics = $payload['summary_metrics'] ?? ($this->reportData['summary_metrics'] ?? []);
-            $this->tablesData = $payload['tables'] ?? [];
-            $this->narrative = $payload['narrative'] ?? [];
+            $this->tablesData = $payload['tables'] ?? ($this->reportData['tables'] ?? []);
+            $this->narrative = $payload['narrative'] ?? ($this->reportData['narrative'] ?? []);
 
             $this->toast()->success('Report preview generated successfully')->send();
         } catch (\Exception $e) {
@@ -296,8 +296,8 @@ class Generate extends Component
         $payload = $report->report_data ?? [];
         $this->reportData = $payload;
         $this->summaryMetrics = $report->summary_metrics ?? ($payload['summary_metrics'] ?? []);
-        $this->tablesData = $payload['tables'] ?? [];
-        $this->narrative = $payload['narrative'] ?? [];
+        $this->tablesData = $payload['tables'] ?? ($payload['report_data']['tables'] ?? []);
+        $this->narrative = $payload['narrative'] ?? ($payload['report_data']['narrative'] ?? []);
         $this->generatedReport = $report;
     }
 

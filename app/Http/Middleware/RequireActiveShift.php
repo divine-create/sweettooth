@@ -25,7 +25,7 @@ class RequireActiveShift
         $employee = Auth::user();
 
         // Validate user exists and is not super admin
-        if (!$employee || is_super_admin()) {
+        if (!$employee || $this->isSuperAdminUser($employee) || (function_exists('is_super_admin') && is_super_admin())) {
             return $next($request);
         }
 
@@ -53,7 +53,7 @@ class RequireActiveShift
         }
 
         // Skip for super admins
-        if (is_super_admin()) {
+        if ($this->isSuperAdminUser(Auth::user()) || (function_exists('is_super_admin') && is_super_admin())) {
             return true;
         }
 
@@ -80,6 +80,24 @@ class RequireActiveShift
         }
 
         return false;
+    }
+
+    private function isSuperAdminUser($user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if (isset($user->user_type) && $user->user_type === 'admin') {
+            return true;
+        }
+
+        $role = $user->roles()->orderByDesc('level')->first();
+        if ($role && isset($role->level) && (int) $role->level >= 5) {
+            return true;
+        }
+
+        return $user->hasRole('Super Admin');
     }
 
     /**

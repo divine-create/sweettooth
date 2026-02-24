@@ -64,15 +64,12 @@ use Illuminate\Support\Facades\Route;
                 // Grouped report pages
                 Route::get('/operations', \App\Livewire\BranchDashboard\Production\Reports\OperationsReports::class)->name('operations');
                 Route::get('/performance', \App\Livewire\BranchDashboard\Production\Reports\PerformanceReports::class)->name('performance');
-                Route::get('/planning', \App\Livewire\BranchDashboard\Production\Reports\PlanningReports::class)->name('planning');
 
                 // Individual reports (kept for backward compatibility)
                 Route::get('/efficiency', \App\Livewire\BranchDashboard\Production\Reports\ProductionEfficiency\Index::class)->name('efficiency');
                 Route::get('/quality', \App\Livewire\BranchDashboard\Production\Reports\QualityMetrics\Index::class)->name('quality');
                 Route::get('/waste', \App\Livewire\BranchDashboard\Production\Reports\WasteAnalysis\Index::class)->name('waste');
                 Route::get('/cost', \App\Livewire\BranchDashboard\Production\Reports\CostAnalysis\Index::class)->name('cost');
-                Route::get('/recipe-performance', \App\Livewire\BranchDashboard\Production\Reports\RecipePerformance\Index::class)->name('recipe-performance');
-                Route::get('/shift-summary', \App\Livewire\BranchDashboard\Production\Reports\ShiftSummary\Index::class)->name('shift-summary');
                 Route::get('/ingredient-utilization', \App\Livewire\BranchDashboard\Production\Reports\IngredientUtilization\Index::class)->name('ingredient-utilization');
                 Route::get('/pipeline', \App\Livewire\BranchDashboard\Production\Reports\PipelineStatus\Index::class)->name('pipeline');
                 Route::get('/capacity', \App\Livewire\BranchDashboard\Production\Reports\CapacityPlanning\Index::class)->name('capacity');

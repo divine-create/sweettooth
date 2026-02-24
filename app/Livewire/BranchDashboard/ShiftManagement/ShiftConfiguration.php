@@ -101,12 +101,14 @@ class ShiftConfiguration extends BaseComponent
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i',
             'clock_in_start' => 'required|date_format:H:i',
-            'clock_in_end' => 'required|date_format:H:i|after:clock_in_start',
+            'clock_in_end' => 'required|date_format:H:i',
             'auto_clock_out_minutes' => 'required|integer|min:0',
             'max_overtime_hours' => 'required|numeric|min:0',
             'break_duration_minutes' => 'required|integer|min:0',
             'timezone' => 'required|string|max:50',
         ]);
+
+        $this->validateTimeWindow();
 
         ShiftConfigurationModel::create([
             'branch_id' => $this->b_id,
@@ -159,12 +161,14 @@ class ShiftConfiguration extends BaseComponent
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i',
             'clock_in_start' => 'required|date_format:H:i',
-            'clock_in_end' => 'required|date_format:H:i|after:clock_in_start',
+            'clock_in_end' => 'required|date_format:H:i',
             'auto_clock_out_minutes' => 'required|integer|min:0',
             'max_overtime_hours' => 'required|numeric|min:0',
             'break_duration_minutes' => 'required|integer|min:0',
             'timezone' => 'required|string|max:50',
         ]);
+
+        $this->validateTimeWindow();
 
         $config = ShiftConfigurationModel::findOrFail($this->editingConfig);
         $config->update([
@@ -227,8 +231,52 @@ class ShiftConfiguration extends BaseComponent
         $this->clock_in_end = $this->normalizeTimeInput($this->clock_in_end);
     }
 
+    private function validateTimeWindow(): void
+    {
+        try {
+            $start = Carbon::createFromFormat('H:i', $this->start_time);
+            $end = Carbon::createFromFormat('H:i', $this->end_time);
+            $clockInStart = Carbon::createFromFormat('H:i', $this->clock_in_start);
+            $clockInEnd = Carbon::createFromFormat('H:i', $this->clock_in_end);
+        } catch (\Throwable $e) {
+            // Let base validation handle format errors
+            return;
+        }
+
+        $endAdjusted = $end->copy();
+        if ($endAdjusted->lessThanOrEqualTo($start)) {
+            $endAdjusted->addDay();
+        }
+
+        $clockInEndAdjusted = $clockInEnd->copy();
+        if ($clockInEndAdjusted->lessThanOrEqualTo($clockInStart)) {
+            $clockInEndAdjusted->addDay();
+        }
+
+        if ($clockInEndAdjusted->lessThanOrEqualTo($clockInStart)) {
+            $this->addError('clock_in_end', 'The clock in end field must be after clock in start.');
+        }
+
+        if ($endAdjusted->lessThanOrEqualTo($start)) {
+            $this->addError('end_time', 'End time must be after start time.');
+        }
+
+        if ($this->getErrorBag()->isNotEmpty()) {
+            $this->dispatch('validation-error');
+            throw new \Illuminate\Validation\ValidationException($this->getErrorBag());
+        }
+    }
+
     private function normalizeTimeInput($value): ?string
     {
+        if ($value === null) {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('H:i');
+        }
+
         $value = trim((string) $value);
 
         if ($value === '') {

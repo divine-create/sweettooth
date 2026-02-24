@@ -98,7 +98,7 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Material Cost</p>
-                            <button wire:click="$set('showMetricModal', 'material_cost')" class="text-xs text-blue-400 hover:text-blue-600 dark:text-blue-500 dark:hover:text-blue-300">
+                            <button wire:click="openMetricModal('material_cost')" class="text-xs text-blue-400 hover:text-blue-600 dark:text-blue-500 dark:hover:text-blue-300">
                                 <x-icon name="information-circle" class="w-4 h-4" />
                             </button>
                         </div>
@@ -118,7 +118,7 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <p class="text-sm font-medium text-green-600 dark:text-green-400">Production Cost</p>
-                            <button wire:click="$set('showMetricModal', 'production_cost')" class="text-xs text-green-400 hover:text-green-600 dark:text-green-500 dark:hover:text-green-300">
+                            <button wire:click="openMetricModal('production_cost')" class="text-xs text-green-400 hover:text-green-600 dark:text-green-500 dark:hover:text-green-300">
                                 <x-icon name="information-circle" class="w-4 h-4" />
                             </button>
                         </div>
@@ -138,7 +138,7 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <p class="text-sm font-medium text-red-600 dark:text-red-400">Total Cost</p>
-                            <button wire:click="$set('showMetricModal', 'total_cost')" class="text-xs text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300">
+                            <button wire:click="openMetricModal('total_cost')" class="text-xs text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300">
                                 <x-icon name="information-circle" class="w-4 h-4" />
                             </button>
                         </div>
@@ -158,7 +158,7 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <p class="text-sm font-medium text-purple-600 dark:text-purple-400">Cost per Unit</p>
-                            <button wire:click="$set('showMetricModal', 'cost_per_unit')" class="text-xs text-purple-400 hover:text-purple-600 dark:text-purple-500 dark:hover:text-purple-300">
+                            <button wire:click="openMetricModal('cost_per_unit')" class="text-xs text-purple-400 hover:text-purple-600 dark:text-purple-500 dark:hover:text-purple-300">
                                 <x-icon name="information-circle" class="w-4 h-4" />
                             </button>
                         </div>
@@ -171,27 +171,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        {{-- Charts Section --}}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {{-- Cost Breakdown Chart --}}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Cost Breakdown</h3>
-                <div id="cost-breakdown-chart" class="h-64"></div>
-            </div>
-
-            {{-- Cost Trends Chart --}}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Daily Cost Trends</h3>
-                <div id="cost-trends-chart" class="h-64"></div>
-            </div>
-        </div>
-
-        {{-- Ingredient Cost Chart --}}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top Ingredient Costs</h3>
-            <div id="ingredient-cost-chart" class="h-64"></div>
         </div>
 
         {{-- Product Efficiency Table --}}
@@ -332,352 +311,6 @@
             </div>
     @endif
 
-    {{-- Charts JavaScript --}}
-    @if($reportData && $chartsData && count($chartsData) > 0)
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Charts data:', @json($chartsData));
-
-            // Cost Breakdown Chart (Pie Chart)
-            if (document.getElementById('cost-breakdown-chart') && @json($chartsData['cost_breakdown_chart'])) {
-                const costBreakdownData = @json($chartsData['cost_breakdown_chart']);
-
-                const costBreakdownOptions = {
-                    series: costBreakdownData.data,
-                    chart: {
-                        type: 'pie',
-                        height: 250,
-                        toolbar: {
-                            show: false
-                        },
-                        background: 'transparent'
-                    },
-                    labels: costBreakdownData.labels,
-                    colors: costBreakdownData.colors || ['#3b82f6', '#10b981'],
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                        }
-                    },
-                    tooltip: {
-                        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
-                        y: {
-                            formatter: function(value) {
-                                return '$' + value.toFixed(2);
-                            }
-                        }
-                    },
-                    theme: {
-                        mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    }
-                };
-
-                const costBreakdownChart = new ApexCharts(document.querySelector("#cost-breakdown-chart"), costBreakdownOptions);
-                costBreakdownChart.render();
-            }
-
-            // Cost Trends Chart (Line Chart)
-            if (document.getElementById('cost-trends-chart') && @json($chartsData['cost_trends_chart'])) {
-                const costTrendsData = @json($chartsData['cost_trends_chart']);
-
-                const costTrendsOptions = {
-                    series: [{
-                        name: costTrendsData.datasets[0].label,
-                        data: costTrendsData.datasets[0].data,
-                        color: costTrendsData.datasets[0].color || '#ef4444'
-                    }],
-                    chart: {
-                        type: 'line',
-                        height: 250,
-                        toolbar: {
-                            show: false
-                        },
-                        background: 'transparent'
-                    },
-                    stroke: {
-                        curve: 'smooth',
-                        width: 3
-                    },
-                    markers: {
-                        size: 4,
-                        hover: {
-                            size: 6
-                        }
-                    },
-                    xaxis: {
-                        categories: costTrendsData.labels,
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            }
-                        }
-                    },
-                    yaxis: {
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            },
-                            formatter: function(value) {
-                                return '$' + value.toFixed(0);
-                            }
-                        }
-                    },
-                    tooltip: {
-                        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
-                        y: {
-                            formatter: function(value) {
-                                return '$' + value.toFixed(2);
-                            }
-                        }
-                    },
-                    grid: {
-                        borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#e5e7eb',
-                        strokeDashArray: 3
-                    },
-                    theme: {
-                        mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    }
-                };
-
-                const costTrendsChart = new ApexCharts(document.querySelector("#cost-trends-chart"), costTrendsOptions);
-                costTrendsChart.render();
-            }
-
-            // Ingredient Cost Chart (Bar Chart)
-            if (document.getElementById('ingredient-cost-chart') && @json($chartsData['ingredient_cost_chart'])) {
-                const ingredientChartData = @json($chartsData['ingredient_cost_chart']);
-
-                const ingredientOptions = {
-                    series: [{
-                        name: ingredientChartData.datasets[0].label,
-                        data: ingredientChartData.datasets[0].data
-                    }],
-                    chart: {
-                        type: 'bar',
-                        height: 250,
-                        toolbar: {
-                            show: false
-                        },
-                        background: 'transparent'
-                    },
-                    plotOptions: {
-                        bar: {
-                            borderRadius: 4,
-                            columnWidth: '60%'
-                        }
-                    },
-                    colors: [ingredientChartData.datasets[0].color || '#8b5cf6'],
-                    xaxis: {
-                        categories: ingredientChartData.labels,
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            },
-                            rotate: -45
-                        }
-                    },
-                    yaxis: {
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            },
-                            formatter: function(value) {
-                                return '$' + value.toFixed(0);
-                            }
-                        }
-                    },
-                    tooltip: {
-                        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
-                        y: {
-                            formatter: function(value) {
-                                return '$' + value.toFixed(2);
-                            }
-                        }
-                    },
-                    grid: {
-                        borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#e5e7eb',
-                        strokeDashArray: 3
-                    },
-                    theme: {
-                        mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    }
-                };
-
-                const ingredientChart = new ApexCharts(document.querySelector("#ingredient-cost-chart"), ingredientOptions);
-                ingredientChart.render();
-            }
-                    ],
-                    chart: {
-                        type: 'line',
-                        height: 250,
-                        toolbar: {
-                            show: false
-                        },
-                        background: 'transparent'
-                    },
-                    stroke: {
-                        curve: 'smooth',
-                        width: 3
-                    },
-                    markers: {
-                        size: 4,
-                        hover: {
-                            size: 6
-                        }
-                    },
-                    xaxis: {
-                        categories: dailyChartData.labels,
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            }
-                        }
-                    },
-                    yaxis: {
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            }
-                        }
-                    },
-                    legend: {
-                        labels: {
-                            colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                        }
-                    },
-                    tooltip: {
-                        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    },
-                    grid: {
-                        borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#e5e7eb',
-                        strokeDashArray: 3
-                    },
-                    theme: {
-                        mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    }
-                };
-
-                const dailyChart = new ApexCharts(document.querySelector("#daily-efficiency-chart"), dailyOptions);
-                dailyChart.render();
-            }
-
-            // Variance Distribution Chart (Pie Chart)
-            if (document.getElementById('variance-distribution-chart') && @json($chartsData['variance_distribution'])) {
-                const varianceChartData = @json($chartsData['variance_distribution']);
-
-                const varianceOptions = {
-                    series: varianceChartData.data,
-                    chart: {
-                        type: 'pie',
-                        height: 250,
-                        toolbar: {
-                            show: false
-                        },
-                        background: 'transparent'
-                    },
-                    labels: varianceChartData.labels,
-                    colors: varianceChartData.colors,
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                        }
-                    },
-                    tooltip: {
-                        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    },
-                    theme: {
-                        mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    },
-                    responsive: [{
-                        breakpoint: 480,
-                        options: {
-                            chart: {
-                                width: 200
-                            },
-                            legend: {
-                                position: 'bottom'
-                            }
-                        }
-                    }]
-                };
-
-                const varianceChart = new ApexCharts(document.querySelector("#variance-distribution-chart"), varianceOptions);
-                varianceChart.render();
-            }
-
-            // Product Efficiency Chart (Bar Chart)
-            if (document.getElementById('product-efficiency-chart') && @json($chartsData['product_efficiency_chart'])) {
-                const productChartData = @json($chartsData['product_efficiency_chart']);
-
-                const productOptions = {
-                    series: [{
-                        name: productChartData.datasets[0].label,
-                        data: productChartData.datasets[0].data
-                    }],
-                    chart: {
-                        type: 'bar',
-                        height: 250,
-                        toolbar: {
-                            show: false
-                        },
-                        background: 'transparent'
-                    },
-                    plotOptions: {
-                        bar: {
-                            borderRadius: 4,
-                            columnWidth: '60%'
-                        }
-                    },
-                    colors: [productChartData.datasets[0].color],
-                    xaxis: {
-                        categories: productChartData.labels,
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            },
-                            rotate: -45
-                        }
-                    },
-                    yaxis: {
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            }
-                        }
-                    },
-                    tooltip: {
-                        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    },
-                    grid: {
-                        borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#e5e7eb',
-                        strokeDashArray: 3
-                    },
-                    theme: {
-                        mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    }
-                };
-
-                const productChart = new ApexCharts(document.querySelector("#product-efficiency-chart"), productOptions);
-                productChart.render();
-            }
-        });
-
-        // Re-render charts when Livewire updates
-        document.addEventListener('livewire:updated', function() {
-            // Destroy existing charts first
-            if (window.dailyChart) window.dailyChart.destroy();
-            if (window.varianceChart) window.varianceChart.destroy();
-            if (window.productChart) window.productChart.destroy();
-
-            // Charts will be re-initialized on DOMContentLoaded
-            setTimeout(() => {
-                document.dispatchEvent(new Event('DOMContentLoaded'));
-            }, 100);
-        });
-    </script>
-    @endif
 
 </div>
     {{-- Metric Explanation Modal --}}

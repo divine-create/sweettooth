@@ -529,6 +529,7 @@ class SidebarVisibilityService
         $level = self::getRoleLevel($user);
         $category = self::getDepartmentCategory($user);
         $accountingRoles = ['Accounting Manager', 'Accountant', 'Cost Accountant'];
+        $blockedReportingRoles = ['Production Manager'];
 
         // Super admins can see reporting regardless of department
         if (self::isSuperAdmin($user)) {
@@ -542,6 +543,11 @@ class SidebarVisibilityService
 
         // Accounting roles should not see reporting
         if ($user && $user->hasAnyRole($accountingRoles)) {
+            return false;
+        }
+
+        // Explicitly block production managers from reporting module
+        if ($user && $user->hasAnyRole($blockedReportingRoles)) {
             return false;
         }
 

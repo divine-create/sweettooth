@@ -218,7 +218,6 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
 
         // Reporting Department Routes
         Route::prefix('reporting')->name('reporting.')->group(function () {
-            Route::get('generate', \App\Livewire\BranchDashboard\Reporting\Generate::class)->name('generate');
             Route::get('dashboard', \App\Livewire\BranchDashboard\ReportingDepartment\Dashboard\Index::class)->name('dashboard');
             Route::get('review', \App\Livewire\BranchDashboard\ReportingDepartment\ReviewReports\Index::class)->name('review');
             Route::get('compile', \App\Livewire\BranchDashboard\ReportingDepartment\CompileReports\Index::class)->name('compile');

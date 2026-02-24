@@ -152,36 +152,42 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    @if($report->status === 'draft')
-                                        <span class="text-gray-600 dark:text-gray-300 text-xs">
-                                            Waiting for submission
-                                        </span>
-                                    @elseif($report->status === 'pending_review')
-                                        <button wire:click="openReviewModal('{{ $report->id }}')"
-                                                class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            </svg>
-                                            Review
-                                        </button>
-                                    @elseif($report->status === 'reviewed')
-                                        <span class="text-green-600 dark:text-green-400 text-xs">
-                                            ✓ Reviewed by {{ $report->reviewedBy?->name }}
-                                        </span>
-                                    @elseif($report->status === 'rejected')
-                                        <span class="text-red-600 dark:text-red-400 text-xs">
-                                            ✗ Rejected
-                                        </span>
-                                    @elseif($report->status === 'compiled')
-                                        <span class="text-blue-600 dark:text-blue-400 text-xs">
-                                            Compiled
-                                        </span>
-                                    @elseif($report->status === 'sent_to_md')
-                                        <span class="text-purple-600 dark:text-purple-400 text-xs">
-                                            Sent to MD
-                                        </span>
-                                    @endif
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <a href="{{ branch_route('branch-dashboard.reporting.report.view', ['id' => $report->id, 'b_id' => $b_id]) }}"
+                                           class="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-600">
+                                            View
+                                        </a>
+                                        @if($report->status === 'draft')
+                                            <span class="text-gray-600 dark:text-gray-300 text-xs">
+                                                Waiting for submission
+                                            </span>
+                                        @elseif($report->status === 'pending_review')
+                                            <button wire:click="openReviewModal('{{ $report->id }}')"
+                                                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                Review
+                                            </button>
+                                        @elseif($report->status === 'reviewed')
+                                            <span class="text-green-600 dark:text-green-400 text-xs">
+                                                ✓ Reviewed by {{ $report->reviewedBy?->name }}
+                                            </span>
+                                        @elseif($report->status === 'rejected')
+                                            <span class="text-red-600 dark:text-red-400 text-xs">
+                                                ✗ Rejected
+                                            </span>
+                                        @elseif($report->status === 'compiled')
+                                            <span class="text-blue-600 dark:text-blue-400 text-xs">
+                                                Compiled
+                                            </span>
+                                        @elseif($report->status === 'sent_to_md')
+                                            <span class="text-purple-600 dark:text-purple-400 text-xs">
+                                                Sent to MD
+                                            </span>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty

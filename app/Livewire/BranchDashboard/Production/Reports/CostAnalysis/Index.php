@@ -18,6 +18,7 @@ class Index extends Component
 {
     use Interactions, RequiresDepartmentSelection;
 
+
     public $periodFilter = 'week';
     public $customDateFrom;
     public $customDateTo;
@@ -37,9 +38,12 @@ class Index extends Component
 
     // Saved reports
     public $savedReports = [];
+    public $showMetricModal = false;
+    public $currentMetric = null;
 
     public function mount()
     {
+        $this->departmentCategoryFilter = 'Production';
         $this->customDateFrom = Carbon::now()->startOfWeek()->toDateString();
         $this->customDateTo = Carbon::now()->endOfWeek()->toDateString();
         $this->departmentId = session('selected_department_id');
@@ -197,6 +201,12 @@ class Index extends Component
         return view('livewire.branch-dashboard.production.reports.cost-analysis.index', [
             'savedReports' => $this->savedReports,
         ]);
+    }
+
+    public function openMetricModal(string $metric): void
+    {
+        $this->currentMetric = $metric;
+        $this->showMetricModal = true;
     }
 
     public function downloadReport($reportId)

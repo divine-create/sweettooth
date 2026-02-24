@@ -4,6 +4,7 @@ namespace App\Livewire\BranchDashboard\Production\Reports\ProductionActivities;
 
 use App\Livewire\Traits\RequiresDepartmentSelection;
 use App\Models\DailyProduce;
+use App\Models\DepartmentReport;
 use App\Models\ProductionRecord;
 use App\Models\ProductionRequest;
 use Carbon\Carbon;
@@ -12,12 +13,14 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use TallStackUi\Traits\Interactions;
 
 #[Layout('components.layouts.app.branch-dashboard')]
 #[Title('Production Activities')]
 class Index extends Component
 {
     use RequiresDepartmentSelection;
+    use Interactions;
 
     #[Url(keep: true)]
     public ?string $b_id = null;
@@ -29,12 +32,20 @@ class Index extends Component
     public ?string $requestStatus = 'all';
     public $departmentId;
 
+    public array $reportData = [];
+    public bool $isViewingSaved = false;
+
+    public $generatedReport = null;
+    public bool $showReportModal = false;
+    public $savedReports = [];
+
     #[On('branch-changed')]
     public function handleBranchChange($branchId): void
     {
         $this->b_id = $branchId;
         $this->initDepartments($branchId);
         $this->setDateRange();
+        $this->isViewingSaved = false;
     }
 
     public function mount(): void
@@ -48,6 +59,34 @@ class Index extends Component
     public function updatedPeriodFilter(): void
     {
         $this->setDateRange();
+        $this->isViewingSaved = false;
+    }
+
+    public function updatedCustomDateFrom(): void
+    {
+        $this->isViewingSaved = false;
+    }
+
+    public function updatedCustomDateTo(): void
+    {
+        $this->isViewingSaved = false;
+    }
+
+    public function updatedShiftType(): void
+    {
+        $this->isViewingSaved = false;
+    }
+
+    public function updatedRequestStatus(): void
+    {
+        $this->isViewingSaved = false;
+    }
+
+    public function updatedSelectedDepartmentId($value): void
+    {
+        $this->departmentId = $value;
+        session(['selected_department_id' => $value]);
+        $this->isViewingSaved = false;
     }
 
     public function setDateRange(): void
@@ -140,7 +179,7 @@ class Index extends Component
         return $query;
     }
 
-    public function render()
+    private function buildReportPayload(): array
     {
         $dailyProduces = $this->dailyProducesQuery()->get();
         $records = $this->productionRecordsQuery()
@@ -171,18 +210,181 @@ class Index extends Component
             return max(0, $requested - $produced);
         });
 
-        return view('livewire.branch-dashboard.production.reports.production-activities.index', [
-            'dailyProduces' => $dailyProduces,
-            'productionRecords' => $records,
-            'productionRequests' => $requests,
-            'summary' => [
-                'total_produced' => $totalProduced,
-                'total_requested' => $totalRequested,
-                'total_sent_out' => $totalSentOut,
-                'total_variance' => $totalVariance,
-                'production_value' => $productionValue,
-                'unfulfilled_quantity' => $unfulfilledQuantity,
+        $recordsData = $records->map(function ($record) {
+            return [
+                'time' => optional($record->production_time)->format('Y-m-d H:i') ?? '-',
+                'product' => $record->recipe?->product_name ?? 'Unknown',
+                'produced' => (float) ($record->quantity_produced ?? 0),
+                'sent_out' => (float) ($record->quantity_sent_out ?? 0),
+            ];
+        })->values()->toArray();
+
+        $requestsData = $requests->map(function ($request) {
+            return [
+                'id' => $request->id,
+                'product' => $request->recipe?->product_name ?? 'Unknown',
+                'planned' => (float) ($request->planned_production_quantity ?? 0),
+                'status' => $request->fulfillment_status ?? 'unknown',
+            ];
+        })->values()->toArray();
+
+        $dailySummary = $dailyProduces->map(function ($row) {
+            return [
+                'date' => optional($row->produce_date)->format('Y-m-d') ?? '-',
+                'product' => $row->recipe?->product_name ?? 'Unknown',
+                'requested' => (float) ($row->requested_quantity ?? 0),
+                'produced' => (float) ($row->produced_quantity ?? 0),
+                'sent_out' => (float) ($row->sent_out_quantity ?? 0),
+                'variance' => (float) ($row->variance ?? 0),
+            ];
+        })->values()->toArray();
+
+        $summary = [
+            'total_produced' => $totalProduced,
+            'total_requested' => $totalRequested,
+            'total_sent_out' => $totalSentOut,
+            'total_variance' => $totalVariance,
+            'production_value' => $productionValue,
+            'unfulfilled_quantity' => $unfulfilledQuantity,
+        ];
+
+        return [
+            'report_data' => [
+                'summary' => $summary,
+                'production_records' => $recordsData,
+                'production_requests' => $requestsData,
+                'daily_produces' => $dailySummary,
             ],
+            'summary_metrics' => $summary,
+            'tables' => [
+                'production_records' => [
+                    'headers' => ['Time', 'Product', 'Produced', 'Sent Out'],
+                    'rows' => array_map(function ($row) {
+                        return [
+                            $row['time'] ?? '-',
+                            $row['product'] ?? 'Unknown',
+                            $row['produced'] ?? 0,
+                            $row['sent_out'] ?? 0,
+                        ];
+                    }, $recordsData),
+                ],
+                'production_requests' => [
+                    'headers' => ['Request', 'Product', 'Planned', 'Status'],
+                    'rows' => array_map(function ($row) {
+                        return [
+                            $row['id'] ?? '-',
+                            $row['product'] ?? 'Unknown',
+                            $row['planned'] ?? 0,
+                            $row['status'] ?? 'unknown',
+                        ];
+                    }, $requestsData),
+                ],
+                'daily_produce_summary' => [
+                    'headers' => ['Date', 'Product', 'Requested', 'Produced', 'Sent Out', 'Variance'],
+                    'rows' => array_map(function ($row) {
+                        return [
+                            $row['date'] ?? '-',
+                            $row['product'] ?? 'Unknown',
+                            $row['requested'] ?? 0,
+                            $row['produced'] ?? 0,
+                            $row['sent_out'] ?? 0,
+                            $row['variance'] ?? 0,
+                        ];
+                    }, $dailySummary),
+                ],
+            ],
+            'period' => [
+                'from' => $this->customDateFrom,
+                'to' => $this->customDateTo,
+            ],
+        ];
+    }
+
+    public function generateReport(): void
+    {
+        if (! $this->ensureDepartmentSelected('generate')) {
+            return;
+        }
+
+        $payload = $this->buildReportPayload();
+
+        $actor = current_actor();
+        $generatedById = $actor?->getKey() ?? auth()->id();
+        $generatedByType = $actor ? get_class($actor) : null;
+        $reportData = $payload;
+        $summaryMetrics = $payload['summary_metrics'] ?? [];
+        $chartsData = [];
+
+        $this->generatedReport = DepartmentReport::create([
+            'branch_id' => $this->b_id ?? current_branch_id(),
+            'department_id' => $this->departmentId,
+            'generated_by_id' => $generatedById,
+            'generated_by_type' => $generatedByType,
+            'report_type' => 'production_activities',
+            'report_category' => 'production',
+            'report_name' => 'Production Activities Report',
+            'report_date' => now()->toDateString(),
+            'period_from' => $this->customDateFrom,
+            'period_to' => $this->customDateTo,
+            'report_data' => $reportData,
+            'summary_metrics' => $summaryMetrics,
+            'charts_data' => $chartsData,
+            'system_data_hash' => DepartmentReport::computeSystemDataHash(
+                $reportData,
+                $summaryMetrics,
+                $chartsData
+            ),
+            'system_data_version' => 1,
+            'system_data_locked_at' => now(),
+            'status' => 'draft',
+        ]);
+
+        $this->showReportModal = true;
+        $this->toast()->success('Report generated and saved successfully')->send();
+    }
+
+    public function viewReport($reportId): void
+    {
+        $report = DepartmentReport::findOrFail($reportId);
+        $payload = $report->report_data ?? [];
+
+        $this->reportData = $payload['report_data'] ?? [];
+        $this->customDateFrom = Carbon::parse($report->period_from)->toDateString();
+        $this->customDateTo = Carbon::parse($report->period_to)->toDateString();
+        $this->periodFilter = 'custom';
+        $this->isViewingSaved = true;
+
+        $this->toast()->success('Report loaded for preview')->send();
+    }
+
+    public function downloadReport($reportId)
+    {
+        $report = DepartmentReport::findOrFail($reportId);
+
+        return response()->json($report->report_data, 200, [
+            'Content-Disposition' => 'attachment; filename="production-activities-report-' . $report->id . '.json"'
+        ]);
+    }
+
+    public function render()
+    {
+        $this->savedReports = DepartmentReport::where('branch_id', $this->b_id ?? current_branch_id())
+            ->where('department_id', $this->departmentId)
+            ->where('report_type', 'production_activities')
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+
+        if (! $this->isViewingSaved) {
+            $payload = $this->buildReportPayload();
+            $this->reportData = $payload['report_data'] ?? [];
+        }
+
+        return view('livewire.branch-dashboard.production.reports.production-activities.index', [
+            'summary' => $this->reportData['summary'] ?? [],
+            'productionRecords' => $this->reportData['production_records'] ?? [],
+            'productionRequests' => $this->reportData['production_requests'] ?? [],
+            'dailyProduces' => $this->reportData['daily_produces'] ?? [],
         ]);
     }
 }

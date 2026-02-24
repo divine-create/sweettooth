@@ -10,17 +10,33 @@ trait RequiresDepartmentSelection
     public $availableDepartments = [];
     public $selectedDepartmentId = null;
     public ?string $pendingDepartmentAction = null;
+    public ?string $departmentCategoryFilter = null;
 
     protected function initDepartments($branchId): void
     {
-        $this->availableDepartments = Department::where(function ($query) use ($branchId) {
-                $query->where('branch_id', $branchId)->orWhereNull('branch_id');
-            })
-            ->orderBy('name')
-            ->get();
+        $query = Department::where(function ($query) use ($branchId) {
+            $query->where('branch_id', $branchId)->orWhereNull('branch_id');
+        });
+
+        if (!empty($this->departmentCategoryFilter)) {
+            $category = strtolower($this->departmentCategoryFilter);
+            $query->whereHas('category', function ($q) use ($category) {
+                $q->whereRaw('LOWER(name) = ?', [$category]);
+            });
+        }
+
+        $this->availableDepartments = $query->orderBy('name')->get();
+
         $this->selectedDepartmentId = $this->departmentId
             ?? session('selected_department_id')
             ?? $this->selectedDepartmentId;
+
+        if ($this->selectedDepartmentId && $this->availableDepartments->isNotEmpty()) {
+            $selectedIsValid = $this->availableDepartments->firstWhere('id', $this->selectedDepartmentId);
+            if (!$selectedIsValid) {
+                $this->selectedDepartmentId = $this->availableDepartments->first()?->id;
+            }
+        }
     }
 
     protected function ensureDepartmentSelected(string $action): bool

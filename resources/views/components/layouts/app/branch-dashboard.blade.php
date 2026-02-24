@@ -655,11 +655,6 @@
                     :current="request()->routeIs('branch-dashboard.production.reports.performance')" wire:navigate>
                     {{ __('Performance Reports') }}
                 </flux:navlist.item>
-                <flux:navlist.item icon="calendar-days"
-                    :href="branch_route('branch-dashboard.production.reports.planning')"
-                    :current="request()->routeIs('branch-dashboard.production.reports.planning')" wire:navigate>
-                    {{ __('Planning Reports') }}
-                </flux:navlist.item>
                 <flux:navlist.item icon="document-text"
                     :href="branch_route('branch-dashboard.production.reporting.index')"
                     :current="request()->routeIs('branch-dashboard.production.reporting.*')" wire:navigate>
@@ -887,10 +882,6 @@
 
             @if ($sidebarService::canSeeReporting($currentUser))
                 <flux:navlist.group :heading="__('Reporting')" icon="document-text">
-                    <flux:navlist.item icon="sparkles" :href="branch_route('branch-dashboard.reporting.generate')"
-                        :current="request()->routeIs('branch-dashboard.reporting.generate')" wire:navigate>
-                        {{ __('Generate Reports') }}
-                    </flux:navlist.item>
                     <flux:navlist.item icon="chart-bar" :href="branch_route('branch-dashboard.reporting.dashboard')"
                         :current="request()->routeIs('branch-dashboard.reporting.dashboard')" wire:navigate>
                         {{ __('Dashboard') }}

@@ -216,11 +216,14 @@ class ProductionEfficiencyReportService extends ReportService
     protected function generateSummaryMetrics(array $reportData): array
     {
         $dailySummary = collect($reportData['daily_summary']);
+        $productEfficiency = collect($reportData['product_efficiency'] ?? []);
 
         $totalPlanned = $dailySummary->sum('planned');
         $totalActual = $dailySummary->sum('actual');
         $totalVariance = $totalActual - $totalPlanned;
         $overallEfficiency = $totalPlanned > 0 ? round(($totalActual / $totalPlanned) * 100, 2) : 0;
+        $mostProduced = $productEfficiency->sortByDesc('actual')->first();
+        $mostEfficient = $productEfficiency->sortByDesc('efficiency_percentage')->first();
 
         return [
             'total_planned' => $totalPlanned,
@@ -232,6 +235,10 @@ class ProductionEfficiencyReportService extends ReportService
             'worst_day' => $dailySummary->sortBy('actual')->first(),
             'products_tracked' => count($reportData['product_efficiency']),
             'shifts_analyzed' => count($reportData['shift_performance']),
+            'most_produced_product' => $mostProduced['product_name'] ?? 'N/A',
+            'most_produced_quantity' => $mostProduced['actual'] ?? 0,
+            'most_efficient_product' => $mostEfficient['product_name'] ?? 'N/A',
+            'most_efficient_rate' => $mostEfficient['efficiency_percentage'] ?? 0,
         ];
     }
 

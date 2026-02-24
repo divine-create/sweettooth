@@ -35,6 +35,7 @@ class Index extends Component
     public $chartsData = [];
     public $tablesData = [];
     public $narrative = [];
+    public $savedReports = [];
 
     public bool $isLoading = false;
     public $generatedReport = null;
@@ -53,6 +54,7 @@ class Index extends Component
         $this->salesDeptSlug = $salesDeptSlug;
         $this->initSalesDepartments($this->branchId);
         $this->setDateRange();
+        $this->refreshSavedReports();
     }
 
     #[On('branch-changed')]
@@ -61,6 +63,7 @@ class Index extends Component
         $this->branchId = $branchId;
         $this->initSalesDepartments($branchId);
         $this->generatePreview();
+        $this->refreshSavedReports();
     }
 
     private function initSalesDepartments(string $branchId): void
@@ -94,6 +97,7 @@ class Index extends Component
         if ($this->selectedDepartmentId) {
             $this->departmentId = $this->selectedDepartmentId;
         }
+        $this->refreshSavedReports();
     }
 
     public function setDateRange(): void
@@ -154,9 +158,9 @@ class Index extends Component
             $payload = $service->getReportData();
             $this->reportData = $payload['report_data'] ?? $payload;
             $this->summaryMetrics = $payload['summary_metrics'] ?? ($this->reportData['summary_metrics'] ?? []);
-            $this->chartsData = $payload['charts_data'] ?? [];
-            $this->tablesData = $payload['tables'] ?? [];
-            $this->narrative = $payload['narrative'] ?? [];
+            $this->chartsData = $payload['charts_data'] ?? ($this->reportData['charts_data'] ?? []);
+            $this->tablesData = $payload['tables'] ?? ($this->reportData['tables'] ?? []);
+            $this->narrative = $payload['narrative'] ?? ($this->reportData['narrative'] ?? []);
 
             $this->toast()->success('Sales performance report generated successfully')->send();
         } catch (\Exception $e) {
@@ -189,6 +193,7 @@ class Index extends Component
 
             $this->showReportModal = true;
             $this->toast()->success('Sales performance report saved successfully')->send();
+            $this->refreshSavedReports();
         } catch (\Exception $e) {
             $this->toast()->error('Error: '.$e->getMessage())->send();
         }
@@ -201,9 +206,46 @@ class Index extends Component
             $report->update(['status' => 'pending_review']);
             $this->toast()->success('Report submitted for review')->send();
             $this->showReportModal = false;
+            $this->refreshSavedReports();
         } catch (\Exception $e) {
             $this->toast()->error('Error: '.$e->getMessage())->send();
         }
+    }
+
+    public function loadSavedReport(string $reportId): void
+    {
+        $report = DepartmentReport::query()
+            ->where('branch_id', $this->branchId)
+            ->findOrFail($reportId);
+
+        $payload = $report->report_data ?? [];
+        $this->reportData = $payload;
+        $this->summaryMetrics = $report->summary_metrics ?? ($payload['summary_metrics'] ?? []);
+        $this->chartsData = $report->charts_data ?? ($payload['charts_data'] ?? []);
+        $this->tablesData = $payload['tables'] ?? ($payload['report_data']['tables'] ?? []);
+        $this->narrative = $payload['narrative'] ?? ($payload['report_data']['narrative'] ?? []);
+        $this->generatedReport = $report;
+    }
+
+    private function refreshSavedReports(): void
+    {
+        if (!$this->branchId) {
+            $this->savedReports = [];
+            return;
+        }
+
+        $query = DepartmentReport::query()
+            ->where('branch_id', $this->branchId)
+            ->where('report_category', 'sales')
+            ->where('report_type', 'sales_performance')
+            ->orderBy('report_date', 'desc')
+            ->limit(10);
+
+        if ($this->departmentId) {
+            $query->where('department_id', $this->departmentId);
+        }
+
+        $this->savedReports = $query->get();
     }
 
     public function openSaleDetail(int $index): void

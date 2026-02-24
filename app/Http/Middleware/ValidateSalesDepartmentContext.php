@@ -58,11 +58,27 @@ class ValidateSalesDepartmentContext
                 // Sales managers can access all sales departments in the category.
                 // Other roles are restricted to their assigned sales department.
                 $userLevel = $this->getUserRoleLevel($employee);
+                $salesRoles = [
+                    'Sales Manager', 'Sales Staff', 'Floor Manager', 'Assistant Shop Floor Manager',
+                    'Cashier', 'Wait Staff', 'Lobby Host', 'Lobby Host Supervisor',
+                    'Coffee Barista', 'Coffee Barista Trainer', 'Consession Attendant',
+                    'Consession Supervisor', 'Cornerstore Supervisor', 'Till Supervisor',
+                ];
                 $isSalesManager = $employee->hasAnyRole(['Sales Manager', 'Floor Manager']);
+                $isSalesStaff = $employee->hasAnyRole($salesRoles);
                 $sameCategory = $userDept && $userDept->category_id === $department->category_id;
                 $isSalesDepartment = $department->category?->name === 'Sales';
+                if (!$isSalesDepartment && $department->name) {
+                    $isSalesDepartment = str_contains(strtolower($department->name), 'sales');
+                }
 
                 if (($userLevel >= 3 && $sameCategory && $isSalesDepartment) || ($isSalesManager && $isSalesDepartment)) {
+                    $request->merge(['current_department' => $department]);
+                    return $next($request);
+                }
+
+                // Allow sales staff access to sales departments in the same category
+                if ($isSalesStaff && $isSalesDepartment && ($sameCategory || !$userDept)) {
                     $request->merge(['current_department' => $department]);
                     return $next($request);
                 }

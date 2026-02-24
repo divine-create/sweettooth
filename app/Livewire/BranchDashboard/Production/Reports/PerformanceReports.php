@@ -13,7 +13,7 @@ class PerformanceReports extends Component
     public ?string $b_id = null;
 
     // Active report tab
-    public $activeReport = 'recipe-performance'; // 'recipe-performance', 'shift-summary', 'ingredient-utilization', 'production-activities'
+    public $activeReport = 'ingredient-utilization'; // 'ingredient-utilization', 'production-activities'
 
     public function mount()
     {

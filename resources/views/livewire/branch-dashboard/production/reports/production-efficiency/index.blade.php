@@ -102,174 +102,124 @@
     </div>
 
     @if($reportData)
-        {{-- Summary Metrics --}}
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {{-- Total Planned --}}
-            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Total Planned</p>
-                            <button wire:click="$set('showMetricModal', 'planned')" class="text-xs text-blue-400 hover:text-blue-600 dark:text-blue-500 dark:hover:text-blue-300">
-                                <x-icon name="information-circle" class="w-4 h-4" />
-                            </button>
-                        </div>
-                        <p class="mt-2 text-2xl font-bold text-blue-700 dark:text-blue-300">
-                            {{ number_format($summaryMetrics['total_planned'] ?? 0, 0) }}
-                        </p>
-                    </div>
-                    <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                        <x-icon name="clipboard-document-list" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    </div>
+        <div class="space-y-6">
+            {{-- Daily Summary Table --}}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Daily Summary</h3>
                 </div>
-            </div>
-                    <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                        <x-icon name="calendar" class="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                    </div>
-                </div>
-            </div>
-
-            {{-- Total Actual --}}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Actual</p>
-                        <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                            {{ number_format($summaryMetrics['total_actual'] ?? 0) }}
-                        </p>
-                    </div>
-                    <div class="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-                        <x-icon name="check-circle" class="w-8 h-8 text-green-600 dark:text-green-400" />
-                    </div>
-                </div>
-            </div>
-
-            {{-- Variance --}}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Variance</p>
-                        <p class="mt-2 text-3xl font-bold {{ ($summaryMetrics['total_variance'] ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                            {{ ($summaryMetrics['total_variance'] ?? 0) >= 0 ? '+' : '' }}{{ number_format($summaryMetrics['total_variance'] ?? 0) }}
-                        </p>
-                    </div>
-                    <div class="p-3 {{ ($summaryMetrics['total_variance'] ?? 0) >= 0 ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900' }} rounded-lg">
-                        <x-icon name="{{ ($summaryMetrics['total_variance'] ?? 0) >= 0 ? 'arrow-trending-up' : 'arrow-trending-down' }}"
-                                class="w-8 h-8 {{ ($summaryMetrics['total_variance'] ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}" />
-                    </div>
-                </div>
-            </div>
-
-            {{-- Overall Efficiency --}}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Overall Efficiency</p>
-                            <button wire:click="$set('showMetricModal', 'overall_efficiency')" class="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
-                                <x-icon name="information-circle" class="w-4 h-4" />
-                            </button>
-                        </div>
-                        <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                            {{ number_format($summaryMetrics['overall_efficiency'] ?? 0, 1) }}%
-                        </p>
-                    </div>
-                    <div class="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                        <x-icon name="chart-pie" class="w-8 h-8 text-purple-600 dark:text-purple-400" />
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Charts Section --}}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {{-- Daily Efficiency Chart --}}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Daily Production Trend</h3>
-                <div id="daily-efficiency-chart" class="h-64"></div>
-                @if(empty($chartsData['daily_efficiency_chart'] ?? null))
-                    <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">No chart data available for this period.</p>
-@endif
-
-@include('livewire.partials.department-select-modal')
-            </div>
-
-            {{-- Variance Distribution --}}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Variance Distribution</h3>
-                <div id="variance-distribution-chart" class="h-64"></div>
-                @if(empty($chartsData['variance_distribution'] ?? null))
-                    <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">No chart data available for this period.</p>
-                @endif
-            </div>
-        </div>
-
-        {{-- Product Efficiency Chart --}}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Product Efficiency Comparison</h3>
-            <div id="product-efficiency-chart" class="h-64"></div>
-            @if(empty($chartsData['product_efficiency_chart'] ?? null))
-                <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">No chart data available for this period.</p>
-            @endif
-        </div>
-
-        {{-- Product Efficiency Table --}}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Product Efficiency Analysis</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead class="bg-gray-50 dark:bg-gray-900">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Planned</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actual</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Variance</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Efficiency %</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        @forelse($reportData['product_efficiency'] ?? [] as $product)
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-900">
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                    {{ $product['product_name'] }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
-                                    {{ number_format($product['planned']) }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
-                                    {{ number_format($product['actual']) }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
-                                    <span class="{{ $product['variance'] >= 0 ? 'text-green-600' : 'text-red-600' }} font-medium">
-                                        {{ $product['variance'] >= 0 ? '+' : '' }}{{ number_format($product['variance']) }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                        {{ $product['efficiency_percentage'] >= 95 ? 'bg-green-100 text-green-800' : ($product['efficiency_percentage'] >= 80 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                        {{ number_format($product['efficiency_percentage'], 1) }}%
-                                    </span>
-                                </td>
+                                @foreach(($tablesData['daily_summary']['headers'] ?? []) as $header)
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        {{ $header }}
+                                    </th>
+                                @endforeach
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                                    No product data available for this period
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            @forelse(($tablesData['daily_summary']['rows'] ?? []) as $row)
+                                <tr>
+                                    @foreach($row as $cell)
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                            {{ is_numeric($cell) ? number_format($cell, is_float($cell) ? 2 : 0) : $cell }}
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                                        No daily summary data available for this period
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
 
-        {{-- Export Actions --}}
-        <div class="flex justify-end gap-4">
-            <x-button wire:click="exportCsv" color="secondary" icon="document-arrow-down">
-                Export CSV
-            </x-button>
+            {{-- Product Efficiency Table --}}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Product Efficiency</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-900">
+                            <tr>
+                                @foreach(($tablesData['product_efficiency']['headers'] ?? []) as $header)
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        {{ $header }}
+                                    </th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            @forelse(($tablesData['product_efficiency']['rows'] ?? []) as $row)
+                                <tr>
+                                    @foreach($row as $cell)
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                            {{ is_numeric($cell) ? number_format($cell, is_float($cell) ? 2 : 0) : $cell }}
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                                        No product efficiency data available for this period
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- Shift Performance Table --}}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Shift Performance</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-900">
+                            <tr>
+                                @foreach(($tablesData['shift_performance']['headers'] ?? []) as $header)
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        {{ $header }}
+                                    </th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            @forelse(($tablesData['shift_performance']['rows'] ?? []) as $row)
+                                <tr>
+                                    @foreach($row as $cell)
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                            {{ is_numeric($cell) ? number_format($cell, is_float($cell) ? 2 : 0) : $cell }}
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                                        No shift performance data available for this period
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- Export Actions --}}
+            <div class="flex justify-end gap-4">
+                <x-button wire:click="exportCsv" color="secondary" icon="document-arrow-down">
+                    Export CSV
+                </x-button>
+            </div>
         </div>
     @else
         {{-- Empty State --}}
@@ -283,6 +233,8 @@
             </div>
         </div>
     @endif
+
+    @include('livewire.partials.department-select-modal')
 
     {{-- Reports History --}}
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow mt-6">
@@ -347,298 +299,8 @@
                     Generate your first production efficiency report to see it here.
                 </p>
             </div>
-    @endif
-
-    {{-- Charts JavaScript --}}
-    @if($reportData && $chartsData && count($chartsData) > 0)
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Charts data:', @json($chartsData));
-
-            // Daily Efficiency Chart (Line Chart)
-            if (document.getElementById('daily-efficiency-chart') && @json($chartsData['daily_efficiency_chart'] ?? null)) {
-                console.log('Creating daily chart');
-                const dailyChartData = @json($chartsData['daily_efficiency_chart'] ?? null);
-
-                const dailyOptions = {
-                    series: [
-                        {
-                            name: dailyChartData.datasets[0].label,
-                            data: dailyChartData.datasets[0].data,
-                            color: dailyChartData.datasets[0].color
-                        },
-                        {
-                            name: dailyChartData.datasets[1].label,
-                            data: dailyChartData.datasets[1].data,
-                            color: dailyChartData.datasets[1].color
-                        }
-                    ],
-                    chart: {
-                        type: 'line',
-                        height: 250,
-                        toolbar: {
-                            show: false
-                        },
-                        background: 'transparent'
-                    },
-                    stroke: {
-                        curve: 'smooth',
-                        width: 3
-                    },
-                    markers: {
-                        size: 4,
-                        hover: {
-                            size: 6
-                        }
-                    },
-                    xaxis: {
-                        categories: dailyChartData.labels,
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            }
-                        }
-                    },
-                    yaxis: {
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            }
-                        }
-                    },
-                    legend: {
-                        labels: {
-                            colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                        }
-                    },
-                    tooltip: {
-                        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    },
-                    grid: {
-                        borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#e5e7eb',
-                        strokeDashArray: 3
-                    },
-                    theme: {
-                        mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    }
-                };
-
-                const dailyChart = new ApexCharts(document.querySelector("#daily-efficiency-chart"), dailyOptions);
-                dailyChart.render();
-            }
-
-            // Variance Distribution Chart (Pie Chart)
-            if (document.getElementById('variance-distribution-chart') && @json($chartsData['variance_distribution'] ?? null)) {
-                const varianceChartData = @json($chartsData['variance_distribution'] ?? null);
-
-                const varianceOptions = {
-                    series: varianceChartData.data,
-                    chart: {
-                        type: 'pie',
-                        height: 250,
-                        toolbar: {
-                            show: false
-                        },
-                        background: 'transparent'
-                    },
-                    labels: varianceChartData.labels,
-                    colors: varianceChartData.colors,
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                        }
-                    },
-                    tooltip: {
-                        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    },
-                    theme: {
-                        mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    },
-                    responsive: [{
-                        breakpoint: 480,
-                        options: {
-                            chart: {
-                                width: 200
-                            },
-                            legend: {
-                                position: 'bottom'
-                            }
-                        }
-                    }]
-                };
-
-                const varianceChart = new ApexCharts(document.querySelector("#variance-distribution-chart"), varianceOptions);
-                varianceChart.render();
-            }
-
-            // Product Efficiency Chart (Bar Chart)
-            if (document.getElementById('product-efficiency-chart') && @json($chartsData['product_efficiency_chart'] ?? null)) {
-                const productChartData = @json($chartsData['product_efficiency_chart'] ?? null);
-
-                const productOptions = {
-                    series: [{
-                        name: productChartData.datasets[0].label,
-                        data: productChartData.datasets[0].data
-                    }],
-                    chart: {
-                        type: 'bar',
-                        height: 250,
-                        toolbar: {
-                            show: false
-                        },
-                        background: 'transparent'
-                    },
-                    plotOptions: {
-                        bar: {
-                            borderRadius: 4,
-                            columnWidth: '60%'
-                        }
-                    },
-                    colors: [productChartData.datasets[0].color],
-                    xaxis: {
-                        categories: productChartData.labels,
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            },
-                            rotate: -45
-                        }
-                    },
-                    yaxis: {
-                        labels: {
-                            style: {
-                                colors: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
-                            }
-                        }
-                    },
-                    tooltip: {
-                        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    },
-                    grid: {
-                        borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#e5e7eb',
-                        strokeDashArray: 3
-                    },
-                    theme: {
-                        mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-                    }
-                };
-
-                const productChart = new ApexCharts(document.querySelector("#product-efficiency-chart"), productOptions);
-                productChart.render();
-            }
-        });
-
-        // Re-render charts when Livewire updates
-        document.addEventListener('livewire:updated', function() {
-            // Destroy existing charts first
-            if (window.dailyChart) window.dailyChart.destroy();
-            if (window.varianceChart) window.varianceChart.destroy();
-            if (window.productChart) window.productChart.destroy();
-
-            // Charts will be re-initialized on DOMContentLoaded
-            setTimeout(() => {
-                document.dispatchEvent(new Event('DOMContentLoaded'));
-            }, 100);
-        });
-    </script>
-    @endif
-
-</div>
-    {{-- Metric Explanation Modal --}}
-    @if($showMetricModal && $currentMetric)
-        <x-modal wire:model="showMetricModal" title="Metric Explanation" size="md">
-            <div class="space-y-4">
-                @if($currentMetric === 'overall_efficiency')
-                    <div>
-                        <h4 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">Overall Efficiency</h4>
-                        <p class="text-gray-600 dark:text-gray-400 mb-3">
-                            Measures how well your production team is performing against planned targets across all products and time periods.
-                        </p>
-                        <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                            <p class="text-sm text-blue-800 dark:text-blue-200">
-                                <strong>Formula:</strong> (Total Actual Production ÷ Total Planned Production) × 100
-                            </p>
-                        </div>
-                        <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                            <p><strong>Good range:</strong> 90-100% (efficient production)</p>
-                            <p><strong>Needs attention:</strong> Below 80% (check for issues)</p>
-                        </div>
-                    </div>
-                @elseif($currentMetric === 'planned')
-                    <div>
-                        <h4 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">Total Planned Production</h4>
-                        <p class="text-gray-600 dark:text-gray-400 mb-3">
-                            The total quantity of products that were scheduled to be produced during the selected time period.
-                        </p>
-                        <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                            <p class="text-sm text-blue-800 dark:text-blue-200">
-                                <strong>Source:</strong> Sum of all production requests and planned quantities
-                            </p>
-                        </div>
-                        <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                            <p><strong>What it tells you:</strong> Expected production capacity and targets</p>
-                            <p><strong>Use for:</strong> Comparing actual performance against plans</p>
-                        </div>
-                    </div>
-                @elseif($currentMetric === 'actual')
-                    <div>
-                        <h4 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">Total Actual Production</h4>
-                        <p class="text-gray-600 dark:text-gray-400 mb-3">
-                            The total quantity of products that were actually produced and completed during the selected time period.
-                        </p>
-                        <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
-                            <p class="text-sm text-green-800 dark:text-green-200">
-                                <strong>Source:</strong> Sum of all completed production batches
-                            </p>
-                        </div>
-                        <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                            <p><strong>What it tells you:</strong> Real production output achieved</p>
-                            <p><strong>Use for:</strong> Measuring actual performance and capacity utilization</p>
-                        </div>
-                    </div>
-                @elseif($currentMetric === 'variance')
-                    <div>
-                        <h4 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">Production Variance</h4>
-                        <p class="text-gray-600 dark:text-gray-400 mb-3">
-                            Shows the difference between what was planned to produce and what was actually produced.
-                        </p>
-                        <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
-                            <p class="text-sm text-green-800 dark:text-green-200">
-                                <strong>Formula:</strong> Actual Production - Planned Production
-                            </p>
-                        </div>
-                        <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                            <p><strong>Positive:</strong> Over-production (good for sales, but check costs)</p>
-                            <p><strong>Negative:</strong> Under-production (lost revenue opportunity)</p>
-                        </div>
-                    </div>
-                @elseif($currentMetric === 'product_efficiency')
-                    <div>
-                        <h4 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">Product Efficiency</h4>
-                        <p class="text-gray-600 dark:text-gray-400 mb-3">
-                            Individual product performance showing how efficiently each recipe is being produced.
-                        </p>
-                        <div class="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg">
-                            <p class="text-sm text-purple-800 dark:text-purple-200">
-                                <strong>Formula:</strong> (Actual Units ÷ Planned Units) × 100 per product
-                            </p>
-                        </div>
-                        <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                            <p><strong>High efficiency:</strong> Well-optimized recipes and processes</p>
-                            <p><strong>Low efficiency:</strong> May indicate recipe or equipment issues</p>
-                        </div>
-                    </div>
-                @endif
-
-                <div class="flex justify-end pt-4">
-                    <x-button wire:click="$set('showMetricModal', false)" color="primary">
-                        Got it
-                    </x-button>
-                </div>
-            </div>
-        </x-modal>
-    @endif
+        @endif
+    </div>
 
     {{-- Report Modal --}}
     @if($showReportModal && $generatedReport)

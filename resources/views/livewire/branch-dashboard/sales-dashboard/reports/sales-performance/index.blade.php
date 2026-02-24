@@ -132,6 +132,68 @@
             </div>
         </div>
 
+        {{-- Operational Highlights --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Products Sold</p>
+                        <p class="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+                            {{ number_format($summaryMetrics['products_sold'] ?? 0) }}
+                        </p>
+                    </div>
+                    <div class="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
+                        <x-icon name="cube" class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Most Sold Product</p>
+                        <p class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mt-1">
+                            {{ $summaryMetrics['top_selling_product'] ?? 'N/A' }}
+                        </p>
+                    </div>
+                    <div class="p-3 bg-teal-100 dark:bg-teal-900 rounded-lg">
+                        <x-icon name="sparkles" class="w-6 h-6 text-teal-600 dark:text-teal-400" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Active Sales Staff</p>
+                        <p class="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+                            {{ number_format($summaryMetrics['active_sales_staff'] ?? 0) }}
+                        </p>
+                    </div>
+                    <div class="p-3 bg-rose-100 dark:bg-rose-900 rounded-lg">
+                        <x-icon name="users" class="w-6 h-6 text-rose-600 dark:text-rose-400" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Top Sales Staff</p>
+                        <p class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mt-1">
+                            {{ $summaryMetrics['top_sales_staff'] ?? 'N/A' }}
+                        </p>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                            {{ \App\Helpers\LocalizationHelper::formatCurrency($summaryMetrics['top_sales_staff_revenue'] ?? 0) }}
+                        </p>
+                    </div>
+                    <div class="p-3 bg-amber-100 dark:bg-amber-900 rounded-lg">
+                        <x-icon name="trophy" class="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- Narrative Insights --}}
         @if(!empty($narrative))
             <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6">
@@ -241,4 +303,61 @@
             </x-slot>
         </x-modal>
     @endif
+
+    {{-- Saved Reports --}}
+    <div class="bg-white dark:bg-zinc-800 rounded-lg shadow">
+        <div class="p-4 border-b border-zinc-200 dark:border-zinc-700">
+            <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Recent Sales Performance Reports</h3>
+        </div>
+        <div class="p-4">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase">Date</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase">Department</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase">Status</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                        @forelse($savedReports as $report)
+                            <tr>
+                                <td class="px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                    {{ optional($report->report_date)->format('Y-m-d') }}
+                                </td>
+                                <td class="px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                    {{ $report->department?->name ?? 'N/A' }}
+                                </td>
+                                <td class="px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                    {{ ucfirst(str_replace('_', ' ', $report->status)) }}
+                                </td>
+                                <td class="px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                    <div class="flex flex-wrap gap-2">
+                                        <x-button size="sm" wire:click="loadSavedReport('{{ $report->id }}')">
+                                            View
+                                        </x-button>
+                                        @if($report->status === 'draft')
+                                            <x-button size="sm" color="secondary" wire:click="submitForReview('{{ $report->id }}')">
+                                                Submit
+                                            </x-button>
+                                        @endif
+                                        <x-button size="sm" color="secondary" :href="branch_route('branch-dashboard.prints.department-report', ['reportId' => $report->id])">
+                                            Export
+                                        </x-button>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td class="px-4 py-4 text-sm text-zinc-500" colspan="4">
+                                    No saved reports yet.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>

@@ -246,7 +246,7 @@
                                                 Submit
                                             </x-button>
                                         @endif
-                                        <x-button size="sm" color="secondary" :href="branch_route('branch-dashboard.exports.department-report', ['reportId' => $report->id])">
+                                        <x-button size="sm" color="secondary" :href="branch_route('branch-dashboard.prints.department-report', ['reportId' => $report->id])">
                                             Export
                                         </x-button>
                                     </div>

@@ -155,14 +155,22 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    @if($report->canBeReviewed())
-                                        <button wire:click="openReviewModal('{{ $report->id }}')"
-                                                class="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                            Review
-                                        </button>
-                                    @else
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">Reviewed</span>
-                                    @endif
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <a href="{{ branch_route('branch-dashboard.reporting.report.view', ['id' => $report->id, 'b_id' => $b_id]) }}"
+                                           class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                                            View
+                                        </a>
+                                        @if($report->canBeReviewed())
+                                            <button wire:click="openReviewModal('{{ $report->id }}')"
+                                                    class="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                                Review
+                                            </button>
+                                        @elseif($report->status === 'draft')
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">Waiting for submission</span>
+                                        @else
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">Reviewed</span>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty

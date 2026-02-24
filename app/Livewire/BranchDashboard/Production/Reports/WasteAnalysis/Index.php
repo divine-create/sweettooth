@@ -36,6 +36,7 @@ class Index extends Component
     public function mount()
     {
         $this->b_id = $this->b_id ?? current_branch_id();
+        $this->departmentCategoryFilter = 'Production';
         $this->departmentId = session('selected_department_id');
         $this->initDepartments($this->b_id);
         $this->setDateRange();

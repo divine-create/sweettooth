@@ -26,11 +26,14 @@ class SalesPerformanceDefinition implements ReportDefinition
         $from = $context['period_from'] ?? null;
         $to = $context['period_to'] ?? null;
 
+        $fromDate = $from ? Carbon::parse($from)->startOfDay() : null;
+        $toDate = $to ? Carbon::parse($to)->endOfDay() : null;
+
         $sales = Sale::query()
             ->with(['soldBy', 'department', 'salesShift', 'saleItems.product', 'saleItems.salesUom', 'payments'])
             ->where('branch_id', $branchId)
             ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
-            ->whereBetween('sale_time', [$from, $to])
+            ->when($fromDate && $toDate, fn($q) => $q->whereBetween('sale_time', [$fromDate, $toDate]))
             ->where('status', '!=', 'cancelled')
             ->get();
 
@@ -39,7 +42,12 @@ class SalesPerformanceDefinition implements ReportDefinition
             ->whereHas('sale', function ($q) use ($branchId, $departmentId, $from, $to) {
                 $q->where('branch_id', $branchId)
                     ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
-                    ->whereBetween('sale_time', [$from, $to])
+                    ->when($from && $to, function ($query) use ($from, $to) {
+                        $query->whereBetween('sale_time', [
+                            Carbon::parse($from)->startOfDay(),
+                            Carbon::parse($to)->endOfDay(),
+                        ]);
+                    })
                     ->where('status', '!=', 'cancelled');
             })
             ->get();
@@ -48,6 +56,7 @@ class SalesPerformanceDefinition implements ReportDefinition
             'revenue_overview' => $this->generateRevenueOverview($sales),
             'daily_sales' => $this->generateDailySales($sales),
             'product_performance' => $this->generateProductPerformance($saleItems),
+            'staff_performance' => $this->generateStaffPerformance($sales),
             'order_type_analysis' => $this->generateOrderTypeAnalysis($sales),
             'payment_analysis' => $this->generatePaymentAnalysis($sales),
             'hourly_distribution' => $this->generateHourlyDistribution($sales),
@@ -70,6 +79,8 @@ class SalesPerformanceDefinition implements ReportDefinition
         $bestDay = $dailySales->sortByDesc('revenue')->first();
         $worstDay = $dailySales->sortBy('revenue')->where('revenue', '>', 0)->first();
         $topProduct = $products->first();
+        $staff = collect($data['staff_performance'] ?? []);
+        $topStaff = $staff->first();
 
         return [
             'total_revenue' => $overview['total_revenue'] ?? 0,
@@ -83,6 +94,9 @@ class SalesPerformanceDefinition implements ReportDefinition
             'worst_day_revenue' => $worstDay['revenue'] ?? 0,
             'top_selling_product' => $topProduct['product_name'] ?? 'N/A',
             'products_sold' => $products->count(),
+            'active_sales_staff' => $staff->count(),
+            'top_sales_staff' => $topStaff['staff_name'] ?? 'N/A',
+            'top_sales_staff_revenue' => $topStaff['revenue'] ?? 0,
         ];
     }
 
@@ -207,6 +221,19 @@ class SalesPerformanceDefinition implements ReportDefinition
                         $row['orders_count'],
                     ];
                 }, array_slice($data['product_performance'] ?? [], 0, 15)),
+            ],
+            'staff_performance' => [
+                'headers' => ['Staff', 'Orders', 'Revenue', 'Avg Order', 'Discount', 'Items Sold'],
+                'rows' => array_map(function ($row) {
+                    return [
+                        $row['staff_name'],
+                        $row['orders'],
+                        $row['revenue'],
+                        $row['average_order_value'],
+                        $row['discount_total'],
+                        $row['items_sold'],
+                    ];
+                }, array_slice($data['staff_performance'] ?? [], 0, 15)),
             ],
             'order_type_analysis' => [
                 'headers' => ['Order Type', 'Orders', 'Revenue', '% Revenue', 'Avg Order'],
@@ -354,22 +381,26 @@ class SalesPerformanceDefinition implements ReportDefinition
 
     private function generatePaymentAnalysis($sales): array
     {
-        $cashSales = $sales->where('payment_method', 'cash');
-        $cardSales = $sales->where('payment_method', 'card');
-        $mobileSales = $sales->where('payment_method', 'mobile_money');
+        $completedPayments = $sales->flatMap(function ($sale) {
+            return $sale->payments->where('status', 'completed');
+        });
+
+        $cashSales = $completedPayments->where('payment_method', 'cash');
+        $cardSales = $completedPayments->where('payment_method', 'card');
+        $mobileSales = $completedPayments->where('payment_method', 'mobile_money');
 
         return [
             'cash' => [
                 'orders' => $cashSales->count(),
-                'revenue' => $cashSales->sum('total'),
+                'revenue' => $cashSales->sum('amount'),
             ],
             'card' => [
                 'orders' => $cardSales->count(),
-                'revenue' => $cardSales->sum('total'),
+                'revenue' => $cardSales->sum('amount'),
             ],
             'mobile_money' => [
                 'orders' => $mobileSales->count(),
-                'revenue' => $mobileSales->sum('total'),
+                'revenue' => $mobileSales->sum('amount'),
             ],
         ];
     }
@@ -463,5 +494,33 @@ class SalesPerformanceDefinition implements ReportDefinition
                 'status' => ucfirst((string) $sale->status),
             ];
         })->values()->toArray();
+    }
+
+    private function generateStaffPerformance($sales): array
+    {
+        return $sales->groupBy('sold_by_id')->map(function ($staffSales) {
+            $sale = $staffSales->first();
+            $staff = $sale?->soldBy;
+            $staffName = $staff?->name
+                ?? trim(($staff?->first_name ?? '').' '.($staff?->last_name ?? ''))
+                ?: 'System';
+
+            $orders = $staffSales->count();
+            $revenue = $staffSales->sum('total');
+            $discount = $staffSales->sum('discount');
+            $itemsSold = $staffSales->flatMap(function ($sale) {
+                return $sale->saleItems;
+            })->sum('quantity');
+
+            return [
+                'staff_id' => $sale?->sold_by_id,
+                'staff_name' => $staffName,
+                'orders' => $orders,
+                'revenue' => $revenue,
+                'average_order_value' => $orders > 0 ? $revenue / $orders : 0,
+                'discount_total' => $discount,
+                'items_sold' => $itemsSold,
+            ];
+        })->sortByDesc('revenue')->values()->toArray();
     }
 }

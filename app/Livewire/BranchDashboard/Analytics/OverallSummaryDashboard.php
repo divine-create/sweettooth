@@ -6,6 +6,7 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Purchase;
 use App\Models\ItemRequest;
+use App\Models\ItemRequestDetail;
 use App\Models\Item;
 use App\Services\Reports\AnalyticsSnapshotReportService;
 use App\Traits\Exportable;
@@ -74,8 +75,25 @@ class OverallSummaryDashboard extends Component
         DB::statement("SET NAMES utf8mb4");
         DB::statement("SET CHARACTER SET utf8mb4");
 
-        $stocks = Stock::where('branch_id', $branchId)->with('item')->get();
-        $totalValue = $stocks->sum(fn($s) => $s->quantity_available * $s->average_cost);
+        $totalValue = (float) Stock::where('branch_id', $branchId)
+            ->sum(DB::raw('quantity_available * average_cost'));
+
+        $totalItems = Stock::where('branch_id', $branchId)->count();
+
+        $lowStockItems = Stock::query()
+            ->join('items', 'stocks.item_id', '=', 'items.id')
+            ->where('stocks.branch_id', $branchId)
+            ->whereRaw('stocks.quantity_available < COALESCE(items.reorder_level, 100)')
+            ->count();
+
+        $criticalItems = Stock::where('branch_id', $branchId)
+            ->where('health_status', 'critical')
+            ->count();
+
+        $expiredItems = Stock::where('branch_id', $branchId)
+            ->whereNotNull('expiry_date')
+            ->where('expiry_date', '<', now())
+            ->count();
 
         // Calculate previous period for comparison
         $periodDays = $dateTo->diffInDays($dateFrom);
@@ -83,12 +101,16 @@ class OverallSummaryDashboard extends Component
         $previousDateTo = $dateFrom->copy()->subDay();
 
         // Approximate previous stock value
-        $previousMovements = StockMovement::whereHas('stock', fn($q) => $q->where('branch_id', $branchId))
+        $previousMovementAgg = StockMovement::whereHas('stock', fn($q) => $q->where('branch_id', $branchId))
             ->whereBetween('movement_date', [$previousDateFrom, $previousDateTo])
-            ->get();
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN type = 'in' THEN quantity ELSE 0 END), 0) as total_in,
+                COALESCE(SUM(CASE WHEN type = 'out' THEN ABS(quantity) ELSE 0 END), 0) as total_out
+            ")
+            ->first();
 
-        $valueDifference = $previousMovements->where('type', 'in')->sum('quantity') -
-                          abs($previousMovements->where('type', 'out')->sum('quantity'));
+        $valueDifference = ((float) ($previousMovementAgg->total_in ?? 0))
+            - ((float) ($previousMovementAgg->total_out ?? 0));
 
         $this->previousStockValue = max(0, $totalValue - ($valueDifference * 10)); // Simplified estimation
         $this->stockValueChange = $totalValue - $this->previousStockValue;
@@ -96,32 +118,43 @@ class OverallSummaryDashboard extends Component
             ? round(($this->stockValueChange / $this->previousStockValue) * 100, 2)
             : 0;
 
-        $purchases = Purchase::where('branch_id', $branchId)
+        $purchaseAgg = Purchase::where('branch_id', $branchId)
             ->whereBetween('purchase_date', [$dateFrom->toDateString(), $dateTo->toDateString()])
-            ->get();
+            ->selectRaw('COUNT(*) as total_purchases, COALESCE(SUM(landing_cost), 0) as total_purchase_value')
+            ->first();
 
-        $movements = StockMovement::whereHas('stock', fn($q) => $q->where('branch_id', $branchId))
+        $movementAgg = StockMovement::whereHas('stock', fn($q) => $q->where('branch_id', $branchId))
             ->whereBetween('movement_date', [$dateFrom, $dateTo])
-            ->get();
+            ->selectRaw("
+                COUNT(*) as total_movements,
+                COALESCE(SUM(CASE WHEN type = 'in' THEN quantity ELSE 0 END), 0) as stock_in,
+                COALESCE(SUM(CASE WHEN type = 'out' THEN ABS(quantity) ELSE 0 END), 0) as stock_out
+            ")
+            ->first();
 
-        $requests = ItemRequest::where('branch_id', $branchId)
+        $requestAgg = ItemRequest::where('branch_id', $branchId)
             ->whereBetween('request_date', [$dateFrom->toDateString(), $dateTo->toDateString()])
-            ->get();
+            ->selectRaw("
+                COUNT(*) as total_requests,
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending_requests,
+                COALESCE(SUM(CASE WHEN status IN ('approved','dispatched','completed') THEN 1 ELSE 0 END), 0) as completed_requests
+            ")
+            ->first();
 
         return [
             'total_stock_value' => $totalValue,
-            'total_items' => $stocks->count(),
-            'low_stock_items' => $stocks->filter(fn($s) => $s->isBelowReorderLevel())->count(),
-            'critical_items' => $stocks->where('health_status', 'critical')->count(),
-            'expired_items' => $stocks->filter(fn($s) => $s->expiry_date && $s->expiry_date->isPast())->count(),
-            'total_purchases' => $purchases->count(),
-            'total_purchase_value' => $purchases->sum('landing_cost'),
-            'total_movements' => $movements->count(),
-            'stock_in' => $movements->where('type', 'in')->sum('quantity'),
-            'stock_out' => abs($movements->where('type', 'out')->sum('quantity')),
-            'total_requests' => $requests->count(),
-            'pending_requests' => $requests->where('status', 'pending')->count(),
-            'completed_requests' => $requests->whereIn('status', ['approved', 'dispatched', 'completed'])->count(),
+            'total_items' => $totalItems,
+            'low_stock_items' => $lowStockItems,
+            'critical_items' => $criticalItems,
+            'expired_items' => $expiredItems,
+            'total_purchases' => (int) ($purchaseAgg->total_purchases ?? 0),
+            'total_purchase_value' => (float) ($purchaseAgg->total_purchase_value ?? 0),
+            'total_movements' => (int) ($movementAgg->total_movements ?? 0),
+            'stock_in' => (float) ($movementAgg->stock_in ?? 0),
+            'stock_out' => (float) ($movementAgg->stock_out ?? 0),
+            'total_requests' => (int) ($requestAgg->total_requests ?? 0),
+            'pending_requests' => (int) ($requestAgg->pending_requests ?? 0),
+            'completed_requests' => (int) ($requestAgg->completed_requests ?? 0),
             'previous_stock_value' => $this->previousStockValue,
             'stock_value_change' => $this->stockValueChange,
             'stock_value_change_percentage' => $this->stockValueChangePercentage,
@@ -159,54 +192,80 @@ class OverallSummaryDashboard extends Component
     public function getTopAlerts()
     {
         $branchId = $this->b_id ?? request()->get('b_id');
+        $today = now()->startOfDay();
+        $expiringSoon = $today->copy()->addDays(7)->endOfDay();
 
-        $stocks = Stock::with('item')->where('branch_id', $branchId)->get();
+        $stocks = Stock::query()
+            ->join('items', 'stocks.item_id', '=', 'items.id')
+            ->where('stocks.branch_id', $branchId)
+            ->where(function ($query) use ($today, $expiringSoon) {
+                $query->where('stocks.health_status', 'critical')
+                    ->orWhereNotNull('stocks.expiry_date')
+                    ->orWhereRaw('stocks.quantity_available < COALESCE(items.reorder_level, 100)');
+            })
+            ->select(
+                'stocks.*',
+                'items.name as item_name',
+                'items.reorder_level as item_reorder_level'
+            )
+            ->limit(200)
+            ->get();
 
         $alerts = [];
 
         foreach ($stocks as $stock) {
-            if (!$stock->item) continue;
+            $itemName = $stock->item_name ?? 'Item';
+            $reorderLevel = $stock->item_reorder_level ?? 100;
 
             if ($stock->expiry_date && $stock->expiry_date->isPast()) {
                 $alerts[] = [
                     'priority' => 1,
                     'type' => 'expired',
                     'icon' => '[EXPIRED]',
-                    'message' => "{$stock->item->name} has expired",
-                    'item' => $stock->item->name,
-                    'item_id' => $stock->item->id,
+                    'message' => "{$itemName} has expired",
+                    'item' => $itemName,
+                    'item_id' => $stock->item_id,
                     'action' => 'Remove',
                 ];
-            } elseif ($stock->health_status === 'critical') {
+                continue;
+            }
+
+            if ($stock->health_status === 'critical') {
                 $alerts[] = [
                     'priority' => 1,
                     'type' => 'critical',
                     'icon' => '[CRITICAL]',
-                    'message' => "{$stock->item->name} in critical condition",
-                    'item' => $stock->item->name,
-                    'item_id' => $stock->item->id,
+                    'message' => "{$itemName} in critical condition",
+                    'item' => $itemName,
+                    'item_id' => $stock->item_id,
                     'action' => 'View Item',
                 ];
-            } elseif ($stock->isBelowReorderLevel()) {
+                continue;
+            }
+
+            if (($stock->quantity_available ?? 0) < $reorderLevel) {
                 $alerts[] = [
                     'priority' => 2,
                     'type' => 'warning',
                     'icon' => '[WARNING]',
-                    'message' => "{$stock->item->name} below reorder level",
-                    'item' => $stock->item->name,
-                    'item_id' => $stock->item->id,
+                    'message' => "{$itemName} below reorder level",
+                    'item' => $itemName,
+                    'item_id' => $stock->item_id,
                     'action' => 'Restock',
                 ];
-            } elseif ($stock->expiry_date && $stock->expiry_date->isFuture()) {
-                $daysUntilExpiry = now()->diffInDays($stock->expiry_date);
+                continue;
+            }
+
+            if ($stock->expiry_date && $stock->expiry_date->isFuture()) {
+                $daysUntilExpiry = $today->diffInDays($stock->expiry_date);
                 if ($daysUntilExpiry <= 7) {
                     $alerts[] = [
                         'priority' => 2,
                         'type' => 'expiring',
                         'icon' => '[EXPIRING]',
-                        'message' => "{$stock->item->name} expiring in {$daysUntilExpiry} days",
-                        'item' => $stock->item->name,
-                        'item_id' => $stock->item->id,
+                        'message' => "{$itemName} expiring in {$daysUntilExpiry} days",
+                        'item' => $itemName,
+                        'item_id' => $stock->item_id,
                         'action' => 'Use Soon',
                     ];
                 }
@@ -362,32 +421,62 @@ class OverallSummaryDashboard extends Component
         $branchId = $this->b_id ?? request()->get('b_id');
         [$dateFrom, $dateTo] = $this->getDateRange();
 
-
-        return Stock::where('branch_id', $branchId)
+        $stocks = Stock::where('branch_id', $branchId)
             ->with('item')
             ->get()
+            ->filter(fn($stock) => $stock->item);
+
+        if ($stocks->isEmpty()) {
+            return collect();
+        }
+
+        $stockIds = $stocks->pluck('id')->values();
+        $itemIds = $stocks->pluck('item_id')->values();
+
+        $movementByStock = StockMovement::whereIn('stock_id', $stockIds)
+            ->whereBetween('movement_date', [$dateFrom, $dateTo])
+            ->get()
+            ->groupBy('stock_id');
+
+        $requestDetails = ItemRequestDetail::whereIn('item_id', $itemIds)
+            ->whereHas('itemRequest', function ($query) use ($branchId, $dateFrom, $dateTo) {
+                $query->where('branch_id', $branchId)
+                    ->whereBetween('request_date', [$dateFrom->toDateString(), $dateTo->toDateString()]);
+            })
+            ->get()
+            ->groupBy('item_id');
+
+        return $stocks
             ->groupBy(function ($stock) {
                 // Category is a string field on the Item model, not a relationship
                 return $stock->item->category ?? 'Uncategorized';
             })
-            ->map(function ($stocks, $category) {
+            ->map(function ($stocks, $category) use ($movementByStock, $requestDetails) {
                 $stockValue = $stocks->sum(function ($stock) {
                     return ($stock->quantity_available ?? 0) * ($stock->average_cost ?? 0);
                 });
 
-                $stockIds = $stocks->pluck('id');
-                $movements = StockMovement::whereIn('stock_id', $stockIds)
-                    ->whereBetween('movement_date', [$dateFrom, $dateTo])
-                    ->get();
+                $stockIn = 0;
+                $stockOut = 0;
 
-                $stockIn = $movements->where('type', 'in')->sum('quantity');
-                $stockOut = abs($movements->where('type', 'out')->sum('quantity'));
+                foreach ($stocks as $stock) {
+                    $movements = $movementByStock->get($stock->id, collect());
+                    if ($movements->isEmpty()) {
+                        continue;
+                    }
+
+                    $stockIn += $movements->where('type', 'in')->sum('quantity');
+                    $stockOut += abs($movements->where('type', 'out')->sum('quantity'));
+                }
 
                 $lowItems = $stocks->filter(fn($s) => $s->isBelowReorderLevel())->count();
 
-                $requests = ItemRequest::whereHas('requestDetails', function ($query) use ($stocks) {
-                    $query->whereIn('item_id', $stocks->pluck('item_id'));
-                })->whereBetween('request_date', [$dateFrom->toDateString(), $dateTo->toDateString()])->count();
+                $categoryItemIds = $stocks->pluck('item_id')->unique()->values();
+                $requests = $categoryItemIds
+                    ->flatMap(fn($itemId) => $requestDetails->get($itemId, collect()))
+                    ->pluck('request_id')
+                    ->unique()
+                    ->count();
 
                 return [
                     'category' => ucfirst($category),
@@ -433,19 +522,14 @@ class OverallSummaryDashboard extends Component
             ->first();
 
         // Most requested item
-        $mostRequested = ItemRequest::where('branch_id', $branchId)
-            ->whereBetween('request_date', [$dateFrom->toDateString(), $dateTo->toDateString()])
-            ->with('requestDetails.item')
-            ->get()
-            ->flatMap(fn($request) => $request->requestDetails)
-            ->groupBy('item_id')
-            ->map(function ($details) {
-                return [
-                    'item' => $details->first()->item,
-                    'total_requested' => $details->sum('quantity_requested'),
-                ];
+        $mostRequested = ItemRequestDetail::whereHas('itemRequest', function ($query) use ($branchId, $dateFrom, $dateTo) {
+                $query->where('branch_id', $branchId)
+                    ->whereBetween('request_date', [$dateFrom->toDateString(), $dateTo->toDateString()]);
             })
-            ->sortByDesc('total_requested')
+            ->select('item_id', DB::raw('SUM(quantity_requested) as total_requested'))
+            ->groupBy('item_id')
+            ->orderByDesc('total_requested')
+            ->with('item')
             ->first();
 
         return [
@@ -459,8 +543,8 @@ class OverallSummaryDashboard extends Component
                 'quantity' => abs($slowestMoving->total),
             ] : null,
             'most_requested' => $mostRequested ? [
-                'name' => $mostRequested['item']->name ?? 'N/A',
-                'quantity' => $mostRequested['total_requested'],
+                'name' => $mostRequested->item->name ?? 'N/A',
+                'quantity' => (float) $mostRequested->total_requested,
             ] : null,
             'expired_vs_active_percentage' => $summary['total_items'] > 0
                 ? round(($summary['expired_items'] / $summary['total_items']) * 100, 2)
