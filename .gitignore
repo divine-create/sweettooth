@@ -32,3 +32,6 @@ Archive.zip
 /txt
 /vendor
 /node_modules
+
+*.deb
+*.sql
