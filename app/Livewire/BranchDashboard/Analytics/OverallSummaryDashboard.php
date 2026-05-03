@@ -2,34 +2,40 @@
 
 namespace App\Livewire\BranchDashboard\Analytics;
 
-use App\Models\Stock;
-use App\Models\StockMovement;
-use App\Models\Purchase;
+use App\Models\Item;
 use App\Models\ItemRequest;
 use App\Models\ItemRequestDetail;
-use App\Models\Item;
+use App\Models\Purchase;
+use App\Models\Stock;
+use App\Models\StockMovement;
 use App\Services\Reports\AnalyticsSnapshotReportService;
 use App\Traits\Exportable;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Livewire\Component;
-use Livewire\Attributes\{Layout, On, Url};
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
+use Livewire\Component;
 use TallStackUi\Traits\Interactions;
 
 #[Layout('components.layouts.app.branch-dashboard')]
 class OverallSummaryDashboard extends Component
 {
-    use Interactions, Exportable;
+    use Exportable, Interactions;
 
     public $dateFrom;
+
     public $dateTo;
+
     public $departmentFilter = null;
+
     public $categoryFilter = null;
+
     public $autoRefresh = false;
+
     public ?string $generatedReportId = null;
 
-    #[Url(keep:true)]
+    #[Url(keep: true)]
     public ?string $b_id = null;
 
     // Listen for branch changes from BranchSelector (for super admins)
@@ -41,7 +47,9 @@ class OverallSummaryDashboard extends Component
 
     // Previous period metrics for comparison
     public $previousStockValue = 0;
+
     public $stockValueChange = 0;
+
     public $stockValueChangePercentage = 0;
 
     public function mount()
@@ -70,10 +78,10 @@ class OverallSummaryDashboard extends Component
     {
         $branchId = $this->b_id;
         [$dateFrom, $dateTo] = $this->getDateRange();
-        
+
         // Ensure database connection uses UTF-8
-        DB::statement("SET NAMES utf8mb4");
-        DB::statement("SET CHARACTER SET utf8mb4");
+        DB::statement('SET NAMES utf8mb4');
+        DB::statement('SET CHARACTER SET utf8mb4');
 
         $totalValue = (float) Stock::where('branch_id', $branchId)
             ->sum(DB::raw('quantity_available * average_cost'));
@@ -101,7 +109,7 @@ class OverallSummaryDashboard extends Component
         $previousDateTo = $dateFrom->copy()->subDay();
 
         // Approximate previous stock value
-        $previousMovementAgg = StockMovement::whereHas('stock', fn($q) => $q->where('branch_id', $branchId))
+        $previousMovementAgg = StockMovement::whereHas('stock', fn ($q) => $q->where('branch_id', $branchId))
             ->whereBetween('movement_date', [$previousDateFrom, $previousDateTo])
             ->selectRaw("
                 COALESCE(SUM(CASE WHEN type = 'in' THEN quantity ELSE 0 END), 0) as total_in,
@@ -123,7 +131,7 @@ class OverallSummaryDashboard extends Component
             ->selectRaw('COUNT(*) as total_purchases, COALESCE(SUM(landing_cost), 0) as total_purchase_value')
             ->first();
 
-        $movementAgg = StockMovement::whereHas('stock', fn($q) => $q->where('branch_id', $branchId))
+        $movementAgg = StockMovement::whereHas('stock', fn ($q) => $q->where('branch_id', $branchId))
             ->whereBetween('movement_date', [$dateFrom, $dateTo])
             ->selectRaw("
                 COUNT(*) as total_movements,
@@ -171,7 +179,7 @@ class OverallSummaryDashboard extends Component
             ->get();
 
         return [
-            'labels' => $distribution->pluck('health_status')->map(fn($s) => ucfirst($s))->toArray(),
+            'labels' => $distribution->pluck('health_status')->map(fn ($s) => ucfirst($s))->toArray(),
             'series' => $distribution->pluck('count')->toArray(),
         ];
     }
@@ -182,7 +190,7 @@ class OverallSummaryDashboard extends Component
         [$dateFrom, $dateTo] = $this->getDateRange();
 
         return StockMovement::with(['stock.item', 'mover'])
-            ->whereHas('stock', fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('stock', fn ($q) => $q->where('branch_id', $branchId))
             ->whereBetween('movement_date', [$dateFrom, $dateTo])
             ->latest('movement_date')
             ->limit(10)
@@ -198,7 +206,7 @@ class OverallSummaryDashboard extends Component
         $stocks = Stock::query()
             ->join('items', 'stocks.item_id', '=', 'items.id')
             ->where('stocks.branch_id', $branchId)
-            ->where(function ($query) use ($today, $expiringSoon) {
+            ->where(function ($query) {
                 $query->where('stocks.health_status', 'critical')
                     ->orWhereNotNull('stocks.expiry_date')
                     ->orWhereRaw('stocks.quantity_available < COALESCE(items.reorder_level, 100)');
@@ -227,6 +235,7 @@ class OverallSummaryDashboard extends Component
                     'item_id' => $stock->item_id,
                     'action' => 'Remove',
                 ];
+
                 continue;
             }
 
@@ -240,6 +249,7 @@ class OverallSummaryDashboard extends Component
                     'item_id' => $stock->item_id,
                     'action' => 'View Item',
                 ];
+
                 continue;
             }
 
@@ -253,6 +263,7 @@ class OverallSummaryDashboard extends Component
                     'item_id' => $stock->item_id,
                     'action' => 'Restock',
                 ];
+
                 continue;
             }
 
@@ -289,12 +300,12 @@ class OverallSummaryDashboard extends Component
             $insights[] = [
                 'type' => $summary['stock_value_change_percentage'] > 0 ? 'positive' : 'negative',
                 'icon' => $summary['stock_value_change_percentage'] > 0 ? '[UP]' : '[DOWN]',
-                'message' => "Inventory value {$direction} by " . abs($summary['stock_value_change_percentage']) . "% since last period.",
+                'message' => "Inventory value {$direction} by ".abs($summary['stock_value_change_percentage']).'% since last period.',
             ];
         }
 
         // Insight 2: Top depleting items
-        $topDepletingItems = StockMovement::whereHas('stock', fn($q) => $q->where('branch_id', $branchId))
+        $topDepletingItems = StockMovement::whereHas('stock', fn ($q) => $q->where('branch_id', $branchId))
             ->where('type', 'out')
             ->whereBetween('movement_date', [$dateFrom, $dateTo])
             ->select('stock_id', DB::raw('SUM(ABS(quantity)) as total_out'))
@@ -320,7 +331,7 @@ class OverallSummaryDashboard extends Component
             $insights[] = [
                 'type' => 'warning',
                 'icon' => '[WARNING]',
-                'message' => "No purchases recorded in the selected period.",
+                'message' => 'No purchases recorded in the selected period.',
             ];
         }
 
@@ -372,7 +383,9 @@ class OverallSummaryDashboard extends Component
             ->get()
             ->map(function ($stock) {
                 $item = $stock->item;
-                if (!$item) return null;
+                if (! $item) {
+                    return null;
+                }
 
                 $reorderLevel = $item->reorder_level ?? 100;
                 $healthPercentage = $reorderLevel > 0
@@ -424,7 +437,7 @@ class OverallSummaryDashboard extends Component
         $stocks = Stock::where('branch_id', $branchId)
             ->with('item')
             ->get()
-            ->filter(fn($stock) => $stock->item);
+            ->filter(fn ($stock) => $stock->item);
 
         if ($stocks->isEmpty()) {
             return collect();
@@ -448,8 +461,7 @@ class OverallSummaryDashboard extends Component
 
         return $stocks
             ->groupBy(function ($stock) {
-                // Category is a string field on the Item model, not a relationship
-                return $stock->item->category ?? 'Uncategorized';
+                return $stock->item?->category?->name ?? 'Uncategorized';
             })
             ->map(function ($stocks, $category) use ($movementByStock, $requestDetails) {
                 $stockValue = $stocks->sum(function ($stock) {
@@ -469,11 +481,11 @@ class OverallSummaryDashboard extends Component
                     $stockOut += abs($movements->where('type', 'out')->sum('quantity'));
                 }
 
-                $lowItems = $stocks->filter(fn($s) => $s->isBelowReorderLevel())->count();
+                $lowItems = $stocks->filter(fn ($s) => $s->isBelowReorderLevel())->count();
 
                 $categoryItemIds = $stocks->pluck('item_id')->unique()->values();
                 $requests = $categoryItemIds
-                    ->flatMap(fn($itemId) => $requestDetails->get($itemId, collect()))
+                    ->flatMap(fn ($itemId) => $requestDetails->get($itemId, collect()))
                     ->pluck('request_id')
                     ->unique()
                     ->count();
@@ -495,14 +507,14 @@ class OverallSummaryDashboard extends Component
 
     public function getPerformanceMetrics()
     {
-       $branchId = $this->b_id ?? request()->get('b_id');
-       [$dateFrom, $dateTo] = $this->getDateRange();
+        $branchId = $this->b_id ?? request()->get('b_id');
+        [$dateFrom, $dateTo] = $this->getDateRange();
 
         $summary = $this->getOverallSummary();
         $days = max(1, $dateTo->diffInDays($dateFrom));
 
         // Fastest moving item
-        $fastestMoving = StockMovement::whereHas('stock', fn($q) => $q->where('branch_id', $branchId))
+        $fastestMoving = StockMovement::whereHas('stock', fn ($q) => $q->where('branch_id', $branchId))
             ->where('type', 'out')
             ->whereBetween('movement_date', [$dateFrom, $dateTo])
             ->select('stock_id', DB::raw('SUM(ABS(quantity)) as total'))
@@ -512,7 +524,7 @@ class OverallSummaryDashboard extends Component
             ->first();
 
         // Slowest moving item
-        $slowestMoving = StockMovement::whereHas('stock', fn($q) => $q->where('branch_id', $branchId))
+        $slowestMoving = StockMovement::whereHas('stock', fn ($q) => $q->where('branch_id', $branchId))
             ->where('type', 'out')
             ->whereBetween('movement_date', [$dateFrom, $dateTo])
             ->select('stock_id', DB::raw('SUM(ABS(quantity)) as total'))
@@ -523,9 +535,9 @@ class OverallSummaryDashboard extends Component
 
         // Most requested item
         $mostRequested = ItemRequestDetail::whereHas('itemRequest', function ($query) use ($branchId, $dateFrom, $dateTo) {
-                $query->where('branch_id', $branchId)
-                    ->whereBetween('request_date', [$dateFrom->toDateString(), $dateTo->toDateString()]);
-            })
+            $query->where('branch_id', $branchId)
+                ->whereBetween('request_date', [$dateFrom->toDateString(), $dateTo->toDateString()]);
+        })
             ->select('item_id', DB::raw('SUM(quantity_requested) as total_requested'))
             ->groupBy('item_id')
             ->orderByDesc('total_requested')
@@ -552,7 +564,6 @@ class OverallSummaryDashboard extends Component
         ];
     }
 
-
     public function exportCSV()
     {
         $data = $this->prepareExportData();
@@ -561,7 +572,7 @@ class OverallSummaryDashboard extends Component
 
         // Header row
         $csvData[] = ['Inventory Analytics Report'];
-        $csvData[] = ['Period', $this->dateFrom . ' to ' . $this->dateTo];
+        $csvData[] = ['Period', $this->dateFrom.' to '.$this->dateTo];
         $csvData[] = ['Generated', now()->format('Y-m-d H:i:s')];
         $csvData[] = [];
 
@@ -591,7 +602,7 @@ class OverallSummaryDashboard extends Component
                 $stock['item_name'] ?? 'N/A',
                 $stock['stock_level'] ?? 0,
                 $stock['reorder_level'] ?? 0,
-                ($stock['health_percentage'] ?? 0) . '%',
+                ($stock['health_percentage'] ?? 0).'%',
                 ucfirst($stock['status'] ?? 'good'),
                 $stock['last_movement'] ?? 'N/A',
                 $stock['uom'] ?? 'units',
@@ -614,7 +625,7 @@ class OverallSummaryDashboard extends Component
             ];
         }
 
-        $filename = 'inventory-analytics-' . now()->format('Y-m-d-His') . '.csv';
+        $filename = 'inventory-analytics-'.now()->format('Y-m-d-His').'.csv';
         $handle = fopen('php://temp', 'r+');
 
         foreach ($csvData as $row) {
@@ -629,15 +640,16 @@ class OverallSummaryDashboard extends Component
             echo $csv;
         }, $filename, [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 
     public function generateReport(): void
     {
         $branchId = $this->b_id ?? request()->get('b_id') ?? current_branch_id();
-        if (!$branchId) {
+        if (! $branchId) {
             $this->toast()->warning('Branch context is required to generate report.')->send();
+
             return;
         }
 
@@ -709,14 +721,14 @@ class OverallSummaryDashboard extends Component
         $metrics = $this->getPerformanceMetrics();
         $overview = $this->getStockHealthOverview();
         $recentActivity = $this->getRecentActivity();
-        
+
         // Sanitize each data source independently
         $data = [
             'period' => [
-                'from' => (string)$this->dateFrom,
-                'to' => (string)$this->dateTo,
+                'from' => (string) $this->dateFrom,
+                'to' => (string) $this->dateTo,
             ],
-            'branch_name' => (string)(current_branch()?->name ?? 'All Branches'),
+            'branch_name' => (string) (current_branch()?->name ?? 'All Branches'),
             'summary' => $this->sanitizeArray($summary),
             'health_overview' => $this->sanitizeArray($overview),
             'insights' => $this->sanitizeArray($insights),
@@ -754,13 +766,13 @@ class OverallSummaryDashboard extends Component
                 $reference = $this->formatActivityReference($activity->reference ?? null);
 
                 return [
-                    'date' => $activity->movement_date ? (string)$activity->movement_date->format('d M Y H:i') : 'N/A',
-                    'item' => (string)($activity->stock?->item?->name ?? 'N/A'),
-                    'type' => (string)($activity->type ?? 'N/A'),
-                    'quantity' => (float)($activity->quantity ?? 0),
+                    'date' => $activity->movement_date ? (string) $activity->movement_date->format('d M Y H:i') : 'N/A',
+                    'item' => (string) ($activity->stock?->item?->name ?? 'N/A'),
+                    'type' => (string) ($activity->type ?? 'N/A'),
+                    'quantity' => (float) ($activity->quantity ?? 0),
                     'reference' => $reference,
-                    'notes' => (string)($activity->notes ?? ''),
-                    'mover' => (string)$moverName,
+                    'notes' => (string) ($activity->notes ?? ''),
+                    'mover' => (string) $moverName,
                 ];
             })->toArray();
         } catch (\Exception $e) {
@@ -792,7 +804,7 @@ class OverallSummaryDashboard extends Component
     {
         if (is_string($data)) {
             // Remove invalid UTF-8 and convert to string
-            return (string)@iconv('UTF-8', 'UTF-8//IGNORE', $data);
+            return (string) @iconv('UTF-8', 'UTF-8//IGNORE', $data);
         }
 
         if (is_numeric($data)) {
@@ -802,8 +814,9 @@ class OverallSummaryDashboard extends Component
         if (is_array($data)) {
             $result = [];
             foreach ($data as $key => $value) {
-                $result[(string)@iconv('UTF-8', 'UTF-8//IGNORE', (string)$key)] = $this->sanitizeArray($value);
+                $result[(string) @iconv('UTF-8', 'UTF-8//IGNORE', (string) $key)] = $this->sanitizeArray($value);
             }
+
             return $result;
         }
 
@@ -813,7 +826,7 @@ class OverallSummaryDashboard extends Component
 
         // For objects, try to convert to string
         if (is_object($data)) {
-            return (string)$data;
+            return (string) $data;
         }
 
         return $data;

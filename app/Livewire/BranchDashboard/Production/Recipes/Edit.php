@@ -49,6 +49,8 @@ class Edit extends Component
 
     public string $status = 'active';
 
+    public bool $is_wip = false;
+
     // Recipe Ingredients
     public array $ingredients = [];
 
@@ -79,7 +81,7 @@ class Edit extends Component
         }
 
         // Load recipe data with department check
-        $recipe = Recipe::with('ingredients.item')
+        $recipe = Recipe::with('ingredients')
             ->where('id', $id)
             ->where('department_id', $this->department->id)
             ->first();
@@ -105,11 +107,15 @@ class Edit extends Component
         // Load instructions
         $this->instructions = json_decode($recipe->instructions, true) ?? [];
 
+        // Load WIP flag
+        $this->is_wip = $recipe->is_wip ?? false;
+
         // Load ingredients
         $this->ingredients = $recipe->ingredients->map(function ($ingredient) {
             return [
                 'id' => $ingredient->id,
                 'item_id' => $ingredient->item_id,
+                'is_wip' => (bool) $ingredient->is_wip,
                 'quantity' => $ingredient->quantity,
                 'uom' => $ingredient->unitOfMeasure?->symbol ?? 'grams',
                 'cost_per_unit' => $ingredient->cost_per_unit,
@@ -139,6 +145,7 @@ class Edit extends Component
                 if ($product->productType) {
                     // Store the product_type_id for later use in validation
                     $this->product_type_id = $product->product_type_id ?? null;
+                    $this->is_wip = $product->productType->code === 'WIP';
                 }
             }
         } else {
@@ -178,6 +185,11 @@ class Edit extends Component
 
     public function addIngredient()
     {
+        $this->addRawIngredient();
+    }
+
+    public function addRawIngredient()
+    {
         $this->ingredients[] = [
             'item_id' => null,
             'quantity' => 0,
@@ -186,6 +198,21 @@ class Edit extends Component
             'waste_percentage' => 0,
             'notes' => '',
             'preparation_notes' => '',
+            'is_wip' => false,
+        ];
+    }
+
+    public function addWipIngredient()
+    {
+        $this->ingredients[] = [
+            'item_id' => null,
+            'quantity' => 0,
+            'uom' => 'grams',
+            'cost_per_unit' => 0,
+            'waste_percentage' => 0,
+            'notes' => '',
+            'preparation_notes' => '',
+            'is_wip' => true,
         ];
     }
 
@@ -213,31 +240,38 @@ class Edit extends Component
             'sku' => 'required|string|max:255|unique:recipes,sku,'.$this->recipe_id,
             'department_id' => 'required|exists:departments,id',
             'product_type_id' => 'required|exists:product_types,id',
-            'cost_per_unit' => 'required|numeric|min:0.0001',
-            'uom' => 'required|exists:units_of_measure,symbol',
+            'cost_per_unit' => 'nullable|numeric|min:0',
+            'uom' => 'required',
             'yield_quantity' => 'required|numeric|min:0.01',
             'preparation_time' => 'nullable|integer|min:0',
             'status' => 'required|in:active,inactive,testing',
+            'is_wip' => 'nullable|boolean',
             'ingredients' => 'required|array|min:1',
-            'ingredients.*.item_id' => 'required|exists:items,id',
-            'ingredients.*.quantity' => 'required|numeric|min:0.01',
-            'ingredients.*.uom' => 'required|exists:units_of_measure,symbol',
-            'ingredients.*.cost_per_unit' => 'required|numeric|min:0.0001',
+            'ingredients.*.item_id' => 'required',
+            'ingredients.*.quantity' => 'required|numeric|min:0',
+            'ingredients.*.uom' => 'required',
+            'ingredients.*.cost_per_unit' => 'nullable|numeric|min:0',
             'ingredients.*.waste_percentage' => 'nullable|numeric|min:0|max:100',
         ];
 
-        $this->validate($rules);
+        try {
+            $this->validate($rules);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $errors = collect($e->errors())->flatten()->implode(', ');
+            $this->toast()->error('Validation failed: ' . $errors)->send();
+            return;
+        }
 
         // Calculate cost for preview
         $totalCost = collect($this->ingredients)->sum(function ($ing) {
-            $quantity = (float) $ing['quantity'];
-            $costPerUnit = (float) $ing['cost_per_unit'];
+            $quantity = (float) ($ing['quantity'] ?? 0);
+            $costPerUnit = (float) ($ing['cost_per_unit'] ?? 0);
             $wastePercent = (float) ($ing['waste_percentage'] ?? 0);
             $actualQuantity = $quantity * (1 + ($wastePercent / 100));
 
             return $actualQuantity * $costPerUnit;
         });
-        $costPerUnit = $totalCost / max((float) $this->yield_quantity, 1);
+        $costPerUnit = $totalCost / max((float) $this->yield_quantity, 0.01);
 
         $recipeData = [
             'id' => $this->recipe_id,
@@ -252,6 +286,8 @@ class Edit extends Component
             'preparation_time' => $this->preparation_time,
             'instructions' => ! empty($this->instructions) ? json_encode(array_values($this->instructions)) : null,
             'status' => $this->status,
+            'is_wip' => $this->is_wip,
+            'is_active' => true,
             'ingredients' => $this->ingredients,
         ];
 
@@ -279,20 +315,56 @@ class Edit extends Component
                 unset($data['ingredients']);
 
                 $recipe = Recipe::findOrFail($recipeId);
+
+                // Verify all items exist
+                $rawMaterialIds = [];
+                $wipProductIds = [];
+                foreach ($ingredients as $ingredient) {
+                    $isWip = $ingredient['is_wip'] ?? false;
+                    if ($isWip) {
+                        $wipProductIds[] = $ingredient['item_id'];
+                    } else {
+                        $rawMaterialIds[] = $ingredient['item_id'];
+                    }
+                }
+
+                $existingItemsCount = 0;
+                if (!empty($rawMaterialIds)) {
+                    $existingItemsCount += Item::whereIn('id', $rawMaterialIds)->count();
+                }
+                if (!empty($wipProductIds)) {
+                    $existingItemsCount += Product::whereIn('id', $wipProductIds)->count();
+                }
+
+                if ($existingItemsCount !== count($ingredients)) {
+                    throw new \Exception('One or more selected items not found');
+                }
+
                 $recipe->update($data);
 
                 // Delete old ingredients and create new ones
                 $recipe->ingredients()->delete();
                 foreach ($ingredients as $ingredient) {
+                    $itemId = $ingredient['item_id'];
+                    $isWip = $ingredient['is_wip'] ?? false;
+                    
+                    $notes = $ingredient['notes'] ?? null;
+                    if ($isWip && !is_numeric($itemId)) {
+                        $notes = $ingredient['notes'] ?? null;
+                    }
+                    
+                    $uomId = UnitOfMeasure::where('symbol', $ingredient['uom'])->first()?->id;
+                    
                     RecipeIngredient::create([
                         'recipe_id' => $recipe->id,
-                        'item_id' => $ingredient['item_id'],
+                        'item_id' => $itemId,
                         'quantity' => $ingredient['quantity'],
-                        'uom' => $ingredient['uom'],
+                        'uom_id' => $uomId,
                         'cost_per_unit' => $ingredient['cost_per_unit'],
                         'waste_percentage' => $ingredient['waste_percentage'] ?? 0,
-                        'notes' => $ingredient['notes'] ?? null,
+                        'notes' => $notes,
                         'preparation_notes' => $ingredient['preparation_notes'] ?? null,
+                        'is_wip' => $isWip ? 1 : 0,
                     ]);
                 }
             });
@@ -405,6 +477,19 @@ class Edit extends Component
             ->orderBy('name')
             ->get();
 
+        // Get WIP Products (products with product_type_id = WIP for this department that are active)
+        $wipProductType = \App\Models\ProductType::where('code', 'WIP')
+            ->where('department_id', $this->department->id)
+            ->first();
+        $wipItems = collect();
+        if ($wipProductType) {
+            $wipItems = \App\Models\Product::where('product_type_id', $wipProductType->id)
+                ->where('branch_id', $this->getBranchId())
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+        }
+
         // Get product types for the department
         $productTypes = \App\Models\ProductType::where('department_id', $this->department->id)
             ->orderBy('sort_order')
@@ -416,6 +501,7 @@ class Edit extends Component
         return view('livewire.branch-dashboard.production.recipes.edit', [
             'products' => $products,
             'items' => $items,
+            'wipItems' => $wipItems,
             'department' => $this->department,
             'dept_slug' => $this->dept_slug,
             'productTypes' => $productTypes,

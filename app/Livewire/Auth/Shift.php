@@ -311,6 +311,9 @@ class Shift extends Component
         $shift->status = 'active';
         $shift->notes = $this->notes;
 
+        // Set workflow state - for sales employees, start at stock_opening
+        $shift->workflow_state = 'stock_opening';
+
         // Store configuration reference for later use
         $shift->metadata = [
             'config_id' => $shiftConfig->id,

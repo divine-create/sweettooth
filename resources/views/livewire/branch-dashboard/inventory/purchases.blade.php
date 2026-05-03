@@ -441,8 +441,7 @@
                                 </thead>
                                 <tbody>
                                     @forelse($purchaseItems as $index => $item)
-                                    <tr class="border-t border-zinc-200 dark:border-zinc-700"
-                                        x-data="{ qty: parseFloat(@json($item['quantity'] ?? 1)) || 1, price: parseFloat(@json($item['unit_price'] ?? 0)) || 0, init() { this.$watch('$wire.purchaseItems.{{ $index }}.quantity', value => { this.qty = parseFloat(value) || 1; }); this.$watch('$wire.purchaseItems.{{ $index }}.unit_price', value => { this.price = parseFloat(value) || 0; }); } }">
+                                    <tr class="border-t border-zinc-200 dark:border-zinc-700">
                                         <td class="px-4 py-2">
                                             <select wire:model.live="purchaseItems.{{ $index }}.item_id" 
                                                 wire:change="updateItemUom({{ $index }}, $event.target.value)"
@@ -458,7 +457,6 @@
                                         </td>
                                         <td class="px-4 py-2">
                                             <input type="number" step="0.5" min="1" wire:model.live="purchaseItems.{{ $index }}.quantity"
-                                                @input="qty = Math.max(1, parseFloat($event.target.value) || 1)"
                                                 class="w-24 px-2 py-1 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500">
                                             @error('purchaseItems.'.$index.'.quantity')
                                                 <span class="text-red-500 text-xs">{{ $message }}</span>
@@ -472,8 +470,8 @@
                                             @enderror
                                         </td>
                                         <td class="px-4 py-2">
-                                            <input type="number" step="0.01" wire:model.live="purchaseItems.{{ $index }}.unit_price" disabled
-                                                class="w-32 px-2 py-1 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 cursor-not-allowed opacity-75"
+                                            <input type="number" step="0.01" wire:model.live="purchaseItems.{{ $index }}.unit_price"
+                                                class="w-32 px-2 py-1 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
                                                 placeholder="0.00">
                                             @error('purchaseItems.'.$index.'.unit_price')
                                                 <span class="text-red-500 text-xs">{{ $message }}</span>
@@ -490,15 +488,16 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="4" class="px-4 py-8 text-center text-zinc-500">No items added. Click "Add Item" to begin.</td>
+                                        <td colspan="5" class="px-4 py-8 text-center text-zinc-500">No items added. Click "Add Item" to begin.</td>
                                     </tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
-                        <div class="mt-3 flex justify-end" x-data="{ items: @entangle('purchaseItems') }">
+                        <div class="mt-3 flex justify-end">
                             <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-2 text-sm font-semibold text-blue-900 dark:text-blue-100">
-                                Total: <span x-text="items.reduce((sum, i) => sum + ((parseFloat(i.quantity) || 0) * (parseFloat(i.unit_price) || 0)), 0).toFixed(2)"></span>
+                                @php $total = collect($purchaseItems)->sum(fn($item) => floatval($item['quantity'] ?? 0) * floatval($item['unit_price'] ?? 0)); @endphp
+                                Total: {{ number_format($total, 2) }}
                             </div>
                         </div>
                     </div>
@@ -644,12 +643,18 @@
 
             <div class="px-6 py-4 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
                 <h2 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Purchase Details</h2>
-                <button wire:click="closeDetailModal"
-                    class="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="window.print()"
+                        class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1">
+                        Print
+                    </button>
+                    <button wire:click="closeDetailModal"
+                        class="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <div class="flex-1 overflow-y-auto px-6 py-4 scrollbar-thin">
@@ -727,7 +732,7 @@
                                         <td class="px-4 py-2 text-zinc-900 dark:text-zinc-100">{{ number_format($item->quantity, 2) }}</td>
                                         <td class="px-4 py-2 text-zinc-900 dark:text-zinc-100">{{ $item->uom }}</td>
                                         <td class="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100">
-                                            {{ \App\Helpers\LocalizationHelper::formatCurrency($item->fob_ngn ?? 0) }}
+                                            {{ \App\Helpers\LocalizationHelper::formatCurrency($item->unit_fob_ngn ?? $item->cost_per_unit ?? 0) }}
                                         </td>
                                         <td class="px-4 py-2 text-right font-medium text-zinc-900 dark:text-zinc-100">
                                             {{ \App\Helpers\LocalizationHelper::formatCurrency($item->total_cost ?? 0) }}

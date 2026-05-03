@@ -145,7 +145,7 @@
 
 
                 <!-- Production Callbacks -->
-                <a href="{{ route('branch-dashboard.production.callbacks.index') }}" 
+                <a href="{{ branch_route('branch-dashboard.production.material-returns.history') }}" 
                    class="p-4 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-300 transition flex items-center gap-3">
                     <div class="p-2 bg-pink-100 rounded-lg">
                         <svg class="w-5 h-5 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
@@ -154,8 +154,8 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="font-medium text-gray-900">Production Callbacks</p>
-                        <p class="text-sm text-gray-600">View callbacks</p>
+                        <p class="font-medium text-gray-900">Material Returns</p>
+                        <p class="text-sm text-gray-600">Track and return raw materials</p>
                     </div>
                 </a>
 

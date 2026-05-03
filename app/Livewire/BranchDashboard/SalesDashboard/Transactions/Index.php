@@ -156,7 +156,7 @@ class Index extends BaseComponent
 
     public function render()
     {
-        $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 20);
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 20));
 
         return view('livewire.branch-dashboard.sales-dashboard.transactions.index', [
             'headers' => $this->headers,

@@ -224,7 +224,7 @@ class AccountingEntries extends Component
             ->when($this->debitFilter, fn ($q) => $q->where('debit_gl_account_id', $this->debitFilter))
             ->when($this->creditFilter, fn ($q) => $q->where('credit_gl_account_id', $this->creditFilter))
             ->orderBy('entry_date', 'desc')
-            ->paginate($this->quantity ?? 20);
+            ->paginate((int) ($this->quantity ?? 20));
 
         $accounts = GlAccount::where('is_active', true)
             ->orderBy('account_number')

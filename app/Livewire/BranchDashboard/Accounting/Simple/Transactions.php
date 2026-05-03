@@ -71,7 +71,7 @@ class Transactions extends Component
                         ->orWhere('sale_number', 'like', '%' . $this->search . '%');
                 })
                 ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            )->orderBy('sale_time', 'desc')->paginate($this->quantity ?? 25),
+            )->orderBy('sale_time', 'desc')->paginate((int) ($this->quantity ?? 25)),
             'purchases' => $this->applyStatusFilter(
                 Purchase::query()->when($this->search, function ($query) {
                     $query->where('id', 'like', '%' . $this->search . '%')
@@ -79,23 +79,23 @@ class Transactions extends Component
                         ->orWhere('supplier_name', 'like', '%' . $this->search . '%');
                 })
                 ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            )->orderBy('purchase_date', 'desc')->paginate($this->quantity ?? 25),
+            )->orderBy('purchase_date', 'desc')->paginate((int) ($this->quantity ?? 25)),
             'payments' => $this->applyStatusFilter(
                 Payment::query()->when($this->search, function ($query) {
                     $query->where('id', 'like', '%' . $this->search . '%')
                         ->orWhere('reference_number', 'like', '%' . $this->search . '%');
                 })
                 ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            )->orderBy('payment_time', 'desc')->paginate($this->quantity ?? 25),
+            )->orderBy('payment_time', 'desc')->paginate((int) ($this->quantity ?? 25)),
             'adjustments' => $this->applyStatusFilter(
                 $this->adjustmentQuery()->when($this->search, function ($query) {
                     $query->where('id', 'like', '%' . $this->search . '%');
                 })
                 ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            )->orderBy('movement_date', 'desc')->paginate($this->quantity ?? 25),
+            )->orderBy('movement_date', 'desc')->paginate((int) ($this->quantity ?? 25)),
             default => $this->applyStatusFilter(
                 Sale::query()->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            )->orderBy('sale_time', 'desc')->paginate($this->quantity ?? 25),
+            )->orderBy('sale_time', 'desc')->paginate((int) ($this->quantity ?? 25)),
         };
     }
 

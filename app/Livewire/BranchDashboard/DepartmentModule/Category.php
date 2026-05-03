@@ -213,7 +213,7 @@ class Category extends BaseComponent
 
         $rows = Cache::remember($cacheKey, now()->addMinutes(15), function () {
             return $this->getFilteredQuery()
-                ->paginate($this->quantity ?? 10)
+                ->paginate((int) ($this->quantity ?? 10))
                 ->withQueryString();
         });
 

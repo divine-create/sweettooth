@@ -6,26 +6,34 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Services\Reports\AnalyticsSnapshotReportService;
 use App\Traits\Exportable;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\Attributes\{Layout, Url};
-use Carbon\Carbon;
 
 #[Layout('components.layouts.app.branch-dashboard')]
 class StockLevelAnalytics extends Component
 {
-    use WithPagination, Exportable;
+    use Exportable, WithPagination;
 
     public $dateFrom;
+
     public $dateTo;
-    #[Url(keep:true)]
+
+    #[Url(keep: true)]
     public $selectedCategory = '';
+
     public $selectedItem = null;
+
     public $searchTerm = '';
+
     public $itemSearch = '';
+
     public $healthFilter = '';
+
     public ?string $generatedReportId = null;
 
     protected $queryString = [
@@ -33,7 +41,7 @@ class StockLevelAnalytics extends Component
         'dateTo',
         'selectedCategory',
         'healthFilter',
-        'selectedItem'
+        'selectedItem',
     ];
 
     public function mount()
@@ -74,14 +82,14 @@ class StockLevelAnalytics extends Component
 
     public function getAvailableItems()
     {
-        $branchId = Auth::guard('web')->user()?->branch_id  ?? request()->get('b_id');
+        $branchId = Auth::guard('web')->user()?->branch_id ?? request()->get('b_id');
 
         return Stock::with('item')
             ->where('branch_id', $branchId)
             ->when($this->itemSearch, function ($query) {
                 $query->whereHas('item', function ($q) {
-                    $q->where('name', 'like', '%' . $this->itemSearch . '%')
-                      ->orWhere('sku', 'like', '%' . $this->itemSearch . '%');
+                    $q->where('name', 'like', '%'.$this->itemSearch.'%')
+                        ->orWhere('sku', 'like', '%'.$this->itemSearch.'%');
                 });
             })
             ->limit(50)
@@ -152,17 +160,17 @@ class StockLevelAnalytics extends Component
         return Stock::with('item')
             ->where('branch_id', $branchId)
             ->get()
-            ->groupBy('item.category')
+            ->groupBy(fn ($s) => $s->item?->category?->name ?? 'Uncategorized')
             ->map(function ($group, $category) {
                 return [
                     'category' => $category,
                     'count' => $group->count(),
                     'total_available' => $group->sum('quantity_available'),
                     'total_value' => $group->sum(function ($stock) {
-                        return $stock->quantity_available * ($stock->item->price ?? 0);
+                        return $stock->quantity_available * ($stock->item?->price ?? 0);
                     }),
                     'low_stock' => $group->filter(function ($stock) {
-                        return $stock->quantity_available < ($stock->item->reorder_level ?? 0);
+                        return $stock->quantity_available < ($stock->item?->reorder_level ?? 0);
                     })->count(),
                 ];
             })
@@ -175,7 +183,7 @@ class StockLevelAnalytics extends Component
      */
     public function getTurnoverAnalysis()
     {
-        $branchId = Auth::guard('web')->user()?->branch_id ?? request()->get('b_id') ;
+        $branchId = Auth::guard('web')->user()?->branch_id ?? request()->get('b_id');
         $dateFrom = Carbon::parse($this->dateFrom)->startOfDay();
         $dateTo = Carbon::parse($this->dateTo)->endOfDay();
 
@@ -244,8 +252,8 @@ class StockLevelAnalytics extends Component
         $dateTo = Carbon::parse($this->dateTo)->endOfDay();
 
         $movements = StockMovement::whereHas('stock', function ($query) use ($branchId) {
-                $query->where('branch_id', $branchId);
-            })
+            $query->where('branch_id', $branchId);
+        })
             ->when($this->selectedItem, function ($query) {
                 $query->where('stock_id', $this->selectedItem);
             })
@@ -262,6 +270,7 @@ class StockLevelAnalytics extends Component
 
         return $movements->map(function ($day) {
             $netChange = $day->stock_in - $day->stock_out;
+
             return [
                 'date' => Carbon::parse($day->date)->format('M d'),
                 'stock_in' => $day->stock_in,
@@ -277,15 +286,15 @@ class StockLevelAnalytics extends Component
      */
     public function getPeriodComparison()
     {
-        $branchId = Auth::guard('web')->user()?->branch_id  ?? request()->get('b_id');
+        $branchId = Auth::guard('web')->user()?->branch_id ?? request()->get('b_id');
         $dateFrom = Carbon::parse($this->dateFrom)->startOfDay();
         $dateTo = Carbon::parse($this->dateTo)->endOfDay();
         $daysDiff = $dateFrom->diffInDays($dateTo);
 
         // Current period
         $currentMovements = StockMovement::whereHas('stock', function ($query) use ($branchId) {
-                $query->where('branch_id', $branchId);
-            })
+            $query->where('branch_id', $branchId);
+        })
             ->whereBetween('movement_date', [$dateFrom, $dateTo])
             ->selectRaw('SUM(ABS(quantity)) as total_moved')
             ->selectRaw('COUNT(*) as movement_count')
@@ -293,11 +302,11 @@ class StockLevelAnalytics extends Component
 
         // Previous period
         $previousMovements = StockMovement::whereHas('stock', function ($query) use ($branchId) {
-                $query->where('branch_id', $branchId);
-            })
+            $query->where('branch_id', $branchId);
+        })
             ->whereBetween('movement_date', [
                 $dateFrom->copy()->subDays($daysDiff)->startOfDay(),
-                $dateFrom->copy()->subDay()->endOfDay()
+                $dateFrom->copy()->subDay()->endOfDay(),
             ])
             ->selectRaw('SUM(ABS(quantity)) as total_moved')
             ->selectRaw('COUNT(*) as movement_count')
@@ -325,7 +334,7 @@ class StockLevelAnalytics extends Component
      */
     public function getSmartInsights()
     {
-        $branchId = Auth::guard('web')->user()?->branch_id ??  request()->get('b_id');
+        $branchId = Auth::guard('web')->user()?->branch_id ?? request()->get('b_id');
         $summary = $this->getStockSummary();
         $insights = [];
 
@@ -334,7 +343,7 @@ class StockLevelAnalytics extends Component
             $insights[] = [
                 'type' => 'warning',
                 'icon' => '⚠️',
-                'message' => "You have {$summary['low_stock_count']} items below reorder level that need attention."
+                'message' => "You have {$summary['low_stock_count']} items below reorder level that need attention.",
             ];
         }
 
@@ -343,7 +352,7 @@ class StockLevelAnalytics extends Component
             $insights[] = [
                 'type' => 'critical',
                 'icon' => '🔴',
-                'message' => "{$summary['critical_items']} items are in critical condition. Immediate action required."
+                'message' => "{$summary['critical_items']} items are in critical condition. Immediate action required.",
             ];
         }
 
@@ -353,7 +362,7 @@ class StockLevelAnalytics extends Component
             $insights[] = [
                 'type' => 'success',
                 'icon' => '✅',
-                'message' => "{$percentage}% of your stock is in good health. Great inventory management!"
+                'message' => "{$percentage}% of your stock is in good health. Great inventory management!",
             ];
         }
 
@@ -362,7 +371,7 @@ class StockLevelAnalytics extends Component
             $insights[] = [
                 'type' => 'critical',
                 'icon' => '❌',
-                'message' => "{$summary['out_of_stock']} items are completely out of stock."
+                'message' => "{$summary['out_of_stock']} items are completely out of stock.",
             ];
         }
 
@@ -390,6 +399,7 @@ class StockLevelAnalytics extends Component
 
         if ($from > $to) {
             session()->flash('error', 'Invalid date range. "From" date cannot be after "To" date.');
+
             return;
         }
 
@@ -474,8 +484,8 @@ class StockLevelAnalytics extends Component
             ->where('branch_id', $branchId)
             ->when($this->searchTerm, function ($query) {
                 $query->whereHas('item', function ($q) {
-                    $q->where('name', 'like', '%' . $this->searchTerm . '%')
-                        ->orWhere('sku', 'like', '%' . $this->searchTerm . '%');
+                    $q->where('name', 'like', '%'.$this->searchTerm.'%')
+                        ->orWhere('sku', 'like', '%'.$this->searchTerm.'%');
                 });
             })
             ->when($selectedCategory, function ($query) use ($selectedCategory) {
@@ -484,7 +494,7 @@ class StockLevelAnalytics extends Component
                 });
             })
             ->when($healthFilter, function ($query) use ($healthFilter) {
-                $query->whereRaw("LOWER(health_status) = ?", [$healthFilter]);
+                $query->whereRaw('LOWER(health_status) = ?', [$healthFilter]);
             });
     }
 
@@ -494,7 +504,7 @@ class StockLevelAnalytics extends Component
             return [
                 'item_name' => $stock->item?->name ?? 'Unknown',
                 'sku' => $stock->item?->sku ?? null,
-                'category' => $stock->item?->category ?? null,
+                'category' => $stock->item?->category?->name ?? null,
                 'health_status' => $stock->health_status,
                 'quantity_available' => $stock->quantity_available,
                 'quantity_reserved' => $stock->quantity_reserved,
@@ -504,7 +514,6 @@ class StockLevelAnalytics extends Component
         })->values()->toArray();
     }
 
-
     public function render()
     {
         $branchId = Auth::guard('web')->user()?->branch_id ?? request()->get('b_id');
@@ -513,7 +522,11 @@ class StockLevelAnalytics extends Component
             ->latest()
             ->paginate(15);
 
-        $categories = ['raw_material', 'packaging', 'consumable', 'equipment'];
+        $categories = \App\Models\ItemCategory::active()
+            ->forBranch($branchId)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
         $healthStatuses = ['good', 'warning', 'critical', 'expired'];
 
         return view('livewire.branch-dashboard.analytics.stock-level-analytics', [

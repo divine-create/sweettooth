@@ -3,11 +3,11 @@
 namespace App\Models;
 
 use App\Services\UomConversionService;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Item extends Model
 {
@@ -17,7 +17,7 @@ class Item extends Model
         'branch_id',
         'name',
         'sku',
-        'category',
+        'category_id',
         'uom_id',
         'reorder_level',
         'max_stock_level',
@@ -52,6 +52,24 @@ class Item extends Model
     }
 
     /**
+     * Get the category for this item
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ItemCategory::class, 'category_id');
+    }
+
+    /**
+     * Get category name (for backward compatibility and display)
+     */
+    protected function categoryName(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->category?->name ?? 'Uncategorized',
+        );
+    }
+
+    /**
      * Get the unit of measure for this item
      */
     public function unitOfMeasure(): BelongsTo
@@ -65,7 +83,7 @@ class Item extends Model
     protected function uomSymbol(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->unitOfMeasure?->symbol ?? 'N/A',
+            get: fn () => $this->unitOfMeasure?->symbol ?? 'N/A',
         );
     }
 
@@ -75,7 +93,7 @@ class Item extends Model
     protected function uom(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->uomSymbol,
+            get: fn () => $this->uomSymbol,
         );
     }
 
@@ -145,8 +163,6 @@ class Item extends Model
 
     /**
      * Convert a quantity expressed in this item's base UOM to another UOM.
-     *
-     * @param  int|string|UnitOfMeasure  $toUom
      */
     public function convertFromBaseUom(float $quantity, int|string|UnitOfMeasure $toUom): ?float
     {
@@ -167,8 +183,6 @@ class Item extends Model
 
     /**
      * Convert a quantity from another UOM into this item's base UOM.
-     *
-     * @param  int|string|UnitOfMeasure  $fromUom
      */
     public function convertToBaseUom(float $quantity, int|string|UnitOfMeasure $fromUom): ?float
     {
@@ -193,8 +207,8 @@ class Item extends Model
     protected function costPerUnit(): Attribute
     {
         return Attribute::make(
-            get: fn() => (float) ($this->unit_price ?? 0),
-            set: fn($value) => [
+            get: fn () => (float) ($this->unit_price ?? 0),
+            set: fn ($value) => [
                 'unit_price' => (float) $value,
                 'last_unit_price' => (float) $value,
             ],
@@ -207,11 +221,10 @@ class Item extends Model
     protected function price(): Attribute
     {
         return Attribute::make(
-            get: fn() => (float) ($this->unit_price ?? 0),
-            set: fn($value) => [
+            get: fn () => (float) ($this->unit_price ?? 0),
+            set: fn ($value) => [
                 'unit_price' => (float) $value,
             ],
         );
     }
-
 }

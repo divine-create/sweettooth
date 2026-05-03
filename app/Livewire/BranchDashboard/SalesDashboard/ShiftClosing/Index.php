@@ -301,9 +301,9 @@ class Index extends BaseComponent
         $expectedPos = $payments->where('payment_method', 'pos')->sum('amount');
         $expectedTransfer = $payments->where('payment_method', 'transfer')->sum('amount');
 
-        $cashVariance = $this->actualCash - $expectedCash;
-        $posVariance = $this->actualPos - $expectedPos;
-        $transferVariance = $this->actualTransfer - $expectedTransfer;
+        $cashVariance = (float)$this->actualCash - $expectedCash;
+        $posVariance = (float)$this->actualPos - $expectedPos;
+        $transferVariance = (float)$this->actualTransfer - $expectedTransfer;
 
         // Variance threshold (₦100 or 1% of expected, whichever is higher)
         $cashThreshold = max(100, $expectedCash * 0.01);
@@ -314,9 +314,9 @@ class Index extends BaseComponent
             'expected_cash' => $expectedCash,
             'expected_pos' => $expectedPos,
             'expected_transfer' => $expectedTransfer,
-            'actual_cash' => $this->actualCash,
-            'actual_pos' => $this->actualPos,
-            'actual_transfer' => $this->actualTransfer,
+            'actual_cash' => (float)$this->actualCash,
+            'actual_pos' => (float)$this->actualPos,
+            'actual_transfer' => (float)$this->actualTransfer,
             'cash_variance' => $cashVariance,
             'pos_variance' => $posVariance,
             'transfer_variance' => $transferVariance,
@@ -327,7 +327,7 @@ class Index extends BaseComponent
             'pos_requires_reason' => abs($posVariance) > $posThreshold,
             'transfer_requires_reason' => abs($transferVariance) > $transferThreshold,
             'total_expected' => $expectedCash + $expectedPos + $expectedTransfer,
-            'total_actual' => $this->actualCash + $this->actualPos + $this->actualTransfer,
+            'total_actual' => (float)$this->actualCash + (float)$this->actualPos + (float)$this->actualTransfer,
             'total_variance' => $cashVariance + $posVariance + $transferVariance,
         ];
     }
@@ -473,19 +473,19 @@ class Index extends BaseComponent
                 'reconciliation' => [
                     'cash' => [
                         'expected' => $this->cashReconciliation['expected_cash'],
-                        'actual' => $this->actualCash,
+                        'actual' => (float)$this->actualCash,
                         'variance' => $this->cashReconciliation['cash_variance'],
                         'reason' => $this->cashVarianceReason,
                     ],
                     'pos' => [
                         'expected' => $this->cashReconciliation['expected_pos'],
-                        'actual' => $this->actualPos,
+                        'actual' => (float)$this->actualPos,
                         'variance' => $this->cashReconciliation['pos_variance'],
                         'reason' => $this->posVarianceReason,
                     ],
                     'transfer' => [
                         'expected' => $this->cashReconciliation['expected_transfer'],
-                        'actual' => $this->actualTransfer,
+                        'actual' => (float)$this->actualTransfer,
                         'variance' => $this->cashReconciliation['transfer_variance'],
                         'reason' => $this->transferVarianceReason,
                     ],

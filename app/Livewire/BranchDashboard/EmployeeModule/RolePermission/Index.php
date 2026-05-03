@@ -544,7 +544,7 @@ class Index extends BaseComponent
 
     public function render()
     {
-        $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 10);
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
 
         // Filter permissions by the selected guard
         $allPermissions = Permission::where('guard_name', $this->roleGuard)->get();

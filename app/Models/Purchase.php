@@ -25,6 +25,7 @@ class Purchase extends Model
         'total_fob_ngn',
         'other_costs',
         'landing_cost',
+        'total_cost',
         'payment_status',
         'notes',
         'status',

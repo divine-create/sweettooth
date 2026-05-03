@@ -37,7 +37,7 @@ class InventoryApprovals extends Component
                     ->orWhere('last_name', 'like', '%' . $this->search . '%')))
             ->orderBy('created_at', 'desc');
         
-        $requests = $query->paginate($this->quantity);
+        $requests = $query->paginate((int) $this->quantity);
         
         return view('livewire.branch-dashboard.audit-management.inventory-approvals', [
             'requests' => $requests,

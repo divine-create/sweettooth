@@ -113,7 +113,13 @@ class HealthChecks extends Component
                 ->select(['id', 'branch_id', 'item_id', 'quantity_available'])
                 ->where('branch_id', $branchId)
                 ->orderBy('id', 'desc')
-                ->get();
+                ->get()
+                ->map(fn($stock) => [
+                    'label' => ($stock->item?->name ?? 'Unknown') . ' - ' . ($stock->item?->sku ?? 'N/A') . ' (' . number_format($stock->quantity_available, 2) . ' ' . ($stock->item?->unitOfMeasure?->symbol ?? 'N/A') . ')',
+                    'value' => (string) $stock->id,
+                    'quantity_available' => (float) $stock->quantity_available,
+                    'uom' => $stock->item?->unitOfMeasure?->symbol ?? 'N/A',
+                ]);
         }
 
         return view('livewire.branch-dashboard.inventory.health-checks', [

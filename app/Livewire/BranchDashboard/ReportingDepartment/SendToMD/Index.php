@@ -50,19 +50,20 @@ class Index extends Component
 
         if (! $this->reportToSend->canBeSentToMD()) {
             $this->toast()->error('Report has already been sent to MD')->send();
+
             return;
         }
 
-        // Get Managing Director users
-        $mdUsers = User::role('Managing Director')->get();
+        // Get MD users
+        $mdUsers = User::role('MD')->get();
 
         if ($mdUsers->isEmpty()) {
-            $this->toast()->error('No Managing Director users found in the system')->send();
+            $this->toast()->error('No MD users found in the system')->send();
 
             return;
         }
 
-        // If only one Managing Director user, send directly
+        // If only one MD user, send directly
         if ($mdUsers->count() === 1) {
             $this->selectedMdUser = $mdUsers->first()->id;
             $this->processSend();
@@ -96,7 +97,6 @@ class Index extends Component
         }
     }
 
-
     public function render()
     {
         $compiledReports = CompiledReport::query()
@@ -105,7 +105,7 @@ class Index extends Component
             ->orderBy('compilation_date', 'desc')
             ->paginate(10);
 
-        $mdUsers = User::role('Managing Director')->get();
+        $mdUsers = User::role('MD')->get();
 
         return view('livewire.branch-dashboard.reporting-department.send-to-md.index', [
             'compiledReports' => $compiledReports,

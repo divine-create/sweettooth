@@ -99,6 +99,8 @@ class Products extends BaseComponent
 
     public ?Department $department = null;
 
+    public ?int $selectedDepartmentId = null;
+
     public function mount($deptSlug = null)
     {
         $requestedDeptSlug = $deptSlug
@@ -113,6 +115,7 @@ class Products extends BaseComponent
             if ($this->department) {
                 $this->dept_slug = $this->department->slug;
                 $this->filterDepartment = $this->department->id;
+                $this->selectedDepartmentId = $this->department->id;
             }
         }
 
@@ -159,14 +162,10 @@ class Products extends BaseComponent
                 $query->where('product_type_id', $this->filterProductType);
             })
             ->when($this->filterDepartment, function ($query) {
-                $query->whereHas('productType', function ($q) {
-                    $q->where('department_id', $this->filterDepartment);
-                });
+                $query->where('department_id', $this->filterDepartment);
             })
             ->when($this->department, function ($query) {
-                $query->whereHas('productType', function ($q) {
-                    $q->where('department_id', $this->department->id);
-                });
+                $query->where('department_id', $this->department->id);
             })
             ->when($this->filterStatus !== null, function ($query) {
                 switch ($this->filterStatus) {
@@ -184,10 +183,7 @@ class Products extends BaseComponent
                         break;
                 }
             })
-            ->where(function ($query) {
-                $query->whereNull('branch_id')
-                    ->orWhere('branch_id', $this->getBranchId());
-            });
+            ->where('branch_id', $this->getBranchId());
 
         return $query->orderBy('created_at', 'desc');
     }
@@ -205,6 +201,23 @@ class Products extends BaseComponent
     public function updatedFilterDepartment()
     {
         $this->resetPage();
+    }
+
+    public function updatedSelectedDepartmentId()
+    {
+        if ($this->selectedDepartmentId) {
+            $dept = Department::find($this->selectedDepartmentId);
+            if ($dept) {
+                $this->department = $dept;
+                $this->dept_slug = $dept->slug;
+                $this->filterDepartment = $dept->id;
+            }
+        }
+        $this->product_type_id = null;
+        $this->productTypes = ProductType::where('department_id', $this->selectedDepartmentId)
+            ->orderBy('sort_order')
+            ->select('id', 'name', 'code', 'department_id')
+            ->get();
     }
 
     public function updatedFilterStatus()
@@ -284,35 +297,29 @@ class Products extends BaseComponent
             ]);
         }
 
-        $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 10);
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
 
         $dropdownCacheKey = 'products_dropdowns_' . ($this->dept_slug ?? 'all');
-        [
-            'productTypes' => $productTypes,
-            'departments' => $departments,
-            'salesDepartments' => $salesDepartments,
-        ] = Cache::remember($dropdownCacheKey, now()->addHour(), function () {
-            $productTypes = ProductType::with('department:id,name')
-                ->where('department_id', $this->department->id)
-                ->active()
-                ->ordered()
-                ->select('id', 'name', 'code', 'department_id')
-                ->get();
+        
+        $productTypes = ProductType::with('department:id,name')
+            ->where('department_id', $this->department->id)
+            ->active()
+            ->ordered()
+            ->select('id', 'name', 'code', 'department_id')
+            ->get();
 
-            $departments = Department::whereHas('category', function ($q) {
-                $q->where('name', 'Production');
-            })
-                ->orderBy('name')
-                ->select('id', 'name', 'slug')
-                ->get();
+        $departments = Department::whereHas('category', function ($q) {
+            $q->where('name', 'Production');
+        })
+        ->orderBy('name')
+        ->select('id', 'name', 'slug')
+        ->get();
 
-            $salesDepartments = $this->salesDepartmentsQuery()
-                ->orderBy('name')
-                ->select('id', 'name', 'branch_id')
-                ->get();
+        $salesDepartments = $this->salesDepartmentsQuery()
+            ->orderBy('name')
+            ->select('id', 'name', 'branch_id')
+            ->get();
 
-            return compact('productTypes', 'departments', 'salesDepartments');
-        });
         $unitOfMeasures = Cache::remember('unit_of_measures_all', now()->addDay(), function () {
             return \App\Models\UnitOfMeasure::orderBy('name')
                 ->select('id', 'name', 'symbol')
@@ -342,6 +349,7 @@ class Products extends BaseComponent
     public function openCreateModal()
     {
         $this->resetFields();
+        $this->selectedDepartmentId = $this->department?->id;
         $salesDepartmentIds = $this->salesDepartmentsQuery()
             ->orderBy('name')
             ->pluck('id');
@@ -362,6 +370,7 @@ class Products extends BaseComponent
         $this->name = $product->name;
         $this->sku = $product->sku;
         $this->product_type_id = $product->product_type_id;
+        $this->selectedDepartmentId = $product->department_id;
         $this->sales_department_id = $product->sales_department_id;
         $this->category_id = $product->category_id;
         $this->description = $product->description ?? '';
@@ -382,9 +391,22 @@ class Products extends BaseComponent
 
     public function save()
     {
+        // Ensure department_id is ALWAYS set - derive from product_type_id, then fallback to current dept
+        $deptId = $this->selectedDepartmentId 
+            ?? $this->department?->id 
+            ?? \App\Models\ProductType::find($this->product_type_id)?->department_id;
+
+        if (!$deptId) {
+            $this->addError('selectedDepartmentId', 'Please select a production department.');
+            return;
+        }
+
+        $this->selectedDepartmentId = $deptId;
+
         $rules = [
             'name' => 'required|string|max:255',
             'product_type_id' => 'required|exists:product_types,id',
+            'selectedDepartmentId' => 'required|exists:departments,id',
             'sales_department_id' => 'nullable|exists:departments,id',
             'category_id' => 'nullable|integer',
             'description' => 'nullable|string',
@@ -416,6 +438,8 @@ class Products extends BaseComponent
             'id' => $this->isEditing ? $this->productId : null,
             'name' => $this->name,
             'sku' => strtoupper($this->sku),
+            'branch_id' => $this->getBranchId(),
+            'department_id' => $this->selectedDepartmentId,
             'product_type_id' => $this->product_type_id,
             'sales_department_id' => $this->sales_department_id,
             'category_id' => $this->category_id,

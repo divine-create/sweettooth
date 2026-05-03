@@ -213,7 +213,7 @@ class EmployeeHistory extends BaseComponent
     {
         $branchId = $this->b_id ?: current_branch_id();
 
-        $shifts = $this->getHistoryQuery()->paginate($this->quantity);
+        $shifts = $this->getHistoryQuery()->paginate((int) $this->quantity);
         $stats = $this->getStats();
 
         // Get departments for this branch

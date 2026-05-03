@@ -22,6 +22,8 @@ class ProductionApprovalService
             $product = Product::create([
                 'name' => $payload['name'],
                 'sku' => strtoupper($payload['sku']),
+                'branch_id' => $request->branch_id ?? $payload['branch_id'] ?? null,
+                'department_id' => $payload['department_id'] ?? null,
                 'product_type_id' => $payload['product_type_id'],
                 'sales_department_id' => $payload['sales_department_id'] ?? null,
                 'category_id' => $payload['category_id'] ?? null,
@@ -70,6 +72,7 @@ class ProductionApprovalService
             $product->update([
                 'name' => $payload['name'],
                 'sku' => strtoupper($payload['sku']),
+                'department_id' => $payload['department_id'] ?? $product->department_id,
                 'product_type_id' => $payload['product_type_id'],
                 'sales_department_id' => $payload['sales_department_id'] ?? null,
                 'category_id' => $payload['category_id'] ?? null,
@@ -126,37 +129,38 @@ class ProductionApprovalService
     /**
      * Execute approved bulk product deletion
      */
-    public static function executeProductBulkDeletion(ApprovalAuditRequest $request): array
+    public static function executeProductBulkDeletion(ApprovalAuditRequest $request): ?Product
     {
         $ids = $request->payload['ids'] ?? [];
 
         if (empty($ids)) {
             CleanError::show('No product IDs found in approval request.');
-            return [];
+            return null;
         }
 
         try {
-            $deleted = [];
+            $lastProduct = null;
             foreach ($ids as $id) {
                 $product = Product::find($id);
                 if ($product) {
-                    $deleted[] = $product->id;
+                    $lastProduct = $product;
                     $product->delete();
                 }
             }
-            return $deleted;
+            // Return the last deleted product as the auditable model
+            return $lastProduct;
         } catch (\Throwable $e) {
             CleanError::show('Failed to delete products.', $e, [
                 'request_id' => $request->id,
             ]);
-            return [];
+            return null;
         }
     }
 
     /**
      * Execute approved product assignments (sales department and/or recipe)
      */
-    public static function executeProductAssignments(ApprovalAuditRequest $request): array
+    public static function executeProductAssignments(ApprovalAuditRequest $request): ?Product
     {
         $payload = $request->payload;
         $type = $payload['type'] ?? null;
@@ -168,55 +172,52 @@ class ProductionApprovalService
 
         if ($type === 'sales_department' && empty($productIds)) {
             CleanError::show('No product IDs found in approval request.');
-            return ['products_updated' => 0, 'recipe_updated' => false];
+            return null;
         }
 
         if ($type === 'recipe' && ! $productId) {
             CleanError::show('No product ID found in approval request.');
-            return ['products_updated' => 0, 'recipe_updated' => false];
+            return null;
         }
-
-        $results = [
-            'products_updated' => 0,
-            'recipe_updated' => false,
-        ];
 
         try {
             if ($type === 'sales_department') {
                 if (! $salesDepartmentId) {
                     CleanError::show('No sales department provided.');
-                    return $results;
+                    return null;
                 }
 
-                $results['products_updated'] = Product::whereIn('id', $productIds)
+                Product::whereIn('id', $productIds)
                     ->update(['sales_department_id' => $salesDepartmentId]);
+                
+                return Product::find($productIds[0] ?? null);
             }
 
             if ($type === 'recipe') {
                 if (! $recipeId) {
                     CleanError::show('No recipe provided.');
-                    return $results;
+                    return null;
                 }
 
                 $product = Product::find($productId);
                 if (!$product) {
                     CleanError::show('Product not found. Please refresh and try again.');
-                    return $results;
+                    return null;
                 }
                 $recipe = Recipe::find($recipeId);
                 if (!$recipe) {
                     CleanError::show('Recipe not found. Please refresh and try again.');
-                    return $results;
+                    return null;
                 }
 
                 if ($request->branch_id && $recipe->branch_id !== $request->branch_id) {
                     CleanError::show('Recipe branch mismatch.');
-                    return $results;
+                    return null;
                 }
 
                 if ($departmentId && $recipe->department_id !== $departmentId) {
                     CleanError::show('Recipe department mismatch.');
-                    return $results;
+                    return null;
                 }
 
                 $recipe->update([
@@ -226,15 +227,15 @@ class ProductionApprovalService
                     'product_type_id' => $product->product_type_id,
                 ]);
 
-                $results['recipe_updated'] = true;
+                return $product;
             }
 
-            return $results;
+            return null;
         } catch (\Throwable $e) {
             CleanError::show('Failed to execute product assignments.', $e, [
                 'request_id' => $request->id,
             ]);
-            return ['products_updated' => 0, 'recipe_updated' => false];
+            return null;
         }
     }
 
@@ -293,6 +294,8 @@ class ProductionApprovalService
                     'preparation_time' => $payload['preparation_time'] ?? null,
                     'instructions' => $payload['instructions'] ?? null,
                     'status' => $payload['status'] ?? 'active',
+                    'is_wip' => $payload['is_wip'] ?? false,
+                    'is_active' => $payload['is_active'] ?? true,
                     'created_by_id' => $actor->id,
                     'created_by_type' => get_class($actor),
                 ]);
@@ -321,6 +324,7 @@ class ProductionApprovalService
                                     'sort_order' => $index + 1,
                                     'notes' => $ingredient['notes'] ?? null,
                                     'preparation_notes' => $ingredient['preparation_notes'] ?? null,
+                                    'is_wip' => $ingredient['is_wip'] ?? false,
                                 ]);
                                 \Log::info('✅ [RECIPE CREATION] Ingredient created', [
                                     'index' => $index,
@@ -359,10 +363,7 @@ class ProductionApprovalService
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            CleanError::show('Failed to create recipe.', $e, [
-                'request_id' => $request->id,
-            ]);
-            return null;
+            throw $e;
         }
     }
 
@@ -419,6 +420,8 @@ class ProductionApprovalService
                     'preparation_time' => $payload['preparation_time'] ?? null,
                     'instructions' => $payload['instructions'] ?? null,
                     'status' => $payload['status'] ?? 'active',
+                    'is_wip' => $payload['is_wip'] ?? false,
+                    'is_active' => $payload['is_active'] ?? true,
                 ]);
 
                 // Update ingredients - delete old ones and create new ones
@@ -438,6 +441,7 @@ class ProductionApprovalService
                                 'sort_order' => $index + 1,
                                 'notes' => $ingredient['notes'] ?? null,
                                 'preparation_notes' => $ingredient['preparation_notes'] ?? null,
+                                'is_wip' => $ingredient['is_wip'] ?? false,
                             ];
                             RecipeIngredient::create($ingredientData);
                         }
@@ -460,10 +464,7 @@ class ProductionApprovalService
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            CleanError::show('Failed to update recipe.', $e, [
-                'request_id' => $request->id,
-            ]);
-            return null;
+            throw $e;
         }
     }
 

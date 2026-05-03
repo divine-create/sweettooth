@@ -93,6 +93,7 @@ class AppServiceProvider extends ServiceProvider
             'Employee' => Employee::class,
             'user' => User::class,
             'User' => User::class,
+            'App\Model\User' => User::class,
         ]);
 
         Auth::macro('employee', function () {

@@ -46,6 +46,9 @@ class ApproveCallbacks extends BaseComponent
     #[Url(keep: true)]
     public ?string $b_id = null;
 
+    #[Url(keep: true)]
+    public ?string $deptSlug = null;
+
     public ?int $quantity = 20;
     public ?string $search = null;
     public ?string $filterStatus = null;
@@ -89,19 +92,19 @@ class ApproveCallbacks extends BaseComponent
     protected function getFilteredQuery()
     {
         $branchId = $this->getBranchId();
-        
+
         $query = ProductDispatchCallback::query()
-            ->with(['product', 'salesShift', 'productDispatch.salesShift', 'recordedBy', 'approvedBy', 'receivedBy'])
-            ->where(function ($q) use ($branchId) {
-                // Filter by salesShift branch directly
-                $q->whereHas('salesShift', function ($sq) {
-                    $sq->where('branch_id', $branchId);
-                })
-                // Also handle case where productDispatch is NULL
-                ->orWhereHas('productDispatch.salesShift', function ($sq) {
-                    $sq->where('branch_id', $branchId);
-                });
+            ->with(['product', 'salesShift', 'productDispatch.shift', 'recordedBy', 'approvedBy', 'receivedBy'])
+            ->whereHas('salesShift', function ($sq) use ($branchId) {
+                $sq->where('branch_id', $branchId);
             });
+
+        // Filter by the department that PRODUCED the item
+        if ($this->deptSlug) {
+            $query->whereHas('productDispatch.shift.department', function ($dq) {
+                $dq->where('slug', $this->deptSlug);
+            });
+        }
 
         return $query;
     }
@@ -111,36 +114,48 @@ class ApproveCallbacks extends BaseComponent
         return $this->b_id ?: request()->query('b_id');
     }
 
-    public function mount()
+    public function mount($deptSlug = null)
     {
+        if ($deptSlug) {
+            $this->deptSlug = $deptSlug;
+        }
         $this->startDate = \Carbon\Carbon::today()->subDays(30)->format('Y-m-d');
         $this->endDate = \Carbon\Carbon::today()->format('Y-m-d');
     }
 
     public function getRowsProperty()
     {
+        $branchId = $this->getBranchId();
+
         $query = ProductDispatchCallback::with([
             'product',
             'salesShift',
-            'productDispatch.salesShift',
+            'productDispatch.shift',
             'recordedBy',
             'approvedBy',
             'receivedBy'
         ])
-        ->whereHas('productDispatch.salesShift', function ($q) {
-            $q->where('branch_id', $this->getBranchId());
+        ->whereHas('salesShift', function ($q) use ($branchId) {
+            $q->where('branch_id', $branchId);
         });
+
+        // Filter by the department that PRODUCED the item
+        if ($this->deptSlug) {
+            $query->whereHas('productDispatch.shift.department', function ($dq) {
+                $dq->where('slug', $this->deptSlug);
+            });
+        }
 
         // Search filter
         if ($this->search) {
             $query->where(function ($q) {
                 $q->whereHas('product', function ($productQuery) {
-                    $productQuery->where('name', 'like', '%' . $this->search . '%')
-                                 ->orWhere('sku', 'like', '%' . $this->search . '%');
+                    $productQuery->where('name', 'like', '%'.$this->search.'%')
+                        ->orWhere('sku', 'like', '%'.$this->search.'%');
                 })
-                ->orWhereHas('recordedBy', function ($employeeQuery) {
-                    $employeeQuery->where('name', 'like', '%' . $this->search . '%');
-                });
+                    ->orWhereHas('recordedBy', function ($employeeQuery) {
+                        $employeeQuery->where('name', 'like', '%'.$this->search.'%');
+                    });
             });
         }
 
@@ -157,7 +172,7 @@ class ApproveCallbacks extends BaseComponent
             $query->whereDate('callback_time', '<=', $this->endDate);
         }
 
-        return $query->orderBy('callback_time', 'desc')->paginate($this->quantity);
+        return $query->orderBy('callback_time', 'desc')->paginate((int) $this->quantity);
     }
 
     public function viewDetails($callbackId)

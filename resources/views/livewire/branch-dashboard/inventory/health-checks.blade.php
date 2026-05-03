@@ -151,7 +151,7 @@
 
         @interact('column_item_name', $row)
             <span class="font-medium text-zinc-900 dark:text-zinc-100">
-                {{ $row->stock->item->name ?? 'N/A' }}
+                {{ $row->stock->item?->name ?? 'N/A' }}
             </span>
         @endinteract
 
@@ -194,7 +194,7 @@
 
         @interact('column_checker', $row)
             <span class="text-zinc-900 dark:text-zinc-100">
-                {{ $row->checker->name ?? 'N/A' }}
+                {{ $row->checker?->name ?? 'N/A' }}
             </span>
         @endinteract
     </x-table>
@@ -229,13 +229,13 @@
                 <form wire:submit.prevent="save" class="space-y-4">
                     <div>
                          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Stock Item *</label>
-                         <select wire:model.live="stock_id"
-                             class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500">
-                             <option value="">Select Stock Item</option>
-                             @foreach($stocks as $stock)
-                                 <option value="{{ $stock->id }}">{{ $stock->item->name }} ({{ number_format($stock->quantity_available, 2) }} {{ $stock->item->uom }})</option>
-                             @endforeach
-                         </select>
+                         <x-select.styled
+                             wire:model.live="stock_id"
+                             :options="$stocks"
+                             select="label:label|value:value"
+                             placeholder="Search and select stock item"
+                             searchable
+                         />
                          @error('stock_id')
                              <span class="text-red-500 text-sm">{{ $message }}</span>
                          @enderror
@@ -270,16 +270,16 @@
                          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                              Quantity Affected
                              @php
-                                 $selectedStock = collect($stocks)->firstWhere('id', $stock_id);
+                                 $selectedStock = collect($stocks)->firstWhere('value', (string) $stock_id);
                              @endphp
                              @if($selectedStock)
-                                 <span class="text-xs font-normal text-zinc-500 dark:text-zinc-400">(Max: {{ number_format($selectedStock->quantity_available, 2) }} {{ $selectedStock->item->uom }})</span>
+                                 <span class="text-xs font-normal text-zinc-500 dark:text-zinc-400">(Max: {{ number_format($selectedStock['quantity_available'], 2) }} {{ $selectedStock['uom'] }})</span>
                              @endif
                          </label>
                          <input type="number" 
                              step="0.01" 
                              min="0.01"
-                             @if($selectedStock) max="{{ $selectedStock->quantity_available }}" @endif
+                             @if($selectedStock) max="{{ $selectedStock['quantity_available'] }}" @endif
                              wire:model="quantity_affected"
                              class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
                              placeholder="Enter quantity affected">

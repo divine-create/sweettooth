@@ -3,15 +3,18 @@
 namespace App\Models;
 
 use App\Services\UomConversionService;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class RecipeIngredient extends Model
 {
     protected $fillable = [
         'recipe_id',
         'item_id',
+        'component_type',
+        'component_id',
         'quantity',
         'uom_id',
         'cost_per_unit',
@@ -19,12 +22,15 @@ class RecipeIngredient extends Model
         'sort_order',
         'notes',
         'preparation_notes',
+        'is_wip',
     ];
 
     protected $casts = [
         'quantity' => 'decimal:4',
         'cost_per_unit' => 'decimal:4',
         'waste_percentage' => 'decimal:2',
+        'is_wip' => 'boolean',
+        'item_id' => 'string',
     ];
 
     public function recipe(): BelongsTo
@@ -35,6 +41,39 @@ class RecipeIngredient extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the item - returns Product for WIP, Item for raw materials
+     */
+    public function getItemAttribute()
+    {
+        if ($this->is_wip && $this->item_id) {
+            return Product::find($this->item_id);
+        }
+
+        return Item::find($this->item_id);
+    }
+
+    /**
+     * Get the item name
+     */
+    public function getItemNameAttribute(): string
+    {
+        $item = $this->item;
+        if ($item instanceof Product) {
+            return $item->name.' (WIP)';
+        }
+        if ($item instanceof Item) {
+            return $item->name;
+        }
+
+        return 'N/A';
     }
 
     public function unitOfMeasure(): BelongsTo
@@ -48,7 +87,7 @@ class RecipeIngredient extends Model
     protected function uomSymbol(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->unitOfMeasure?->symbol ?? 'N/A',
+            get: fn () => $this->unitOfMeasure?->symbol ?? 'N/A',
         );
     }
 
@@ -58,7 +97,7 @@ class RecipeIngredient extends Model
     protected function uom(): Attribute
     {
         return Attribute::make(
-            get: function() {
+            get: function () {
                 $symbol = $this->unitOfMeasure?->symbol ?? 'g';
                 $mapping = [
                     'g' => 'grams',
@@ -68,6 +107,7 @@ class RecipeIngredient extends Model
                     'pcs' => 'pcs',
                     'unit' => 'units',
                 ];
+
                 return $mapping[$symbol] ?? 'grams'; // Default to grams
             },
         );
@@ -169,5 +209,42 @@ class RecipeIngredient extends Model
     public function getQuantityForBatchFactorInItemUom(float $batchFactor): float
     {
         return $this->getActualQuantityNeededInItemUom() * $batchFactor;
+    }
+
+    /**
+     * Check if this ingredient is a WIP (another recipe)
+     */
+    public function isWip(): bool
+    {
+        return $this->is_wip || ($this->component_type === 'recipe' && $this->component_id !== null);
+    }
+
+    /**
+     * Get the component (either item or recipe)
+     */
+    public function component(): MorphTo
+    {
+        return $this->morphTo('component_type', 'component_id');
+    }
+
+    /**
+     * Get the resolved item - returns the item for regular ingredients,
+     * or resolves to underlying items for WIP ingredients
+     */
+    public function getResolvedItem(): ?Item
+    {
+        if ($this->isWip()) {
+            return null;
+        }
+
+        return $this->item;
+    }
+
+    /**
+     * Check if this is a regular item ingredient (not WIP)
+     */
+    public function isItem(): bool
+    {
+        return ! $this->isWip() && $this->item_id !== null;
     }
 }

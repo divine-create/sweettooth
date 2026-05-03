@@ -204,7 +204,7 @@ class ExpenseEntries extends Component
             ->when($this->bankAccountId, fn ($q) => $q->where('bank_account_id', $this->bankAccountId))
             ->when($this->glAccountId, fn ($q) => $q->where('gl_account_id', $this->glAccountId))
             ->orderBy('entry_date', 'desc')
-            ->paginate($this->quantity ?? 20);
+            ->paginate((int) ($this->quantity ?? 20));
 
         $bankAccounts = BankAccount::orderBy('bank_name')->get(['id', 'bank_name', 'account_number']);
         $glAccounts = GlAccount::where('account_type', 'expense')

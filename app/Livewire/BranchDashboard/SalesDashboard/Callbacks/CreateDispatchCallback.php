@@ -209,7 +209,7 @@ class CreateDispatchCallback extends BaseComponent
             });
         }
 
-        return $query->orderBy('dispatch_date', 'desc')->paginate($this->quantity);
+        return $query->orderBy('dispatch_date', 'desc')->paginate((int) $this->quantity);
     }
 
     public function openCallbackModal($dispatchId)

@@ -164,7 +164,7 @@ class DailyList extends BaseComponent
 
     public function render()
     {
-        $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 20);
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 20));
 
         return view('livewire.branch-dashboard.production.daily-list', [
             'headers' => $this->headers,

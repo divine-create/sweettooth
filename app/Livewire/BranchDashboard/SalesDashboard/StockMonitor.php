@@ -170,7 +170,7 @@ class StockMonitor extends BaseComponent
             return $paginated;
         }
 
-        return $query->paginate($this->quantity);
+        return $query->paginate((int) $this->quantity);
     }
 
     protected function getFilteredQuery()

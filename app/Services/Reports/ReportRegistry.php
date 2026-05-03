@@ -2,32 +2,20 @@
 
 namespace App\Services\Reports;
 
-use App\Services\Reports\Definitions\SalesPerformanceDefinition;
-use App\Services\Reports\Definitions\AccountingIncomeStatementDefinition;
+use App\Models\User;
 use App\Services\Reports\Definitions\AccountingBalanceSheetDefinition;
-use App\Services\Reports\Definitions\AccountingTrialBalanceDefinition;
 use App\Services\Reports\Definitions\AccountingGeneralLedgerDefinition;
-use App\Services\Reports\Definitions\ProductionDailyProduceDefinition;
+use App\Services\Reports\Definitions\AccountingIncomeStatementDefinition;
+use App\Services\Reports\Definitions\AccountingTrialBalanceDefinition;
+use App\Services\Reports\Definitions\HRLeaveUtilizationDefinition;
+use App\Services\Reports\Definitions\HRWorkforceOverviewDefinition;
 use App\Services\Reports\Definitions\ProductionCostAnalysisDefinition;
+use App\Services\Reports\Definitions\ProductionDailyProduceDefinition;
 use App\Services\Reports\Definitions\ProductionEfficiencyDefinition;
 use App\Services\Reports\Definitions\ProductionQualityDefinition;
 use App\Services\Reports\Definitions\ProductionWasteAnalysisDefinition;
-use App\Services\Reports\Definitions\HRWorkforceOverviewDefinition;
-use App\Services\Reports\Definitions\HRLeaveUtilizationDefinition;
+use App\Services\Reports\Definitions\SalesPerformanceDefinition;
 use App\Services\SidebarVisibilityService;
-use App\Models\User;
-use App\Services\Reports\CostAnalysisReportService;
-use App\Services\Reports\IncomeStatementReportService;
-use App\Services\Reports\BalanceSheetReportService;
-use App\Services\Reports\TrialBalanceReportService;
-use App\Services\Reports\GeneralLedgerReportService;
-use App\Services\Reports\DailyProduceReportService;
-use App\Services\Reports\ProductionEfficiencyReportService;
-use App\Services\Reports\ProductionQualityReportService;
-use App\Services\Reports\SalesPerformanceReportService;
-use App\Services\Reports\WasteAnalysisReportService;
-use App\Services\Reports\HRWorkforceOverviewReportService;
-use App\Services\Reports\HRLeaveUtilizationReportService;
 use Illuminate\Support\Facades\Log;
 
 class ReportRegistry
@@ -86,6 +74,22 @@ class ReportRegistry
                 'definition' => HRLeaveUtilizationDefinition::class,
                 'service' => HRLeaveUtilizationReportService::class,
             ],
+            [
+                'definition' => InventoryStockLevelsDefinition::class,
+                'service' => InventoryStockLevelsReportService::class,
+            ],
+            [
+                'definition' => InventoryStockValuationDefinition::class,
+                'service' => InventoryStockValuationReportService::class,
+            ],
+            [
+                'definition' => InventoryStockMovementDefinition::class,
+                'service' => InventoryStockMovementReportService::class,
+            ],
+            [
+                'definition' => InventoryItemUsageDefinition::class,
+                'service' => InventoryItemUsageReportService::class,
+            ],
         ];
     }
 
@@ -100,15 +104,15 @@ class ReportRegistry
         foreach (self::all() as $entry) {
             try {
                 $definitionClass = $entry['definition'];
-                if (!class_exists($definitionClass)) {
+                if (! class_exists($definitionClass)) {
                     continue;
                 }
 
-                $definition = new $definitionClass();
+                $definition = new $definitionClass;
                 $meta = $definition->meta();
                 $key = self::keyFromMeta($meta);
 
-                if (!self::userCanAccess($user, $meta['permissions'] ?? [])) {
+                if (! self::userCanAccess($user, $meta['permissions'] ?? [])) {
                     continue;
                 }
 
@@ -167,7 +171,7 @@ class ReportRegistry
         $grouped = [];
         foreach (self::availableForUser($user) as $report) {
             $category = $report['meta']['category'] ?? 'other';
-            if (!isset($grouped[$category])) {
+            if (! isset($grouped[$category])) {
                 $grouped[$category] = [];
             }
             $grouped[$category][] = $report;
@@ -188,7 +192,7 @@ class ReportRegistry
 
     private static function userCanAccess(?User $user, array $permissions): bool
     {
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 

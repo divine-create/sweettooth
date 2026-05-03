@@ -35,7 +35,7 @@ class SalesStockVerificationService
             ->whereNotNull('opening_quantity') // Must have opening quantity set
             ->count();
 
-        return $verifiedCount >= $productIds->count();
+        return $verifiedCount > 0;
     }
 
     /**

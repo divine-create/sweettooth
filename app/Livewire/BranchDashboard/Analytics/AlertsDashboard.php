@@ -2,22 +2,26 @@
 
 namespace App\Livewire\BranchDashboard\Analytics;
 
-use App\Models\Stock;
 use App\Models\ItemRequest;
+use App\Models\Stock;
 use App\Services\Reports\AnalyticsSnapshotReportService;
 use App\Traits\Exportable;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
-use Livewire\Attributes\{Layout, On, Url};
 
 #[Layout('components.layouts.app.branch-dashboard')]
 class AlertsDashboard extends Component
 {
     use Exportable;
+
     public $alertType = '';
+
     public ?string $generatedReportId = null;
 
-    #[Url(keep:true)]
+    #[Url(keep: true)]
     public ?string $b_id = null;
 
     // Listen for branch changes from BranchSelector (for super admins)
@@ -35,6 +39,9 @@ class AlertsDashboard extends Component
 
         // Critical and Expired Items
         foreach ($stocks as $stock) {
+            if (! $stock->item) {
+                continue;
+            }
             if ($stock->health_status === 'expired') {
                 $alerts->push([
                     'type' => 'critical',
@@ -61,6 +68,9 @@ class AlertsDashboard extends Component
 
         // Low Stock Alerts
         foreach ($stocks as $stock) {
+            if (! $stock->item) {
+                continue;
+            }
             if ($stock->quantity_available < ($stock->item->reorder_level ?? 0) && $stock->quantity_available > 0) {
                 $alerts->push([
                     'type' => 'warning',
@@ -88,6 +98,9 @@ class AlertsDashboard extends Component
 
         // Expiring Soon (within 30 days)
         foreach ($stocks as $stock) {
+            if (! $stock->item) {
+                continue;
+            }
             if ($stock->expiry_date && \Carbon\Carbon::parse($stock->expiry_date)->lte(now()->addDays(30)) && \Carbon\Carbon::parse($stock->expiry_date)->gt(now())) {
                 $alerts->push([
                     'type' => 'warning',
@@ -105,6 +118,9 @@ class AlertsDashboard extends Component
 
         // High Damaged Stock
         foreach ($stocks as $stock) {
+            if (! $stock->item) {
+                continue;
+            }
             if ($stock->quantity_damaged > 0) {
                 $percentage = ($stock->quantity_damaged / ($stock->quantity_available + $stock->quantity_damaged + $stock->quantity_reserved)) * 100;
                 if ($percentage > 10) {
@@ -163,8 +179,8 @@ class AlertsDashboard extends Component
     public function exportCSV()
     {
         $alerts = $this->getAllAlerts();
-        $filename = 'alerts-dashboard-' . now()->format('Y-m-d-His') . '.csv';
-        
+        $filename = 'alerts-dashboard-'.now()->format('Y-m-d-His').'.csv';
+
         return response()->streamDownload(function () use ($alerts) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['Type', 'Category', 'Message', 'Item', 'SKU', 'Current', 'Reorder Level', 'Days Left', 'Damaged Qty', 'Recommended Action']);
@@ -187,12 +203,12 @@ class AlertsDashboard extends Component
         }, $filename);
     }
 
-
     public function generateReport(): void
     {
         $branchId = $this->b_id ?? request()->get('b_id') ?? Auth::guard('web')->user()?->branch_id ?? current_branch_id();
-        if (!$branchId) {
+        if (! $branchId) {
             session()->flash('warning', 'Branch context is required to generate report.');
+
             return;
         }
 

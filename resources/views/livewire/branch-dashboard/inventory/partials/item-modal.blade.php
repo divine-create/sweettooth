@@ -47,19 +47,22 @@
                 <!-- Category -->
                 <div>
                     <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Category *</label>
+                    @php
+                        $categories = \App\Models\ItemCategory::active()
+                            ->forBranch(current_branch_id())
+                            ->orderBy('name')
+                            ->get()
+                            ->map(fn($cat) => ['label' => $cat->name, 'value' => $cat->id])
+                            ->toArray();
+                    @endphp
                     <x-select.styled
-                        wire:model.live="category"
-                        :options="[
-                            ['label' => 'Raw Material', 'value' => 'raw_material'],
-                            ['label' => 'Packaging', 'value' => 'packaging'],
-                            ['label' => 'Consumable', 'value' => 'consumable'],
-                            ['label' => 'Equipment', 'value' => 'equipment']
-                        ]"
+                        wire:model.live="category_id"
+                        :options="$categories"
                         select="label:label|value:value"
                         placeholder="Select Category"
                         required
                     />
-                    @error('category')
+                    @error('category_id')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror
                 </div>

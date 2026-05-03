@@ -159,7 +159,7 @@ class PeriodControl extends Component
                 });
             })
             ->orderBy('period_start', 'desc')
-            ->paginate($this->quantity ?? 12);
+            ->paginate((int) ($this->quantity ?? 12));
 
         return view('livewire.branch-dashboard.accounting.simple.period-control', [
             'rows' => $periods,

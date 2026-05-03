@@ -84,7 +84,7 @@ class MyLeaves extends BaseComponent
             });
         }
 
-        return $query->orderBy('created_at', 'desc')->paginate($this->quantity);
+        return $query->orderBy('created_at', 'desc')->paginate((int) $this->quantity);
     }
 
     public function viewDocument($path)

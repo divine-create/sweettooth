@@ -312,7 +312,7 @@ class Index extends BaseComponent
             $query->whereDate('callback_time', '<=', $this->endDate);
         }
 
-        return $query->orderBy('callback_time', 'desc')->paginate($this->quantity);
+        return $query->orderBy('callback_time', 'desc')->paginate((int) $this->quantity);
     }
 
     public function viewDetails($callbackId)

@@ -5,9 +5,11 @@ namespace App\Livewire\BranchDashboard\Inventory;
 use App\Models\ItemDispatch;
 use App\Models\ItemRequest;
 use App\Models\ItemRequestDetail;
+use App\Models\ProductionStore;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Services\AuditService;
+use App\Services\ProductionStoreService;
 use App\Services\UomConversionService;
 use App\Traits\Exportable;
 use Illuminate\Support\Facades\Auth;
@@ -95,7 +97,7 @@ class ItemDispatches extends Component
             ->when($this->filterDateTo, fn ($q) => $q->whereDate('created_at', '<=', $this->filterDateTo))
             ->orderBy('created_at', 'desc');
 
-        $requests = $query->paginate($this->quantity ?? 15);
+        $requests = $query->paginate((int) ($this->quantity ?? 15));
 
         // Pending requests for the accordion
         $pendingRequests = ItemRequest::with(['department', 'requestDetails.item'])
@@ -542,7 +544,7 @@ class ItemDispatches extends Component
                     $dispatchUomId = $this->resolveDispatchUomId($detail);
 
                     // Create dispatch record
-                    ItemDispatch::create([
+                    $dispatch = ItemDispatch::create([
                         'branch_id' => $branchId,
                         'request_id' => $this->requestId,
                         'item_id' => $item['item_id'],
@@ -558,6 +560,9 @@ class ItemDispatches extends Component
                         'shift' => $request->shift,
                         'notes' => $request->notes,
                     ]);
+
+                    // Auto-add to production store if dispatching to production department
+                    $this->autoStockProductionStore($request, $dispatch, $item, $dispatchQtyRequestUom);
 
                     // Update request detail (track total dispatched)
                     $detail->quantity_dispatched += $dispatchQtyRequestUom;
@@ -808,6 +813,36 @@ class ItemDispatches extends Component
             $this->toast()->error('Export failed: '.$e->getMessage())->send();
 
             return;
+        }
+    }
+
+    /**
+     * Auto-stock the production store when items are dispatched to production department.
+     */
+    protected function autoStockProductionStore(
+        ItemRequest $request,
+        ItemDispatch $dispatch,
+        array $item,
+        float $quantity
+    ): void {
+        $department = $request->department;
+        if (!$department) {
+            return;
+        }
+
+        $categoryName = strtolower($department->category?->name ?? '');
+        if (!str_contains($categoryName, 'production')) {
+            return;
+        }
+
+        try {
+            app(ProductionStoreService::class)->stockFromDispatch($request, $dispatch);
+        } catch (\Exception $e) {
+            logger()->warning('Failed to auto-stock production store: '.$e->getMessage(), [
+                'request_id' => $request->id,
+                'dispatch_id' => $dispatch->id,
+                'item_id' => $item['item_id'],
+            ]);
         }
     }
 }

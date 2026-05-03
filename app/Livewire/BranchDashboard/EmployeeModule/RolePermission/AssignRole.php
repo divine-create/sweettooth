@@ -115,7 +115,7 @@ class AssignRole extends BaseComponent
 
     public function render()
     {
-        $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 10);
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
         $branches = Branch::where('is_active', true)->get();
         $departments = Department::all();
 

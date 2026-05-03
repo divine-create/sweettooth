@@ -98,8 +98,8 @@
             <select wire:model.live="selectedCategory" 
                 class="w-full px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-blue-500">
                 <option value="">All Categories</option>
-                @foreach($categories as $cat)
-                    <option value="{{ $cat }}">{{ str_replace('_', ' ', ucfirst($cat)) }}</option>
+                @foreach($categories as $id => $name)
+                    <option value="{{ $id }}">{{ $name }}</option>
                 @endforeach
             </select>
         </div>
@@ -154,6 +154,7 @@
                 </thead>
                 <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                     @forelse($stocks as $stock)
+                        @if($stock->item)
                         <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
                             <td class="px-3 py-2">
                                 <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $stock->item->name }}</div>
@@ -161,7 +162,7 @@
                             </td>
                             <td class="px-3 py-2">
                                 <span class="px-2 py-0.5 text-xs font-semibold rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                    {{ str_replace('_', ' ', ucfirst($stock->item->category)) }}
+                                    {{ $stock->item?->category?->name ?? 'Uncategorized' }}
                                 </span>
                             </td>
                             <td class="px-3 py-2 text-right text-zinc-900 dark:text-zinc-100">{{ number_format($stock->quantity_available, 2) }}</td>
@@ -176,6 +177,7 @@
                                 {{ \App\Helpers\LocalizationHelper::formatCurrency($stock->total_value ?? 0) }}
                             </td>
                         </tr>
+                        @endif
                     @empty
                         <tr>
                             <td colspan="7" class="px-3 py-8 text-center text-gray-500 dark:text-gray-400">No items found</td>
@@ -210,6 +212,7 @@
                         $totalValue = $summary['total_value'];
                     @endphp
                     @forelse($topItems as $index => $item)
+                        @if($item->item)
                         @php
                             $percentage = $totalValue > 0 ? ($item->total_value / $totalValue) * 100 : 0;
                         @endphp
@@ -223,11 +226,11 @@
                                 <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $item->item->name }}</div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">{{ $item->item->sku }}</div>
                             </td>
-                            <td class="px-3 py-2">{{ str_replace('_', ' ', ucfirst($item->item->category)) }}</td>
+                            <td class="px-3 py-2">{{ $item->item?->category?->name ?? 'Uncategorized' }}</td>
                             <td class="px-3 py-2 text-right font-medium text-zinc-900 dark:text-zinc-100">
                                 {{ number_format($item->quantity_available + $item->quantity_reserved, 2) }}
                             </td>
-                            <td class="px-3 py-2 text-right text-zinc-900 dark:text-zinc-100">
+                            <td class="px-3 py-2 text-right">
                                 {{ \App\Helpers\LocalizationHelper::formatCurrency($item->average_cost ?? 0) }}
                             </td>
                             <td class="px-3 py-2 text-right font-bold text-blue-600 dark:text-blue-400">
@@ -240,6 +243,7 @@
                                 </div>
                             </td>
                         </tr>
+                        @endif
                     @empty
                         <tr>
                             <td colspan="7" class="px-3 py-8 text-center text-gray-500 dark:text-gray-400">No items found</td>
@@ -286,6 +290,7 @@
                     </thead>
                     <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                         @forelse($category['items'] as $item)
+                            @if($item->item)
                             <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
                                 <td class="px-3 py-2">
                                     <div class="font-medium text-zinc-900 dark:text-zinc-100 text-xs">{{ $item->item->name }}</div>
@@ -298,6 +303,7 @@
                                     {{ \App\Helpers\LocalizationHelper::formatCurrency($item->total_value ?? 0) }}
                                 </td>
                             </tr>
+                            @endif
                         @empty
                             <tr><td colspan="4" class="px-3 py-3 text-center text-xs text-gray-500">No items</td></tr>
                         @endforelse
@@ -334,12 +340,13 @@
                 </thead>
                 <tbody class="divide-y divide-red-200 dark:divide-red-700">
                     @forelse($lowStockItems as $item)
+                        @if($item->item)
                         <tr class="hover:bg-red-50 dark:hover:bg-red-900/20 {{ $item->quantity_available === 0 ? 'bg-red-100 dark:bg-red-900/40' : '' }}">
                             <td class="px-3 py-2">
                                 <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $item->item->name }}</div>
                                 <div class="text-xs text-gray-500">{{ $item->item->sku }}</div>
                             </td>
-                            <td class="px-3 py-2 text-xs">{{ str_replace('_', ' ', ucfirst($item->item->category)) }}</td>
+                            <td class="px-3 py-2 text-xs">{{ $item->item?->category?->name ?? 'Uncategorized' }}</td>
                             <td class="px-3 py-2 text-right font-bold text-red-600 dark:text-red-400">{{ number_format($item->quantity_available, 2) }}</td>
                             <td class="px-3 py-2 text-right text-zinc-900 dark:text-zinc-100">{{ number_format($item->quantity_reserved, 2) }}</td>
                             <td class="px-3 py-2 text-right">
@@ -354,6 +361,7 @@
                                 </span>
                             </td>
                         </tr>
+                        @endif
                     @empty
                         <tr>
                             <td colspan="7" class="px-3 py-8 text-center text-gray-500 dark:text-gray-400">No low stock items</td>

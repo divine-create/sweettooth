@@ -159,13 +159,22 @@
             <div class="space-y-4">
                 <div class="flex items-center justify-between">
                     <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Ingredients *</h3>
-                    <button type="button" wire:click="addIngredient"
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Ingredient
-                    </button>
+                    <div class="flex gap-2">
+                        <button type="button" wire:click="addRawIngredient"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Raw Material
+                        </button>
+                        <button type="button" wire:click="addWipIngredient"
+                                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add WIP Item
+                        </button>
+                    </div>
                 </div>
 
                 @if(count($ingredients) > 0)
@@ -173,7 +182,14 @@
                     @foreach($ingredients as $index => $ingredient)
                     <div class="bg-white dark:bg-zinc-800 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700">
                         <div class="flex justify-between items-center mb-3">
-                            <span class="font-semibold text-zinc-900 dark:text-zinc-100">Ingredient #{{ $index + 1 }}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold text-zinc-900 dark:text-zinc-100">Ingredient #{{ $index + 1 }}</span>
+                                @if(isset($ingredient['is_wip']) && $ingredient['is_wip'])
+                                    <span class="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">WIP</span>
+                                @else
+                                    <span class="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Raw</span>
+                                @endif
+                            </div>
                             <button type="button" wire:click="removeIngredient({{ $index }})"
                                     class="text-red-600 hover:text-red-800 dark:text-red-400">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,9 +204,15 @@
                                 <select wire:model="ingredients.{{ $index }}.item_id"
                                         class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-blue-500">
                                     <option value="">Select Item</option>
-                                    @foreach($items as $item)
-                                        <option value="{{ $item->id }}">{{ $item->name }}</option>
-                                    @endforeach
+                                    @if(isset($ingredient['is_wip']) && $ingredient['is_wip'])
+                                        @foreach($wipItems ?? [] as $item)
+                                            <option value="{{ $item->id }}">{{ $item->name }} (WIP)</option>
+                                        @endforeach
+                                    @else
+                                        @foreach($items as $item)
+                                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+                                        @endforeach
+                                    @endif
                                 </select>
                                 @error("ingredients.{$index}.item_id") <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>

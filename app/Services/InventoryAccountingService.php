@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
+use App\Helpers\CleanError;
+use App\Models\AccountingPeriod;
 use App\Models\GlAccount;
 use App\Models\GlEntry;
-use App\Models\AccountingPeriod;
-use App\Models\StockMovement;
 use App\Models\Item;
-use App\Helpers\CleanError;
+use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -21,8 +21,9 @@ class InventoryAccountingService
     {
         try {
             $period = $this->getCurrentPeriod();
-            if (!$period || $period->status !== 'open') {
+            if (! $period || $period->status !== 'open') {
                 CleanError::show('No open accounting period found.');
+
                 return false;
             }
             DB::beginTransaction();
@@ -61,13 +62,15 @@ class InventoryAccountingService
             ]);
 
             DB::commit();
+
             return true;
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Inventory received GL posting failed: ' . $e->getMessage(), [
+            Log::error('Inventory received GL posting failed: '.$e->getMessage(), [
                 'item_id' => $item->id,
                 'error' => $e,
             ]);
+
             return false;
         }
     }
@@ -80,8 +83,9 @@ class InventoryAccountingService
     {
         try {
             $period = $this->getCurrentPeriod();
-            if (!$period || $period->status !== 'open') {
+            if (! $period || $period->status !== 'open') {
                 CleanError::show('No open accounting period found.');
+
                 return false;
             }
             DB::beginTransaction();
@@ -123,13 +127,15 @@ class InventoryAccountingService
             }
 
             DB::commit();
+
             return true;
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Stock movement GL posting failed: ' . $e->getMessage(), [
+            Log::error('Stock movement GL posting failed: '.$e->getMessage(), [
                 'movement_id' => $movement->id,
                 'error' => $e,
             ]);
+
             return false;
         }
     }
@@ -160,7 +166,8 @@ class InventoryAccountingService
 
             return $results;
         } catch (Exception $e) {
-            Log::error('Period end valuation failed: ' . $e->getMessage());
+            Log::error('Period end valuation failed: '.$e->getMessage());
+
             return $results;
         }
     }
@@ -199,8 +206,9 @@ class InventoryAccountingService
     {
         try {
             $period = $this->getCurrentPeriod();
-            if (!$period || $period->status !== 'open') {
+            if (! $period || $period->status !== 'open') {
                 CleanError::show('No open accounting period found.');
+
                 return false;
             }
             DB::beginTransaction();
@@ -236,10 +244,12 @@ class InventoryAccountingService
             ]);
 
             DB::commit();
+
             return true;
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Inventory writeoff GL posting failed: ' . $e->getMessage());
+            Log::error('Inventory writeoff GL posting failed: '.$e->getMessage());
+
             return false;
         }
     }
@@ -260,7 +270,7 @@ class InventoryAccountingService
      */
     private function getInventoryAccount(Item $item): GlAccount
     {
-        $categoryLower = strtolower($item->category ?? '');
+        $categoryLower = strtolower($item->category?->name ?? '');
 
         if (strpos($categoryLower, 'raw') !== false) {
             return GlAccount::where('account_number', '1310')->firstOrFail();

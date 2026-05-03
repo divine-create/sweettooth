@@ -3,8 +3,7 @@
 namespace App\Livewire\BranchDashboard\Inventory\Callbacks;
 
 use App\Livewire\BaseComponent;
-use App\Enums\CallbackStatus;
-use App\Models\ProductionCallback;
+use App\Models\ProductionMaterialReturn;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -25,14 +24,12 @@ class ApproveCallbacks extends BaseComponent
 
     public ?string $filterStatus = null;
 
-    public ?string $filterSourceType = null;
-
     public ?string $startDate = null;
 
     public ?string $endDate = null;
 
     // Modal for viewing details
-    public $selectedCallback = null;
+    public $selectedReturn = null;
 
     public $showDetailsModal = false;
 
@@ -41,38 +38,11 @@ class ApproveCallbacks extends BaseComponent
 
     public $rejectReason = '';
 
-    public $callbackToReject = null;
-
-    // Table headers
-    public array $headers = [
-        ['index' => 'callback_id', 'label' => 'ID'],
-        ['index' => 'source_type', 'label' => 'Type'],
-        ['index' => 'item_product', 'label' => 'Item/Product'],
-        ['index' => 'quantity', 'label' => 'Quantity'],
-        ['index' => 'reason', 'label' => 'Reason'],
-        ['index' => 'status', 'label' => 'Status'],
-        ['index' => 'shift', 'label' => 'Production Shift'],
-        ['index' => 'callback_time', 'label' => 'Callback Time'],
-        ['index' => 'action', 'label' => 'Action'],
-    ];
-
-    // Status options for filter
-    public array $statusOptions = [
-        'pending' => 'Pending Approval',
-        'approved_by_inventory' => 'Approved',
-        'completed' => 'Completed',
-        'rejected' => 'Rejected',
-    ];
-
-    // Source type options for filter
-    public array $sourceTypeOptions = [
-        'raw_material_from_stock' => 'Raw Material Return',
-        'finished_product_reject' => 'Finished Product Reject',
-    ];
+    public $returnToRejectId = null;
 
     protected function getModelClass(): string
     {
-        return ProductionCallback::class;
+        return ProductionMaterialReturn::class;
     }
 
     protected function getAllSelectableIds(): array
@@ -82,11 +52,9 @@ class ApproveCallbacks extends BaseComponent
 
     protected function getFilteredQuery()
     {
-        $query = ProductionCallback::query()
-            ->with(['shift', 'item', 'product', 'recordedBy', 'approvedBy'])
-            ->whereHas('shift', function ($q) {
-                $q->where('branch_id', $this->getBranchId());
-            });
+        $query = ProductionMaterialReturn::query()
+            ->with(['shift', 'item', 'department', 'returnedBy', 'approvedBy'])
+            ->where('branch_id', $this->getBranchId());
 
         return $query;
     }
@@ -104,16 +72,7 @@ class ApproveCallbacks extends BaseComponent
 
     public function getRowsProperty()
     {
-        $query = ProductionCallback::with([
-            'shift',
-            'item',
-            'product',
-            'recordedBy',
-            'approvedBy',
-        ])
-            ->whereHas('shift', function ($q) {
-                $q->where('branch_id', $this->getBranchId());
-            });
+        $query = $this->getFilteredQuery();
 
         // Search filter
         if ($this->search) {
@@ -122,13 +81,9 @@ class ApproveCallbacks extends BaseComponent
                     $itemQuery->where('name', 'like', '%'.$this->search.'%')
                         ->orWhere('sku', 'like', '%'.$this->search.'%');
                 })
-                    ->orWhereHas('product', function ($productQuery) {
-                        $productQuery->where('name', 'like', '%'.$this->search.'%')
-                            ->orWhere('sku', 'like', '%'.$this->search.'%');
-                    })
-                    ->orWhereHas('recordedBy', function ($employeeQuery) {
-                        $employeeQuery->where('name', 'like', '%'.$this->search.'%');
-                    });
+                ->orWhereHas('returnedBy', function ($employeeQuery) {
+                    $employeeQuery->where('name', 'like', '%'.$this->search.'%');
+                });
             });
         }
 
@@ -137,34 +92,30 @@ class ApproveCallbacks extends BaseComponent
             $query->where('status', $this->filterStatus);
         }
 
-        // Source type filter
-        if ($this->filterSourceType) {
-            $query->where('source_type', $this->filterSourceType);
-        }
-
         // Date range filter
         if ($this->startDate) {
-            $query->whereDate('callback_time', '>=', $this->startDate);
+            $query->whereDate('created_at', '>=', $this->startDate);
         }
         if ($this->endDate) {
-            $query->whereDate('callback_time', '<=', $this->endDate);
+            $query->whereDate('created_at', '<=', $this->endDate);
         }
 
-        return $query->orderBy('callback_time', 'desc')->paginate($this->quantity);
+        return $query->orderBy('created_at', 'desc')->paginate((int) $this->quantity);
     }
 
-    public function viewDetails($callbackId)
+    public function viewDetails($id)
     {
-        $this->selectedCallback = ProductionCallback::with([
+        $this->selectedReturn = ProductionMaterialReturn::with([
             'shift',
             'item',
-            'product',
-            'recordedBy',
+            'department',
+            'returnedBy',
             'approvedBy',
-        ])->find($callbackId);
+            'itemDispatch'
+        ])->find($id);
 
-        if (! $this->selectedCallback) {
-            $this->toast()->error('Callback not found.')->send();
+        if (! $this->selectedReturn) {
+            $this->toast()->error('Record not found.')->send();
 
             return;
         }
@@ -175,57 +126,135 @@ class ApproveCallbacks extends BaseComponent
     public function closeDetailsModal()
     {
         $this->showDetailsModal = false;
-        $this->selectedCallback = null;
+        $this->selectedReturn = null;
     }
 
-    public function approveCallback($callbackId)
+    public function approveReturn($id)
     {
         try {
             DB::beginTransaction();
 
-            $callback = ProductionCallback::find($callbackId);
+            $return = ProductionMaterialReturn::with('item')->find($id);
 
-            if (! $callback) {
-                $this->toast()->error('Callback not found.')->send();
-
+            if (! $return || $return->status !== 'pending_approval') {
+                $this->toast()->error('Return record not found or not pending.')->send();
                 return;
             }
 
-            if (! $callback->canBeApproved()) {
-                $this->toast()->error('Callback cannot be approved. Current status: '.$callback->formatted_status)->send();
-
-                return;
-            }
-
-            // Get current employee ID
             $actor = current_actor();
-            if (! $actor) {
-                $this->toast()->error('No authenticated actor found. Please ensure you are logged in.')->send();
+            
+            // 1. Deduct from Production Store
+            $productionStore = \App\Models\ProductionStore::where('branch_id', $return->branch_id)
+                ->where('department_id', $return->department_id)
+                ->first();
 
-                return;
+            if ($productionStore) {
+                $prodStock = \App\Models\ProductionStoreStock::where('store_id', $productionStore->id)
+                    ->where('item_id', $return->item_id)
+                    ->first();
+                
+                if ($prodStock) {
+                    $oldQty = (float) $prodStock->quantity_available;
+                    $prodStock->quantity_available = max(0, $oldQty - $return->quantity);
+                    $prodStock->save();
+
+                    \App\Models\ProductionStoreMovement::create([
+                        'store_id' => $productionStore->id,
+                        'stock_id' => $prodStock->id,
+                        'item_id' => $return->item_id,
+                        'type' => 'out',
+                        'quantity' => $return->quantity,
+                        'quantity_before' => $oldQty,
+                        'quantity_after' => $prodStock->quantity_available,
+                        'reference_type' => ProductionMaterialReturn::class,
+                        'reference_id' => $return->id,
+                        'created_by_id' => $actor->id,
+                        'created_by_type' => get_class($actor),
+                        'notes' => 'Returned to Inventory: ' . $return->reason,
+                    ]);
+                }
             }
 
-            $callback->approve($actor);
+            // 2. Handle Main Inventory Stock
+            $mainStock = \App\Models\Stock::where('item_id', $return->item_id)
+                ->where('branch_id', $return->branch_id)
+                ->first();
+
+            if ($mainStock) {
+                $beforeQty = (float) $mainStock->quantity_available;
+                $unitCost = (float) ($return->item->unit_price ?? 0);
+
+                if (in_array($return->reason, ['excess_return', 'wrong_item'])) {
+                    // Item is perfectly good, goes back to available stock
+                    $mainStock->quantity_available += $return->quantity;
+                    $mainStock->save();
+
+                    \App\Models\StockMovement::create([
+                        'stock_id' => $mainStock->id,
+                        'branch_id' => $return->branch_id,
+                        'type' => 'return',
+                        'quantity' => $return->quantity,
+                        'quantity_before' => $beforeQty,
+                        'quantity_after' => $mainStock->quantity_available,
+                        'unit_cost' => $unitCost,
+                        'cost_impact' => $return->quantity * $unitCost,
+                        'reference_type' => ProductionMaterialReturn::class,
+                        'reference_id' => $return->id,
+                        'notes' => 'Raw material returned from Production: ' . $return->reason,
+                        'movement_date' => now(),
+                        'moved_by_id' => $actor->id,
+                        'moved_by_type' => get_class($actor),
+                    ]);
+                } else {
+                    // Item is damaged/expired/wrong, so it's written off/logged as damaged
+                    // (It doesn't affect available stock because it was already deducted when dispatched)
+                    $mainStock->quantity_damaged += $return->quantity;
+                    $mainStock->save();
+
+                    \App\Models\StockMovement::create([
+                        'stock_id' => $mainStock->id,
+                        'branch_id' => $return->branch_id,
+                        'type' => 'damaged',
+                        'quantity' => 0, // No change to available
+                        'quantity_before' => $beforeQty,
+                        'quantity_after' => $beforeQty, // Remains the same
+                        'unit_cost' => $unitCost,
+                        'cost_impact' => 0,
+                        'reference_type' => ProductionMaterialReturn::class,
+                        'reference_id' => $return->id,
+                        'notes' => 'Spoilt material returned from Production: ' . $return->reason,
+                        'movement_date' => now(),
+                        'moved_by_id' => $actor->id,
+                        'moved_by_type' => get_class($actor),
+                    ]);
+                }
+            }
+
+            // Update status
+            $return->update([
+                'status' => 'approved',
+                'approved_by_id' => $actor->id,
+                'approved_by_type' => get_class($actor),
+                'approved_at' => now(),
+            ]);
 
             DB::commit();
 
-            $this->toast()->success('Callback approved successfully!')->send();
-            $this->dispatch('$refresh');
-
-            // Close modal if open
+            $this->toast()->success('Material return approved successfully!')->send();
+            
             if ($this->showDetailsModal) {
                 $this->closeDetailsModal();
             }
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->toast()->error('Failed to approve callback: '.$e->getMessage())->send();
+            $this->toast()->error('Failed to approve: '.$e->getMessage())->send();
         }
     }
 
-    public function openRejectModal($callbackId)
+    public function openRejectModal($id)
     {
-        $this->callbackToReject = $callbackId;
+        $this->returnToRejectId = $id;
         $this->rejectReason = '';
         $this->showRejectModal = true;
     }
@@ -233,135 +262,60 @@ class ApproveCallbacks extends BaseComponent
     public function closeRejectModal()
     {
         $this->showRejectModal = false;
-        $this->callbackToReject = null;
+        $this->returnToRejectId = null;
         $this->rejectReason = '';
     }
 
-    public function rejectCallback()
+    public function rejectReturn()
     {
         if (empty($this->rejectReason)) {
             $this->toast()->error('Please provide a reason for rejection.')->send();
-
             return;
         }
 
         try {
             DB::beginTransaction();
 
-            $callback = ProductionCallback::find($this->callbackToReject);
+            $return = ProductionMaterialReturn::find($this->returnToRejectId);
 
-            if (! $callback) {
-                $this->toast()->error('Callback not found.')->send();
-
+            if (! $return || $return->status !== 'pending_approval') {
+                $this->toast()->error('Return record not found or not pending.')->send();
                 return;
             }
 
-            if (! $callback->canBeApproved()) {
-                $this->toast()->error('Callback cannot be rejected. Current status: '.$callback->formatted_status)->send();
-
-                return;
-            }
-
-            // Get current employee ID
             $actor = current_actor();
-            if (! $actor) {
-                $this->toast()->error('No authenticated actor found. Please ensure you are logged in.')->send();
-
-                return;
-            }
-
-            $callback->reject($actor, $this->rejectReason);
+            
+            $return->update([
+                'status' => 'rejected',
+                'notes' => $this->rejectReason, // Store rejection reason in notes
+                'approved_by_id' => $actor->id,
+                'approved_by_type' => get_class($actor),
+                'approved_at' => now(),
+            ]);
 
             DB::commit();
 
-            $this->toast()->success('Callback rejected successfully.')->send();
+            $this->toast()->success('Return request rejected.');
             $this->closeRejectModal();
-            $this->dispatch('$refresh');
-
-            // Close details modal if open
+            
             if ($this->showDetailsModal) {
                 $this->closeDetailsModal();
             }
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->toast()->error('Failed to reject callback: '.$e->getMessage())->send();
+            $this->toast()->error('Failed to reject: '.$e->getMessage())->send();
         }
-    }
-
-    public function completeCallback($callbackId)
-    {
-        try {
-            DB::beginTransaction();
-
-            $callback = ProductionCallback::find($callbackId);
-
-            if (! $callback) {
-                $this->toast()->error('Callback not found.')->send();
-
-                return;
-            }
-
-            if ($callback->status !== CallbackStatus::APPROVED_BY_INVENTORY) {
-                $this->toast()->error('Callback must be approved before completion. Current status: '.$callback->formatted_status)->send();
-
-                return;
-            }
-
-            $callback->complete();
-
-            DB::commit();
-
-            $this->toast()->success('Callback completed successfully!')->send();
-            $this->dispatch('$refresh');
-
-            // Close modal if open
-            if ($this->showDetailsModal) {
-                $this->closeDetailsModal();
-            }
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $this->toast()->error('Failed to complete callback: '.$e->getMessage())->send();
-        }
-    }
-
-    public function getStatusBadgeClass($status)
-    {
-        $value = $status instanceof CallbackStatus ? $status->value : $status;
-
-        return match ($value) {
-            'pending' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-            'approved_by_inventory' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-            'completed' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-            'rejected' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-            default => 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
-        };
     }
 
     public function render()
     {
-        // Get stats for the branch
+        $branchId = $this->getBranchId();
         $stats = [
-            'total' => ProductionCallback::whereHas('shift', function ($q) {
-                $q->where('branch_id', $this->getBranchId());
-            })->count(),
-
-            'pending' => ProductionCallback::whereHas('shift', function ($q) {
-                $q->where('branch_id', $this->getBranchId());
-            })->where('status', CallbackStatus::PENDING->value)->count(),
-
-            'approved' => ProductionCallback::whereHas('shift', function ($q) {
-                $q->where('branch_id', $this->getBranchId());
-            })->where('status', CallbackStatus::APPROVED_BY_INVENTORY->value)->count(),
-
-            'completed' => ProductionCallback::whereHas('shift', function ($q) {
-                $q->where('branch_id', $this->getBranchId());
-            })->where('status', CallbackStatus::COMPLETED->value)->count(),
-
-            'rejected' => ProductionCallback::whereHas('shift', function ($q) {
-                $q->where('branch_id', $this->getBranchId());
-            })->where('status', CallbackStatus::REJECTED->value)->count(),
+            'total' => ProductionMaterialReturn::where('branch_id', $branchId)->count(),
+            'pending' => ProductionMaterialReturn::where('branch_id', $branchId)->where('status', 'pending_approval')->count(),
+            'approved' => ProductionMaterialReturn::where('branch_id', $branchId)->where('status', 'approved')->count(),
+            'rejected' => ProductionMaterialReturn::where('branch_id', $branchId)->where('status', 'rejected')->count(),
         ];
 
         return view('livewire.branch-dashboard.inventory.callbacks.approve-callbacks', [

@@ -20,7 +20,6 @@ use App\Models\Branch;
 use App\Models\Department;
 use App\Services\CurrencyFormattingService;
 use App\Services\PosDocumentService;
-use App\Services\SalesStockVerificationService;
 use App\Services\UomConversionService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -95,25 +94,9 @@ class Index extends BaseComponent
     public function mount(): void
     {
         $this->mountBase();
-        $this->initializeDepartmentContext(); // Using trait method
+        $this->initializeDepartmentContext();
         $this->departmentName = $this->departmentName ?: 'POS';
-        $this->loadActiveShift(); // Load shift first before checking stock verification
-
-        // Super admins bypass stock verification check
-        if (!is_super_admin() && !can_access_all_branches()) {
-            // Check if stock has been verified for today's shift for this department
-            if (!$this->checkStockVerification()) {
-                // Ensure we have a department slug before redirecting
-                if (!$this->salesDeptSlug) {
-                    $this->toast()->error('Department not found. Please contact administrator.')->send();
-                    return;
-                }
-
-                // Redirect to stock opening with department context
-                $this->redirectToStockOpening();
-                return;
-            }
-        }
+        $this->loadActiveShift();
 
         $this->payments = [['method' => 'cash', 'amount' => 0.0]];
         $this->recalculateTotals();
@@ -141,39 +124,6 @@ class Index extends BaseComponent
         } else {
             $this->showTableManagement = false;
         }
-    }
-
-    protected function checkStockVerification(): bool
-    {
-        // Super admins bypass verification
-        if (is_super_admin() || can_access_all_branches()) {
-            return true;
-        }
-
-        // Check if stock opening has been saved for today's shift for this department
-        // This is department-level, not employee-level: once any employee from the department
-        // verifies stock for the shift, all other employees can access POS
-
-        if (!$this->departmentId) {
-            // No department specified, allow access
-            return true;
-        }
-
-        // Get current shift type
-        $shiftType = 'morning'; // default
-        if ($this->activeShiftId) {
-            $shift = Shift::find($this->activeShiftId);
-            $shiftType = $shift?->shift_type ?? 'morning';
-        }
-
-        // Use the verification service
-        $verificationService = app(SalesStockVerificationService::class);
-        return $verificationService->checkStockVerificationForShift(
-            $this->departmentId,
-            Carbon::today()->toDateString(),
-            $shiftType,
-            $this->branchId
-        );
     }
 
     public function toggleTableManagement(): void
@@ -437,7 +387,7 @@ class Index extends BaseComponent
         foreach ($this->cart as $line) {
             $this->subtotal += $line['price'] * $line['qty'];
         }
-        $subAfterDiscount = max(0, $this->subtotal - $this->discount);
+        $subAfterDiscount = max(0, $this->subtotal - (float)($this->discount ?: 0));
         $this->tax = 0.0; // hook if needed
         $this->total = $subAfterDiscount + $this->tax;
         $this->changeDue = max(0, $this->paymentTotal - $this->total);
@@ -947,8 +897,8 @@ class Index extends BaseComponent
         })
         ->whereRaw(
             $hasReservedColumn
-                ? 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold - ps.quantity_reserved)) > 1'
-                : 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold)) > 1'
+                ? 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold - ps.quantity_reserved)) > 0'
+                : 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold)) > 0'
         );
 
         if (strlen($this->search)) {

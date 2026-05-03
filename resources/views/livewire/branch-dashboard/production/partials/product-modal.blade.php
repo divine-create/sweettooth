@@ -47,6 +47,22 @@
                         @enderror
                     </div>
 
+                    <!-- Production Department -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Production Department *</label>
+                        <x-select.styled
+                            wire:model.live="selectedDepartmentId"
+                            :options="$departments"
+                            select="label:name|value:id"
+                            placeholder="Select Department"
+                            required
+                        />
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Select the production department for this product.</p>
+                        @error('selectedDepartmentId')
+                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                        @enderror
+                    </div>
+
                     <!-- Product Type -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Product Type *</label>

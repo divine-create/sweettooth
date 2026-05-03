@@ -381,6 +381,10 @@
                         :current="request()->routeIs('branch-dashboard.inventory.items')" wire:navigate>
                         {{ __('Items') }}
                     </flux:navlist.item>
+                    <flux:navlist.item icon="tag" :href="branch_route('branch-dashboard.inventory.item-categories')"
+                        :current="request()->routeIs('branch-dashboard.inventory.item-categories')" wire:navigate>
+                        {{ __('Item Categories') }}
+                    </flux:navlist.item>
                     <flux:navlist.item icon="truck" :href="branch_route('branch-dashboard.inventory.purchases')"
                         :current="request()->routeIs('branch-dashboard.inventory.purchases')" wire:navigate>
                         {{ __('Purchases') }}
@@ -400,13 +404,24 @@
                         :current="request()->routeIs('branch-dashboard.inventory.item-requests')" wire:navigate>
                         {{ __('Item Requests') }}
                     </flux:navlist.item>
-                    <flux:navlist.item icon="truck"
-                        :href="branch_route('branch-dashboard.inventory.item-dispatches')"
-                        :current="request()->routeIs('branch-dashboard.inventory.item-dispatches')" wire:navigate>
-                        {{ __('Dispatches') }}
-                     </flux:navlist.item>
+<flux:navlist.item icon="truck"
+                         :href="branch_route('branch-dashboard.inventory.item-dispatches')"
+                         :current="request()->routeIs('branch-dashboard.inventory.item-dispatches')" wire:navigate>
+                         {{ __('Dispatches') }}
+                      </flux:navlist.item>
 
-                     <flux:navlist.item icon="question-mark-circle"
+                      <flux:navlist.item icon="cube"
+                          :href="branch_route('branch-dashboard.inventory.material-requests')"
+                          :current="request()->routeIs('branch-dashboard.inventory.material-requests')" wire:navigate>
+                          {{ __('Material Requests') }}
+                      </flux:navlist.item>
+                      <flux:navlist.item icon="check-circle"
+                          :href="branch_route('branch-dashboard.inventory.material-approvals')"
+                          :current="request()->routeIs('branch-dashboard.inventory.material-approvals')" wire:navigate>
+                          {{ __('Material Approvals') }}
+                      </flux:navlist.item>
+
+                      <flux:navlist.item icon="question-mark-circle"
                          :href="branch_route('branch-dashboard.inventory.helper')"
                          :current="request()->routeIs('branch-dashboard.inventory.helper')" wire:navigate>
                          {{ __('Helper') }}
@@ -418,12 +433,12 @@
                 {{-- Inventory Reports removed as requested --}}
 
                 @if($sidebarService::canSeeInventory($currentUser))
-                 <flux:navlist.group :heading="__('Callbacks')" class="grid" expandable
+                 <flux:navlist.group :heading="__('Material Returns')" class="grid" expandable
                      :expanded="request()->routeIs('branch-dashboard.inventory.callbacks.*')">
-                    <flux:navlist.item icon="arrow-uturn-left"
+                    <flux:navlist.item icon="arrow-path"
                         :href="branch_route('branch-dashboard.inventory.callbacks.index')"
                         :current="request()->routeIs('branch-dashboard.inventory.callbacks.index')" wire:navigate>
-                        {{ __('Production Callbacks') }}
+                        {{ __('Production Returns') }}
                     </flux:navlist.item>
                 </flux:navlist.group>
                 @endif
@@ -459,6 +474,11 @@
                     :href="branch_route('branch-dashboard.analytics.stock-valuation')"
                     :current="request()->routeIs('branch-dashboard.analytics.stock-valuation')">
                     {{ __('Stock Valuation') }}
+                </flux:navlist.item>
+                <flux:navlist.item icon="chart-bar"
+                    :href="branch_route('branch-dashboard.analytics.item-usage')"
+                    :current="request()->routeIs('branch-dashboard.analytics.item-usage')">
+                    {{ __('Item Usage') }}
                 </flux:navlist.item>
                 <flux:navlist.item icon="bell-alert" :href="branch_route('branch-dashboard.analytics.alerts')"
                     :current="request()->routeIs('branch-dashboard.analytics.alerts')">
@@ -552,11 +572,9 @@
                     )?->id;
 
                     $nonDepartmentRoutes = [
-                        'branch-dashboard.production.callbacks.index',
-                        'branch-dashboard.production.callbacks.create-inventory',
-                        'branch-dashboard.production.callbacks.approve-sales-callbacks',
-                    ];
-                    
+                        'branch-dashboard.production.material-returns.create',
+                        'branch-dashboard.production.material-returns.history',
+                    ];                    
                     $isProductionRoute = in_array($currentRoute, $nonDepartmentRoutes);
 
                     $OPEN_PRODUCTION = ($departments->isNotEmpty() || $OPEN_DEPT !== null || $isProductionRoute);
@@ -576,7 +594,7 @@
                                 'page' => 'Sales Requests Review' . '_' . $dept->slug
                             ])"
                             :current="request()->routeIs('branch-dashboard.production.sales-requests.*')
-                                && ((request()->route('deptSlug') ?? request()->get('dept_slug')) == $dept->slug)"
+                                && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)"
                             wire:navigate>
                             {{ __('Sales Requests Review') }}
                         </flux:navlist.item>
@@ -588,12 +606,12 @@
                                 'page' => 'Production Records' . '_' . $dept->slug
                             ])"
                             :current="request()->routeIs('branch-dashboard.production.records.*')
-                                && ((request()->route('deptSlug') ?? request()->get('dept_slug')) == $dept->slug)"
+                                && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)"
                             wire:navigate>
                             {{ __('Production Records') }}
                         </flux:navlist.item>
 
-                        @forelse($dept->pages as $page)
+@forelse($dept->pages as $page)
                             <flux:navlist.item icon="{{ $page->icon ?? 'o-beaker' }}"
                                 :href="branch_route($page->route_name, [
                                     'deptSlug' => $dept->slug,
@@ -608,39 +626,68 @@
                                 {{ __('No pages configured') }}
                             </div>
                         @endforelse
+
+                        <flux:navlist.item icon="cube"
+                            :href="branch_route('branch-dashboard.production.store.stock', ['deptSlug' => $dept->slug])"
+                            :current="request()->routeIs('branch-dashboard.production.store.*')" wire:navigate>
+                            {{ __('Production Store') }}
+                        </flux:navlist.item>
+
+                        <flux:navlist.item icon="play"
+                            :href="branch_route('branch-dashboard.production.quick-produce.finished-good', ['deptSlug' => $dept->slug])"
+                            :current="request()->routeIs('branch-dashboard.production.quick-produce.finished-good.*')" wire:navigate>
+                            {{ __('Produce Finished Goods') }}
+                        </flux:navlist.item>
+
+                        <flux:navlist.item icon="cog"
+                            :href="branch_route('branch-dashboard.production.quick-produce.wip', ['deptSlug' => $dept->slug])"
+                            :current="request()->routeIs('branch-dashboard.production.quick-produce.wip.*')" wire:navigate>
+                            {{ __('Produce WIP') }}
+                        </flux:navlist.item>
+
+                        <flux:navlist.item icon="clipboard-document-list"
+                            :href="branch_route('branch-dashboard.production.material-request', ['deptSlug' => $dept->slug])"
+                            :current="request()->routeIs('branch-dashboard.production.material-request.*')" wire:navigate>
+                            {{ __('Material Request') }}
+                        </flux:navlist.item>
+
+                        <flux:navlist.item icon="arrow-left-end-on-rectangle"
+                            :href="branch_route('branch-dashboard.inventory.material-requests', ['b_id' => request()->query('b_id')])"
+                            :current="request()->routeIs('branch-dashboard.inventory.material-requests')" wire:navigate>
+                            {{ __('Request from Inventory') }}
+                        </flux:navlist.item>
+
+                        <flux:navlist.group :heading="__('Material Returns')" class="grid" expandable
+                            :expanded="request()->routeIs('branch-dashboard.production.material-returns.*') && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)">
+                            <flux:navlist.item icon="arrow-path"
+                                :href="branch_route('branch-dashboard.production.material-returns.create', ['deptSlug' => $dept->slug])"
+                                :current="request()->routeIs('branch-dashboard.production.material-returns.create') && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)"
+                                wire:navigate>
+                                {{ __('Return Item') }}
+                            </flux:navlist.item>
+                            <flux:navlist.item icon="clock"
+                                :href="branch_route('branch-dashboard.production.material-returns.history', ['deptSlug' => $dept->slug])"
+                                :current="request()->routeIs('branch-dashboard.production.material-returns.history') && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)"
+                                wire:navigate>
+                                {{ __('Return History') }}
+                            </flux:navlist.item>
+                        </flux:navlist.group>
                     </flux:navlist.group>
                 @empty
                     <div class="pl-10 pr-4 py-1.5 text-xs text-gray-500 italic">
                         {{ __('No production departments') }}
                     </div>
                 @endforelse
-             </flux:navlist.group>
-             @endif
+            </flux:navlist.group>
+            @endif
 
-             @if(!$isHrOnly && $sidebarService::canSeeProduction($currentUser))
+            @if(!$isHrOnly && $sidebarService::canSeeProduction($currentUser))
              <flux:navlist.item icon="question-mark-circle"
                  :href="branch_route('branch-dashboard.production.helper')"
                  :current="request()->routeIs('branch-dashboard.production.helper')" wire:navigate>
                  {{ __('Production Helper') }}
              </flux:navlist.item>
              @endif
-
-            @if(!$isHrOnly && $sidebarService::canSeeProductionCallbacks($currentUser))
-            <flux:navlist.group :heading="__('Production Callbacks')" class="grid" expandable
-                :expanded="request()->routeIs('branch-dashboard.production.callbacks.*')">
-                <flux:navlist.item icon="arrow-uturn-left"
-                    :href="branch_route('branch-dashboard.production.callbacks.index')"
-                    :current="request()->routeIs('branch-dashboard.production.callbacks.index')" wire:navigate>
-                    {{ __('Dispatch Callbacks') }}
-                </flux:navlist.item>
-                <flux:navlist.item icon="arrow-path-rounded-square"
-                    :href="branch_route('branch-dashboard.production.callbacks.create-inventory')"
-                    :current="request()->routeIs('branch-dashboard.production.callbacks.create-inventory')"
-                    wire:navigate>
-                    {{ __('Inventory Callbacks') }}
-                </flux:navlist.item>
-            </flux:navlist.group>
-            @endif
 
             @if(!$isHrOnly && $sidebarService::canSeeProduction($currentUser) && has_permission('view-production-reports'))
             <flux:navlist.group :heading="__('Production Reports')" class="grid" expandable

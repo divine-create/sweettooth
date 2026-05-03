@@ -14,15 +14,41 @@
                 </p>
             </div>
           
-            <div class="text-right">
+            <div class="text-right flex items-center gap-3">
                 @if ($isVerified)
-                    <div class="flex items-center bg-green-500 px-4 py-2 rounded-lg">
+                    <div class="flex items-center bg-green-500 px-4 py-2 rounded-lg shadow-sm">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span class="font-semibold">Verified</span>
                     </div>
+
+                    @if($currentShiftId)
+                    <div class="flex gap-2">
+                        <button wire:click="toggleEdit" 
+                            class="flex items-center {{ $isEditing ? 'bg-zinc-700' : 'bg-white/20 hover:bg-white/30' }} px-4 py-2 rounded-lg transition-colors border border-white/30 shadow-sm">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                @if($isEditing)
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                @else
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                @endif
+                            </svg>
+                            <span class="font-semibold text-sm">{{ $isEditing ? 'Cancel Edit' : 'Edit Opening' }}</span>
+                        </button>
+
+                        @if(!$isEditing)
+                            <a href="{{ branch_route('branch-dashboard.sales-dashboard.pos.index', ['salesDeptSlug' => $salesDeptSlug]) }}"
+                                class="flex items-center bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg transition-colors shadow-sm" wire:navigate>
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <span class="font-semibold text-sm">Go to POS</span>
+                            </a>
+                        @endif
+                    </div>
+                    @endif
                 @else
                     <div class="flex items-center bg-yellow-500 px-4 py-2 rounded-lg">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -235,9 +261,9 @@
                                 <input type="number" step="0.01" min="0"
                                     wire:model.blur="stockOpenings.{{ $row->index }}.actual_opening"
                                     wire:change="updateActualOpening({{ $row->product_id }}, $event.target.value)"
-                                    @if($row->is_saved) readonly @endif
+                                    @if($row->is_saved && !$isEditing) readonly @endif
                                     class="w-full px-2 py-1.5 border border-zinc-300 dark:border-zinc-600 rounded
-                                        @if($row->is_saved) bg-zinc-100 dark:bg-zinc-800 cursor-not-allowed @else bg-white dark:bg-zinc-900 @endif
+                                        @if($row->is_saved && !$isEditing) bg-zinc-100 dark:bg-zinc-800 cursor-not-allowed @else bg-white dark:bg-zinc-900 @endif
                                         text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 text-sm">
                             </div>
                             <div>
@@ -245,9 +271,9 @@
                                 <input type="date"
                                     wire:model.blur="stockOpenings.{{ $row->index }}.production_date"
                                     wire:change="updateProductionDate({{ $row->product_id }}, $event.target.value)"
-                                    @if($row->is_saved) readonly @endif
+                                    @if($row->is_saved && !$isEditing) readonly @endif
                                     class="w-full px-2 py-1.5 border border-zinc-300 dark:border-zinc-600 rounded
-                                        @if($row->is_saved) bg-zinc-100 dark:bg-zinc-800 cursor-not-allowed @else bg-white dark:bg-zinc-900 @endif
+                                        @if($row->is_saved && !$isEditing) bg-zinc-100 dark:bg-zinc-800 cursor-not-allowed @else bg-white dark:bg-zinc-900 @endif
                                         text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 text-sm">
                             </div>
                         </div>
@@ -264,10 +290,10 @@
                                 <input type="text"
                                     wire:model.blur="stockOpenings.{{ $row->index }}.notes"
                                     wire:change="updateNotes({{ $row->product_id }}, $event.target.value)"
-                                    @if($row->is_saved) readonly @endif
+                                    @if($row->is_saved && !$isEditing) readonly @endif
                                     placeholder="Add notes..."
                                     class="w-full px-2 py-1.5 border border-zinc-300 dark:border-zinc-600 rounded
-                                        @if($row->is_saved) bg-zinc-100 dark:bg-zinc-800 cursor-not-allowed @else bg-white dark:bg-zinc-900 @endif
+                                        @if($row->is_saved && !$isEditing) bg-zinc-100 dark:bg-zinc-800 cursor-not-allowed @else bg-white dark:bg-zinc-900 @endif
                                         text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 text-sm">
                             </div>
                         </div>
@@ -362,35 +388,64 @@
             </div>
         @endif
 
-        <!-- Save Button -->
-        @if (count($stockOpenings) > 0 && !$isVerified)
-            <div class="flex justify-end gap-3">
-                <button wire:click="loadStockOpeningData" wire:loading.attr="disabled" wire:target="loadStockOpeningData, saveStockOpenings"
-                    class="px-6 py-2.5 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg wire:loading.remove wire:target="loadStockOpeningData" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <svg wire:loading wire:target="loadStockOpeningData" class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span wire:loading.remove wire:target="loadStockOpeningData">Refresh</span>
-                    <span wire:loading wire:target="loadStockOpeningData">Loading...</span>
-                </button>
-                <button wire:click="saveStockOpenings" wire:loading.attr="disabled" wire:target="saveStockOpenings, loadStockOpeningData"
-                    class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors duration-200 flex items-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg wire:loading.remove wire:target="saveStockOpenings" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <svg wire:loading wire:target="saveStockOpenings" class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span wire:loading.remove wire:target="saveStockOpenings">Verify & Save Stock Opening</span>
-                    <span wire:loading wire:target="saveStockOpenings">Saving...</span>
-                </button>
+        <!-- Action Buttons -->
+        @if (count($stockOpenings) > 0 && (!$isVerified || $isEditing))
+            @if($isEditing)
+                <div class="mb-4 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded mx-3">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-amber-700 dark:text-amber-200 font-medium">
+                                Editing Verified Stock: Updating opening stock will automatically recalculate your current closing balance and variance.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+            <div class="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 px-3 pb-3">
+                <div class="flex gap-2">
+                    <button wire:click="matchAllExpected" 
+                        class="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-200 rounded-lg text-sm font-medium transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Match All Expected
+                    </button>
+                    <button wire:click="saveAsDraft" wire:loading.attr="disabled"
+                        class="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:hover:bg-zinc-600 dark:text-zinc-200 rounded-lg text-sm font-medium transition-colors flex items-center">
+                        <svg wire:loading.remove wire:target="saveAsDraft" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        <svg wire:loading wire:target="saveAsDraft" class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Save Draft
+                    </button>
+                </div>
+
+                <div class="flex gap-2">
+                    <button wire:click="loadStockOpeningData" wire:loading.attr="disabled" wire:target="loadStockOpeningData"
+                        class="px-4 py-2 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center">
+                        <svg wire:loading.remove wire:target="loadStockOpeningData" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span wire:loading wire:target="loadStockOpeningData" class="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></span>
+                        Refresh
+                    </button>
+                    <button wire:click="saveStockOpenings" wire:loading.attr="disabled"
+                        class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center shadow-md">
+                        <svg wire:loading.remove wire:target="saveStockOpenings" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span wire:loading wire:target="saveStockOpenings" class="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full"></span>
+                        Verify & Finalize
+                    </button>
+                </div>
             </div>
         @endif
         </div>

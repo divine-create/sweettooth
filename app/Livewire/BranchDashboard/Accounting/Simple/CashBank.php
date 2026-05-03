@@ -129,7 +129,7 @@ class CashBank extends Component
                 });
             })
             ->orderBy('bank_name')
-            ->paginate($this->quantity ?? 10);
+            ->paginate((int) ($this->quantity ?? 10));
 
         $glAccounts = GlAccount::where('is_active', true)
             ->where('account_type', 'asset')

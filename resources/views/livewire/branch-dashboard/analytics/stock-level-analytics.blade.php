@@ -205,8 +205,8 @@
                 <select wire:model.live="selectedCategory"
                     class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-blue-500">
                     <option value="">All Categories</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category }}">{{ str_replace('_', ' ', ucfirst($category)) }}</option>
+                    @foreach($categories as $id => $name)
+                        <option value="{{ $id }}">{{ $name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -355,7 +355,7 @@
                                 {{ $index + 1 }}
                             </div>
                             <div>
-                                <p class="font-medium text-zinc-900 dark:text-zinc-100">{{ str_replace('_', ' ', ucfirst($cat['category'])) }}</p>
+                                <p class="font-medium text-zinc-900 dark:text-zinc-100">{{ $cat['category'] }}</p>
                                 <p class="text-xs text-zinc-500 dark:text-zinc-400">
                                     {{ number_format($cat['total_available'], 0) }} units available
                                     @if($cat['low_stock'] > 0)
@@ -523,31 +523,31 @@
                     @forelse($stocks as $stock)
                         <tr class="bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
                             <td class="px-4 py-3">
-                                <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $stock->item->name }}</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ $stock->item->sku }}</div>
+                                <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $stock->item?->name ?? 'N/A' }}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ $stock->item?->sku ?? 'N/A' }}</div>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                    {{ str_replace('_', ' ', ucfirst($stock->item->category)) }}
+                                    {{ $stock->item?->category?->name ?? 'Uncategorized' }}
                                 </span>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="font-semibold {{ $stock->quantity_available <= 0 ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100' }}">
                                     {{ number_format($stock->quantity_available, 2) }}
                                 </span>
-                                <span class="text-xs text-zinc-500 ml-1">{{ $stock->item->uom }}</span>
+                                <span class="text-xs text-zinc-500 ml-1">{{ $stock->item?->uom ?? 'N/A' }}</span>
                             </td>
                             <td class="px-4 py-3 text-zinc-900 dark:text-zinc-100">
-                                {{ number_format($stock->quantity_reserved, 2) }} {{ $stock->item->uom }}
+                                {{ number_format($stock->quantity_reserved, 2) }} {{ $stock->item?->uom ?? '' }}
                             </td>
                             <td class="px-4 py-3">
                                 <span class="{{ $stock->quantity_damaged > 0 ? 'text-orange-600 dark:text-orange-400 font-semibold' : 'text-zinc-900 dark:text-zinc-100' }}">
                                     {{ number_format($stock->quantity_damaged, 2) }}
                                 </span>
-                                <span class="text-xs text-zinc-500 ml-1">{{ $stock->item->uom }}</span>
+                                <span class="text-xs text-zinc-500 ml-1">{{ $stock->item?->uom ?? '' }}</span>
                             </td>
                             <td class="px-4 py-3 text-zinc-900 dark:text-zinc-100">
-                                @if($stock->item->reorder_level)
+                                @if($stock->item?->reorder_level)
                                     {{ number_format($stock->item->reorder_level, 2) }}
                                 @else
                                     <span class="text-gray-400 dark:text-gray-500">Not set</span>

@@ -12,7 +12,9 @@ use App\Models\SalesProductionItemMaterialRequest;
 use App\Models\SalesProductionRequestItem;
 use App\Models\Shift;
 use App\Services\ProductionAuditService;
+use App\Services\ProductionStoreService;
 use App\Services\SalesProductionDispatchService;
+use App\Services\WipRecipeService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -1039,6 +1041,10 @@ class Index extends Component
             $batchCount = $produce->productionRecords()->count() + 1;
             $batchNumber = "Batch {$batchCount}";
 
+            // Check production store for ingredients and consume
+            // Scenario A: Consume ingredients for the TOTAL batch produced (Approved + Rejected)
+            $this->consumeFromProductionStore($produce, $this->batchQuantityProduced);
+
             // Get current actor for polymorphic relationship
             $actor = current_actor();
 
@@ -1070,8 +1076,18 @@ class Index extends Component
                 $this->batchNotes
             );
 
-            // Track raw material utilization for this batch
-            $this->trackRawMaterialUtilization($produce, $this->batchQuantityApproved);
+            // If there's rejected quantity, log it as waste for Scenario A tracking
+            if ($this->batchQuantityRejected > 0) {
+                ProductionAuditService::logWaste(
+                    $actor,
+                    $produce,
+                    $this->batchQuantityRejected,
+                    $this->batchRejectionReason ?? 'Rejected during production'
+                );
+            }
+
+            // Track raw material utilization for this batch using TOTAL produced
+            $this->trackRawMaterialUtilization($produce, $this->batchQuantityProduced);
 
             // Refresh the produce model to ensure productionRecords relationship is fresh
             $produce->refresh();
@@ -1923,6 +1939,32 @@ class Index extends Component
                 'cost_impact' => $costImpact,
                 'notes' => "Auto-tracked from production batch",
             ]);
+        }
+    }
+
+    /**
+     * Consume ingredients from production store before creating production record.
+     */
+    private function consumeFromProductionStore(DailyProduce $produce, float $unitsProduced): void
+    {
+        $recipe = \App\Models\Recipe::with('ingredients.item')->find($produce->recipe_id);
+
+        if (!$recipe) {
+            return;
+        }
+
+        $result = app(ProductionStoreService::class)->consumeForProduction($recipe, $unitsProduced);
+
+        if (!$result->fullySatisfied && !empty($result->shortages)) {
+            $shortageDetails = collect($result->shortages)->map(function ($s) {
+                return "{$s['item']->name}: need {$s['needed']}, have {$s['available']}";
+            })->implode(', ');
+
+            throw new \Exception("Insufficient stock in Production Store. Shortages: {$shortageDetails}. Please request more items from inventory.");
+        }
+
+        if ($result->error) {
+            throw new \Exception($result->error);
         }
     }
 

@@ -8,8 +8,8 @@ use App\Models\Item;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Stock;
-use App\Models\UnitOfMeasure;
 use App\Models\StockMovement;
+use App\Models\UnitOfMeasure;
 use App\Services\AuditService;
 use App\Services\CurrencyFormattingService;
 use App\Services\PurchaseAuditApprovalService;
@@ -85,6 +85,7 @@ class Purchases extends Component
         'supplier_contact' => 'nullable|string|max:255',
         'other_costs' => 'nullable|numeric|min:0',
         'notes' => 'nullable|string',
+        'payment_status' => 'required|in:paid,partial,pending',
         'purchaseItems' => 'required|array|min:1',
         'purchaseItems.*.item_id' => 'required|exists:items,id',
         'purchaseItems.*.quantity' => 'required|numeric|min:1',
@@ -96,6 +97,17 @@ class Purchases extends Component
     {
         $this->b_id = current_branch_id();
         $this->purchase_date = now()->format('Y-m-d');
+    }
+
+    public function updatePaymentStatus($purchaseId, $status)
+    {
+        $purchase = Purchase::where('id', $purchaseId)
+            ->where('branch_id', $this->b_id)
+            ->firstOrFail();
+
+        $purchase->update(['payment_status' => $status]);
+
+        $this->toast()->success('Payment status updated successfully')->send();
     }
 
     #[On('branch-changed')]
@@ -240,7 +252,7 @@ class Purchases extends Component
                 'other_costs' => $this->other_costs ?? 0,
                 'landing_cost' => $landingCost,
                 'total_cost' => $totalCost,
-                'payment_status' => 'pending',
+                'payment_status' => $this->payment_status,
                 'notes' => $this->notes,
                 'status' => 'approved', // Super admins bypass approval
             ]);
@@ -329,7 +341,7 @@ class Purchases extends Component
                 $purchase,
                 "Created purchase #{$purchase->purchase_number} from {$purchase->supplier_name}. ".
                 "Total FOB FC: {$purchase->total_fob_fc}, Total FOB NGN: {$purchase->total_fob_ngn}, ".
-                "Landing Cost: {$purchase->landing_cost}, Payment Status: Pending (accounting-managed). ".
+                "Landing Cost: {$purchase->landing_cost}, Payment Status: ".ucfirst($purchase->payment_status).'. '.
                 'Items: '.count($this->purchaseItems),
                 'completed'
             );
@@ -419,7 +431,7 @@ class Purchases extends Component
                 'total_fob_ngn' => $totalFobNgn,
                 'other_costs' => $this->other_costs ?? 0,
                 'landing_cost' => $landingCost,
-                'payment_status' => 'pending',
+                'payment_status' => $this->payment_status,
                 'notes' => $this->notes,
                 'status' => 'draft', // Save as draft
             ]);
@@ -667,6 +679,7 @@ class Purchases extends Component
         if (empty($itemId)) {
             $this->purchaseItems[$index]['uom'] = '';
             $this->purchaseItems[$index]['unit_price'] = 0;
+
             return;
         }
 
@@ -674,6 +687,7 @@ class Purchases extends Component
         if (! $item) {
             $this->purchaseItems[$index]['uom'] = '';
             $this->purchaseItems[$index]['unit_price'] = 0;
+
             return;
         }
 
@@ -710,7 +724,6 @@ class Purchases extends Component
         $this->detailPurchase = null;
         $this->resetValidation();
     }
-
 
     public function exportCSV()
     {

@@ -146,7 +146,7 @@ class Index extends BaseComponent
 
     public function render()
     {
-        $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 20);
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 20));
         $periods = AccountingPeriod::orderBy('year', 'desc')->orderBy('month', 'desc')->get();
 
         return view('livewire.branch-dashboard.general-ledger.index', [

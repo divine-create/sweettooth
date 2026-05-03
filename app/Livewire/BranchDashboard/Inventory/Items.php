@@ -4,6 +4,7 @@ namespace App\Livewire\BranchDashboard\Inventory;
 
 use App\Livewire\BaseComponent;
 use App\Models\Item;
+use App\Models\ItemCategory;
 use App\Models\RecipeIngredient;
 use App\Models\Stock;
 use App\Models\UnitOfMeasure;
@@ -48,10 +49,9 @@ class Items extends BaseComponent
     public ?string $dateTo = null;
 
     // Filters
-    public ?string $filterCategory = null;
+    public ?int $filterCategory = null;
 
     public ?string $filterStatus = null;
-
 
     // Form Fields
     public ?int $itemId = null;
@@ -60,7 +60,7 @@ class Items extends BaseComponent
 
     public string $sku = '';
 
-    public string $category = '';
+    public ?int $category_id = null;
 
     public ?int $uom_id = null;
 
@@ -124,7 +124,7 @@ class Items extends BaseComponent
             'branch_id' => $this->getBranchId(),
             'name' => $this->name,
             'sku' => $this->sku,
-            'category' => $this->category,
+            'category_id' => $this->category_id,
             'uom_id' => $this->uom_id,
             'reorder_level' => $this->reorder_level ?? 0,
             'max_stock_level' => $this->max_stock_level ?? 0,
@@ -140,6 +140,7 @@ class Items extends BaseComponent
 
         if ($roleLevel >= \App\Services\SidebarVisibilityService::LEVEL_SUPER_ADMIN) {
             $this->executeImmediateSave($data);
+
             return;
         }
 
@@ -151,12 +152,11 @@ class Items extends BaseComponent
         $this->showAuditModal = true;
     }
 
-   
     private function itemValidationRules(): array
     {
         $rules = [
             'name' => 'required|string|max:255',
-            'category' => 'required|in:raw_material,packaging,consumable,equipment',
+            'category_id' => 'required|exists:item_categories,id',
             'uom_id' => 'required|exists:units_of_measure,id',
             'reorder_level' => 'nullable|numeric|min:0',        // ← FIXED
             'max_stock_level' => 'nullable|numeric|min:0',      // ← also make sure this one is correct
@@ -183,7 +183,7 @@ class Items extends BaseComponent
 
             // Store original values for change tracking
             $oldName = $item->name;
-            $oldCategory = $item->category;
+            $oldCategory = $item->category?->name ?? 'None';
             $oldUom = $item->unitOfMeasure?->symbol;
             $oldReorderLevel = $item->reorder_level;
             $oldMaxStockLevel = $item->max_stock_level;
@@ -193,13 +193,16 @@ class Items extends BaseComponent
 
             $item->update($data);
 
+            // Get new category name
+            $newCategory = ItemCategory::find($this->category_id)?->name ?? 'None';
+
             // Log the item update with changes
             $changes = [];
             if ($oldName !== $this->name) {
                 $changes[] = "Name: {$oldName} → {$this->name}";
             }
-            if ($oldCategory !== $this->category) {
-                $changes[] = "Category: {$oldCategory} → {$this->category}";
+            if ($oldCategory !== $newCategory) {
+                $changes[] = "Category: {$oldCategory} → {$newCategory}";
             }
             $newUom = UnitOfMeasure::find($this->uom_id)?->symbol;
             if ($oldUom !== $newUom) {
@@ -249,9 +252,17 @@ class Items extends BaseComponent
                 current_actor(),
                 'create',
                 $item,
-                "Created item '{$item->name}' (SKU: {$item->sku}) in category '{$item->category}'. ".
-                "UOM: {$item->unitOfMeasure?->symbol}, Reorder Level: {$item->reorder_level}, Max Stock: {$item->max_stock_level}, Unit Price: {$item->unit_price}, ".
-                'Requires Request: '.($item->requires_request ? 'Yes' : 'No'),
+                sprintf(
+                    "Created item '%s' (SKU: %s) in category '%s'. UOM: %s, Reorder Level: %s, Max Stock: %s, Unit Price: %s, Requires Request: %s",
+                    $item->name,
+                    $item->sku,
+                    $item->category?->name ?? 'None',
+                    $item->unitOfMeasure?->symbol ?? 'N/A',
+                    $item->reorder_level,
+                    $item->max_stock_level,
+                    $item->unit_price,
+                    $item->requires_request ? 'Yes' : 'No'
+                ),
                 'completed'
             );
 
@@ -333,7 +344,7 @@ class Items extends BaseComponent
         $this->itemId = $item->id;
         $this->name = $item->name;
         $this->sku = $item->sku;
-        $this->category = $item->category;
+        $this->category_id = $item->category_id;
         $this->uom_id = $item->uom_id;
         $this->reorder_level = $item->reorder_level;
         $this->max_stock_level = $item->max_stock_level;
@@ -591,12 +602,12 @@ class Items extends BaseComponent
         $this->auditAction = null;
 
         // If there was pending item data, reopen the item modal
-        if (!empty($this->pendingItemData)) {
+        if (! empty($this->pendingItemData)) {
             // Repopulate the form with the pending data
             $this->itemId = $this->pendingItemData['item_id'] ?? null;
             $this->name = $this->pendingItemData['name'] ?? '';
             $this->sku = $this->pendingItemData['sku'] ?? '';
-            $this->category = $this->pendingItemData['category'] ?? '';
+            $this->category_id = $this->pendingItemData['category_id'] ?? null;
             $this->uom_id = $this->pendingItemData['uom_id'] ?? null;
             $this->reorder_level = $this->pendingItemData['reorder_level'] ?? null;
             $this->max_stock_level = $this->pendingItemData['max_stock_level'] ?? null;
@@ -614,7 +625,7 @@ class Items extends BaseComponent
 
     private function resetForm()
     {
-        $this->reset(['itemId', 'name', 'sku', 'category', 'uom_id', 'reorder_level', 'max_stock_level', 'unit_price', 'status', 'requires_request', 'isEditing']);
+        $this->reset(['itemId', 'name', 'sku', 'category_id', 'uom_id', 'reorder_level', 'max_stock_level', 'unit_price', 'status', 'requires_request', 'isEditing']);
         $this->unit_price = 0;
         $this->requires_request = false;
     }
@@ -626,7 +637,7 @@ class Items extends BaseComponent
         }
     }
 
-    public function updatedCategory()
+    public function updatedCategoryId()
     {
         if (! $this->isEditing) {
             $this->generateSku();
@@ -635,10 +646,12 @@ class Items extends BaseComponent
 
     private function generateSku()
     {
-        if ($this->isEditing || empty($this->name) || empty($this->category)) {
+        if ($this->isEditing || empty($this->name) || empty($this->category_id)) {
             return;
         }
-        $prefix = ['raw_material' => 'RM', 'packaging' => 'PK', 'consumable' => 'CN', 'equipment' => 'EQ'][$this->category] ?? 'IT';
+
+        $category = ItemCategory::find($this->category_id);
+        $prefix = strtoupper(substr($category?->name ?? 'IT', 0, 2));
         $code = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $this->name), 0, 3));
         $rand = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
         $this->sku = "$prefix-$code-$rand";
@@ -649,7 +662,7 @@ class Items extends BaseComponent
     // ===================================================================
     public function render()
     {
-        $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 10);
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
 
         return view('livewire.branch-dashboard.inventory.items', [
             'headers' => [
@@ -673,10 +686,10 @@ class Items extends BaseComponent
         $branchId = $this->getBranchId();
 
         $query = Item::query()
-            ->with(['branch', 'unitOfMeasure'])
+            ->with(['branch', 'unitOfMeasure', 'category'])
             ->when($branchId, fn ($q) => $q->where('items.branch_id', $branchId))
             ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%")->orWhere('sku', 'like', "%{$this->search}%"))
-            ->when($this->filterCategory, fn ($q) => $q->where('category', $this->filterCategory))
+            ->when($this->filterCategory, fn ($q) => $q->where('category_id', $this->filterCategory))
             ->when($this->filterStatus, fn ($q) => $q->where('status', $this->filterStatus))
             ->latest();
 
@@ -696,7 +709,6 @@ class Items extends BaseComponent
         $this->resetPage();
     }
 
-
     public function exportCSV()
     {
         try {
@@ -714,7 +726,7 @@ class Items extends BaseComponent
                 $csvData[] = [
                     $item->sku,
                     $item->name,
-                    $item->category,
+                    $item->category?->name ?? 'None',
                     $item->reorder_level,
                     $item->unit_price,
                     $item->status,

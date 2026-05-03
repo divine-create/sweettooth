@@ -22,36 +22,44 @@ class LocalizationService
         $this->initializeFormatters();
     }
 
+    protected bool $hasIntl = false;
+
     /**
      * Initialize IntlDateFormatter and NumberFormatter instances
      */
     protected function initializeFormatters(): void
     {
+        $this->hasIntl = extension_loaded('intl');
+
+        if (!$this->hasIntl) {
+            return;
+        }
+
         // Number formatter for general numbers
-        $this->numberFormatter = new NumberFormatter($this->locale, NumberFormatter::DECIMAL);
-        
+        $this->numberFormatter = new \NumberFormatter($this->locale, \NumberFormatter::DECIMAL);
+
         // Currency formatter
-        $this->currencyFormatter = new NumberFormatter($this->locale, NumberFormatter::CURRENCY);
-        
+        $this->currencyFormatter = new \NumberFormatter($this->locale, \NumberFormatter::CURRENCY);
+
         // Date formatter
-        $this->dateFormatter = new IntlDateFormatter(
+        $this->dateFormatter = new \IntlDateFormatter(
             $this->locale,
-            IntlDateFormatter::MEDIUM,
-            IntlDateFormatter::NONE
+            \IntlDateFormatter::MEDIUM,
+            \IntlDateFormatter::NONE
         );
-        
+
         // Time formatter
-        $this->timeFormatter = new IntlDateFormatter(
+        $this->timeFormatter = new \IntlDateFormatter(
             $this->locale,
-            IntlDateFormatter::NONE,
-            IntlDateFormatter::MEDIUM
+            \IntlDateFormatter::NONE,
+            \IntlDateFormatter::MEDIUM
         );
-        
+
         // DateTime formatter
-        $this->dateTimeFormatter = new IntlDateFormatter(
+        $this->dateTimeFormatter = new \IntlDateFormatter(
             $this->locale,
-            IntlDateFormatter::MEDIUM,
-            IntlDateFormatter::MEDIUM
+            \IntlDateFormatter::MEDIUM,
+            \IntlDateFormatter::MEDIUM
         );
     }
 
@@ -78,11 +86,11 @@ class LocalizationService
      */
     public function formatNumber(float $number, int $decimals = 2): string
     {
-        if ($this->numberFormatter) {
-            $this->numberFormatter->setAttribute(NumberFormatter::FRACTION_DIGITS, $decimals);
+        if ($this->hasIntl && $this->numberFormatter) {
+            $this->numberFormatter->setAttribute(\NumberFormatter::FRACTION_DIGITS, $decimals);
             return $this->numberFormatter->format($number);
         }
-        
+
         return number_format($number, $decimals);
     }
 
@@ -92,12 +100,20 @@ class LocalizationService
     public function formatCurrency(float $amount, ?string $currency = null): string
     {
         $currency = $currency ?? Settings::currencyLocalization('primary_currency', 'USD');
-        
-        if ($this->currencyFormatter) {
+
+        if ($this->hasIntl && $this->currencyFormatter) {
             return $this->currencyFormatter->formatCurrency($amount, $currency);
         }
-        
-        return number_format($amount, 2);
+
+        $symbols = [
+            'NGN' => '₦',
+            'USD' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+        ];
+        $symbol = $symbols[strtoupper($currency)] ?? $currency . ' ';
+
+        return $symbol . number_format($amount, 2);
     }
 
     /**
@@ -105,11 +121,11 @@ class LocalizationService
      */
     public function formatPercentage(float $value, int $decimals = 2): string
     {
-        if ($this->numberFormatter) {
-            $this->numberFormatter->setAttribute(NumberFormatter::FRACTION_DIGITS, $decimals);
+        if ($this->hasIntl && $this->numberFormatter) {
+            $this->numberFormatter->setAttribute(\NumberFormatter::FRACTION_DIGITS, $decimals);
             return $this->numberFormatter->format($value / 100) . '%';
         }
-        
+
         return number_format($value, $decimals) . '%';
     }
 
@@ -126,7 +142,7 @@ class LocalizationService
             return $date->format($format);
         }
         
-        if ($this->dateFormatter) {
+        if ($this->hasIntl && $this->dateFormatter) {
             return $this->dateFormatter->format($date->timestamp);
         }
         
@@ -146,7 +162,7 @@ class LocalizationService
             return $time->format($format);
         }
         
-        if ($this->timeFormatter) {
+        if ($this->hasIntl && $this->timeFormatter) {
             return $this->timeFormatter->format($time->timestamp);
         }
         
@@ -166,7 +182,7 @@ class LocalizationService
             return $dateTime->format($format);
         }
         
-        if ($this->dateTimeFormatter) {
+        if ($this->hasIntl && $this->dateTimeFormatter) {
             return $this->dateTimeFormatter->format($dateTime->timestamp);
         }
         
@@ -181,14 +197,17 @@ class LocalizationService
         if (is_string($date)) {
             $date = Carbon::parse($date);
         }
-        
-        $formatter = new IntlDateFormatter(
-            $this->locale,
-            IntlDateFormatter::SHORT,
-            IntlDateFormatter::NONE
-        );
-        
-        return $formatter->format($date->timestamp);
+
+        if ($this->hasIntl) {
+            $formatter = new \IntlDateFormatter(
+                $this->locale,
+                \IntlDateFormatter::SHORT,
+                \IntlDateFormatter::NONE
+            );
+            return $formatter->format($date->timestamp);
+        }
+
+        return $date->format('m/d/Y');
     }
 
     /**
@@ -199,14 +218,17 @@ class LocalizationService
         if (is_string($date)) {
             $date = Carbon::parse($date);
         }
-        
-        $formatter = new IntlDateFormatter(
-            $this->locale,
-            IntlDateFormatter::LONG,
-            IntlDateFormatter::NONE
-        );
-        
-        return $formatter->format($date->timestamp);
+
+        if ($this->hasIntl) {
+            $formatter = new \IntlDateFormatter(
+                $this->locale,
+                \IntlDateFormatter::LONG,
+                \IntlDateFormatter::NONE
+            );
+            return $formatter->format($date->timestamp);
+        }
+
+        return $date->format('F d, Y');
     }
 
     /**
@@ -276,17 +298,20 @@ class LocalizationService
         if (is_string($date)) {
             $date = Carbon::parse($date);
         }
-        
-        $formatter = new IntlDateFormatter(
-            $this->locale,
-            IntlDateFormatter::NONE,
-            IntlDateFormatter::NONE,
-            null,
-            null,
-            'EEEE' // Full weekday name
-        );
-        
-        return $formatter->format($date->timestamp);
+
+        if ($this->hasIntl) {
+            $formatter = new \IntlDateFormatter(
+                $this->locale,
+                \IntlDateFormatter::NONE,
+                \IntlDateFormatter::NONE,
+                null,
+                null,
+                'EEEE'
+            );
+            return $formatter->format($date->timestamp);
+        }
+
+        return $date->format('l');
     }
 
     /**
@@ -297,17 +322,20 @@ class LocalizationService
         if (is_string($date)) {
             $date = Carbon::parse($date);
         }
-        
-        $formatter = new IntlDateFormatter(
-            $this->locale,
-            IntlDateFormatter::NONE,
-            IntlDateFormatter::NONE,
-            null,
-            null,
-            'MMMM' // Full month name
-        );
-        
-        return $formatter->format($date->timestamp);
+
+        if ($this->hasIntl) {
+            $formatter = new \IntlDateFormatter(
+                $this->locale,
+                \IntlDateFormatter::NONE,
+                \IntlDateFormatter::NONE,
+                null,
+                null,
+                'MMMM'
+            );
+            return $formatter->format($date->timestamp);
+        }
+
+        return $date->format('F');
     }
 
     /**
@@ -318,17 +346,20 @@ class LocalizationService
         if (is_string($date)) {
             $date = Carbon::parse($date);
         }
-        
-        $formatter = new IntlDateFormatter(
-            $this->locale,
-            IntlDateFormatter::NONE,
-            IntlDateFormatter::NONE,
-            null,
-            null,
-            'MMM' // Short month name
-        );
-        
-        return $formatter->format($date->timestamp);
+
+        if ($this->hasIntl) {
+            $formatter = new \IntlDateFormatter(
+                $this->locale,
+                \IntlDateFormatter::NONE,
+                \IntlDateFormatter::NONE,
+                null,
+                null,
+                'MMM'
+            );
+            return $formatter->format($date->timestamp);
+        }
+
+        return $date->format('M');
     }
 
     /**

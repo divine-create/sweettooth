@@ -795,29 +795,29 @@ class Index extends Component
                 'request_id' => $request->id,
             ]);
 
-            // Extract sub-action from action string: "recipe:create_recipe", "recipe:edit_recipe", "recipe:delete_recipe", "recipe:bulk_delete_recipe"
-            $parts = explode(':', $request->action);
-            $subAction = $parts[1] ?? 'create_recipe';
+        // Extract sub-action from action string: "recipe:create_recipe", "recipe:edit_recipe", "recipe:delete_recipe", "recipe:bulk_delete_recipe"
+        $parts = explode(':', $request->action);
+        $subAction = $parts[1] ?? 'create_recipe';
 
-            \Log::info('🔵 [HANDLE RECIPE ACTION] Sub-action extracted', [
-                'sub_action' => $subAction,
-                'parts_count' => count($parts),
-            ]);
+        \Log::info('🔵 [HANDLE RECIPE ACTION] Sub-action extracted', [
+            'sub_action' => $subAction,
+            'parts_count' => count($parts),
+        ]);
 
-            $result = match ($subAction) {
-                'create_recipe' => ProductionApprovalService::executeRecipeCreation($request),
-                'edit_recipe' => ProductionApprovalService::executeRecipeUpdate($request),
-                'delete_recipe' => ProductionApprovalService::executeRecipeDeletion($request),
-                'bulk_delete_recipe' => ProductionApprovalService::executeRecipeBulkDeletion($request),
-                default => throw new \Exception("Unknown recipe action: {$subAction}"),
-            };
+        $result = match ($subAction) {
+            'create_recipe' => ProductionApprovalService::executeRecipeCreation($request),
+            'edit_recipe' => ProductionApprovalService::executeRecipeUpdate($request),
+            'delete_recipe' => ProductionApprovalService::executeRecipeDeletion($request),
+            'bulk_delete_recipe' => ProductionApprovalService::executeRecipeBulkDeletion($request),
+            default => throw new \Exception("Unknown recipe action: {$subAction}"),
+        };
 
-            \Log::info('✅ [HANDLE RECIPE ACTION] Recipe action completed', [
-                'sub_action' => $subAction,
-                'result_type' => is_object($result) ? get_class($result) : gettype($result),
-            ]);
+        \Log::info('✅ [HANDLE RECIPE ACTION] Recipe action completed', [
+            'sub_action' => $subAction,
+            'result_type' => is_object($result) ? get_class($result) : gettype($result),
+        ]);
 
-            return $result;
+        return $result;
         } catch (\Exception $e) {
             \Log::error('❌ [HANDLE RECIPE ACTION] Recipe action failed', [
                 'action' => $request->action ?? 'Unknown',

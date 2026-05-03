@@ -272,7 +272,7 @@ class StockMovements extends Component
         $query->orderBy('movement_date', 'desc')
             ->orderBy('created_at', 'desc');
 
-        $movements = $query->paginate($this->quantity ?? 15);
+        $movements = $query->paginate((int) ($this->quantity ?? 15));
 
         // Get departments for filter
         $departments = Department::orderBy('name')->get();

@@ -41,6 +41,15 @@ if (! function_exists('branch_route')) {
             $params['b_id'] = $b_id;
         }
 
-        return route($name, $params, $absolute);
+        try {
+            return route($name, $params, $absolute);
+        } catch (\Symfony\Component\Routing\Exception\RouteNotFoundException $e) {
+            Log::error('🟢 [BRANCH ROUTE] Route not found: ' . $name, [
+                'current_url' => Request::fullUrl(),
+                'user' => auth()->user()?->email,
+            ]);
+            
+            return '#'; // Return anchor to prevent page crash
+        }
     }
 }

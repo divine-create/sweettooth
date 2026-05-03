@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Livewire\BranchDashboard\SalesDashboard\StockOpening;
 
 use App\Livewire\BaseComponent;
@@ -11,8 +12,8 @@ use App\Models\ProductType;
 use App\Models\Shift;
 use App\Services\SalesWorkflowService;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Layout;
@@ -23,7 +24,7 @@ use TallStackUi\Traits\Interactions;
 #[Layout('components.layouts.app.branch-dashboard')]
 class Index extends BaseComponent
 {
-    use WithPagination, Interactions, SalesDepartmentContext;
+    use Interactions, SalesDepartmentContext, WithPagination;
 
     #[Url(keep: true)]
     public ?string $b_id = null;
@@ -32,14 +33,23 @@ class Index extends BaseComponent
     // are now provided by SalesDepartmentContext trait
 
     public ?int $quantity = 20;
+
     public int $productsPerPage = 20;
+
     protected string $pageName = 'stock_opening_page';
+
     public string $page = '';
+
     public ?string $search = null;
+
     public ?int $filterProductType = null;
+
     public ?string $filterStatus = null;
+
     public ?string $selectedProductId = null;
+
     public array $selectedProductIds = [];
+
     public array $productLookupOptions = [];
 
     protected $queryString = [
@@ -51,23 +61,40 @@ class Index extends BaseComponent
 
     // Stock opening data
     public array $stockOpenings = [];
+
     public array $rows = [];
+
     public array $unclosedProducts = [];
+
     public bool $isVerified = false;
+    public bool $isEditing = false;
+
     public ?string $currentShiftId = null;
+
     public string $shiftType = 'morning';
+
     public $stockDate;
+
     public $availableShifts = [];
+
     public $selectedShiftForViewing = null;
+
     public array $productTypes = [];
+
     public ?string $expectedPreviousClosingDate = null;
+
     public ?string $expectedPreviousClosingShift = null;
 
     public ?ProductStock $selectedStockItem = null;
+
     public ?string $stock_products_cursor = null;
+
     private ?bool $productStocksHasDepartmentColumn = null;
+
     private ?array $cachedSalesDepartmentIds = null;
+
     private ?string $cachedSalesDepartmentSignature = null;
+
     protected ?LengthAwarePaginator $productsPaginatorForView = null;
 
     // Table headers
@@ -200,7 +227,7 @@ class Index extends BaseComponent
 
         if ($activeShift) {
             $this->currentShiftId = $activeShift->id;
-            $this->shiftType      = $activeShift->shift_type ?? 'morning';
+            $this->shiftType = $activeShift->shift_type ?? 'morning';
         }
     }
 
@@ -234,13 +261,13 @@ class Index extends BaseComponent
             ->all();
 
         if (empty($targetProductIds)) {
-        $productsPaginator = $this->resolvePaginatedProductsForStockOpening($salesDepartmentIds);
-        $this->productsPaginatorForView = $productsPaginator;
-        $targetProductIds = $productsPaginator->getCollection()
-            ->pluck('id')
-            ->map(static fn ($id): string => (string) $id)
-            ->values()
-            ->all();
+            $productsPaginator = $this->resolvePaginatedProductsForStockOpening($salesDepartmentIds);
+            $this->productsPaginatorForView = $productsPaginator;
+            $targetProductIds = $productsPaginator->getCollection()
+                ->pluck('id')
+                ->map(static fn ($id): string => (string) $id)
+                ->values()
+                ->all();
             $this->selectedProductIds = $targetProductIds;
         } else {
             $this->productsPaginatorForView = $this->resolvePaginatedProductsForStockOpening($salesDepartmentIds);
@@ -317,8 +344,10 @@ class Index extends BaseComponent
         }
 
         if ($currentUserId) {
-            $todayStocksQuery->where('verified_by', $currentUserId)
-                ->where('workflow_step', 'opening_verified');
+            $todayStocksQuery->where(function ($q) use ($currentUserId) {
+                $q->where('verified_by', $currentUserId)
+                    ->orWhereNull('verified_by');
+            })->whereIn('workflow_step', ['opening_verified', 'opening_draft']);
         }
 
         $todayStocks = $todayStocksQuery->orderByDesc('id')->get();
@@ -457,34 +486,55 @@ class Index extends BaseComponent
 
             $varianceSource = 'None';
             if ($variance !== 0.0) {
-                $sourceLabel = trim((string) $previousClosingSource . ' ' . (string) $previousClosingShift);
-                $varianceSource = 'Stock count difference vs expected opening (' . ($sourceLabel !== '' ? $sourceLabel : 'previous closing') . ' + production)';
+                $sourceLabel = trim((string) $previousClosingSource.' '.(string) $previousClosingShift);
+                $varianceSource = 'Stock count difference vs expected opening ('.($sourceLabel !== '' ? $sourceLabel : 'previous closing').' + production)';
             }
 
-            $stockOpenings[] = [
-                'product_id'        => $product->id,
-                'product_name'      => $product->name,
-                'product_sku'       => $product->sku,
-                'product_uom'       => $product->unitOfMeasure?->symbol,
+            $stockOpeningEntry = [
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'product_sku' => $product->sku,
+                'product_uom' => $product->unitOfMeasure?->symbol,
                 'yesterday_closing' => $previousClosing,
                 'previous_closing_source' => $previousClosingSource,
                 'previous_closing_shift' => $previousClosingShift,
                 'is_carried_forward' => $isCarriedForward,
-                'today_additions'   => $todayAdditions,
-                'dispatch_count'    => $dispatchCount,
-                'expected_opening'  => $expectedOpening,
-                'actual_opening'    => $actualOpening,
-                'variance'          => $variance,
-                'variance_source'   => $varianceSource,
-                'production_date'   => $todayStock ? $todayStock->production_date?->format('Y-m-d') : Carbon::today()->format('Y-m-d'),
-                'expiry_date'       => $todayStock ? $todayStock->expiry_date?->format('Y-m-d') : null,
-                'shelf_life_days'   => $product->shelf_life_days,
-                'notes'             => $todayStock ? $todayStock->notes : '',
-                'is_saved'          => $todayStock !== null,
+                'today_additions' => $todayAdditions,
+                'dispatch_count' => $dispatchCount,
+                'expected_opening' => $expectedOpening,
+                'actual_opening' => $actualOpening,
+                'variance' => $variance,
+                'variance_source' => $varianceSource,
+                'production_date' => $todayStock ? $todayStock->production_date?->format('Y-m-d') : Carbon::today()->format('Y-m-d'),
+                'expiry_date' => $todayStock ? $todayStock->expiry_date?->format('Y-m-d') : null,
+                'shelf_life_days' => $product->shelf_life_days,
+                'notes' => $todayStock ? $todayStock->notes : '',
+                'is_saved' => $todayStock !== null,
             ];
+
+            // Preserve user-entered values from existing stockOpenings
+            $existingEntry = $this->stockOpenings[$productId] ?? null;
+            if ($existingEntry !== null) {
+                // Keep user's actual_opening, production_date, expiry_date, notes if they were modified
+                if (isset($existingEntry['actual_opening']) && $existingEntry['actual_opening'] !== $expectedOpening) {
+                    $stockOpeningEntry['actual_opening'] = $existingEntry['actual_opening'];
+                    $stockOpeningEntry['variance'] = $stockOpeningEntry['actual_opening'] - $expectedOpening;
+                }
+                if (! empty($existingEntry['production_date'])) {
+                    $stockOpeningEntry['production_date'] = $existingEntry['production_date'];
+                }
+                if (! empty($existingEntry['expiry_date'])) {
+                    $stockOpeningEntry['expiry_date'] = $existingEntry['expiry_date'];
+                }
+                if (! empty($existingEntry['notes'])) {
+                    $stockOpeningEntry['notes'] = $existingEntry['notes'];
+                }
+            }
+
+            $stockOpenings[$productId] = $stockOpeningEntry;
         }
 
-        $this->stockOpenings = $stockOpenings;
+        $this->stockOpenings = array_values($stockOpenings);
         $this->syncRowsFromStockOpenings();
         $this->unclosedProducts = $unclosedProducts;
         $this->isVerified = $this->hasVerifiedStockOpening($salesDepartmentIds);
@@ -669,7 +719,7 @@ class Index extends BaseComponent
 
         if ($index !== false) {
             $this->stockOpenings[$index]['actual_opening'] = (float) $value;
-            $this->stockOpenings[$index]['variance']       =
+            $this->stockOpenings[$index]['variance'] =
             $this->stockOpenings[$index]['actual_opening'] -
             $this->stockOpenings[$index]['expected_opening'];
             $this->syncRowsFromStockOpenings();
@@ -740,6 +790,79 @@ class Index extends BaseComponent
         $this->syncRowsFromStockOpenings();
     }
 
+    /**
+     * Bulk-match actual opening with expected opening for all products in current view
+     */
+    public function matchAllExpected()
+    {
+        foreach ($this->stockOpenings as $index => $opening) {
+            if (! ($opening['is_saved'] ?? false)) {
+                $this->stockOpenings[$index]['actual_opening'] = $opening['expected_opening'];
+                $this->stockOpenings[$index]['variance'] = 0.0;
+            }
+        }
+        $this->syncRowsFromStockOpenings();
+        $this->toast()->success('All products matched to expected values.')->send();
+    }
+
+    /**
+     * Save the current stock opening as a draft
+     */
+    public function saveAsDraft()
+    {
+        if (empty($this->stockOpenings)) {
+            $this->toast()->warning('No products to save.')->send();
+
+            return;
+        }
+
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+        $primarySalesDepartmentId = $this->resolvePrimarySalesDepartmentId($salesDepartmentIds);
+
+        if (empty($salesDepartmentIds) || $primarySalesDepartmentId === null) {
+            $this->toast()->error('Sales department context is missing.')->send();
+
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $hasDepartmentColumn = $this->hasProductStocksDepartmentColumn();
+
+            foreach ($this->stockOpenings as $stockOpening) {
+                $lookup = [
+                    'product_id' => $stockOpening['product_id'],
+                    'stock_date' => $this->stockDate,
+                    'shift_type' => $this->getProductStockShiftType(),
+                ];
+
+                if ($hasDepartmentColumn) {
+                    $lookup['department_id'] = $primarySalesDepartmentId;
+                }
+
+                ProductStock::updateOrCreate(
+                    $lookup,
+                    [
+                        'opening_quantity' => (float) $stockOpening['actual_opening'],
+                        'production_date' => $stockOpening['production_date'],
+                        'expiry_date' => $stockOpening['expiry_date'],
+                        'notes' => $stockOpening['notes'],
+                        'is_workflow_verified' => false,
+                        'workflow_step' => 'opening_draft',
+                        'verified_by' => auth()->id(),
+                        'department_id' => $hasDepartmentColumn ? $primarySalesDepartmentId : null,
+                    ]
+                );
+            }
+
+            DB::commit();
+            $this->toast()->success('Progress saved as draft.')->send();
+            $this->loadStockOpeningData();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->toast()->error('Error saving draft: '.$e->getMessage())->send();
+        }
+    }
 
     /**
      * Save all stock openings
@@ -754,6 +877,7 @@ class Index extends BaseComponent
 
         if (! $this->currentShiftId) {
             $this->toast()->error('No active shift found. Please clock in first.')->send();
+
             return;
         }
 
@@ -771,7 +895,7 @@ class Index extends BaseComponent
 
             // Get selected product IDs
             $selectedProductIds = collect($this->stockOpenings)->pluck('product_id')->toArray();
-            
+
             // Save selected products with actual values
             foreach ($this->stockOpenings as $stockOpening) {
                 $yesterdayClosing = (float) ($stockOpening['yesterday_closing'] ?? 0);
@@ -787,9 +911,9 @@ class Index extends BaseComponent
                 // sales_shift_id can be null since we're using the general shifts table
                 // addition_quantity represents the total quantity yield (approved quantity sent from production)
                 $lookup = [
-                    'product_id'     => $stockOpening['product_id'],
-                    'stock_date'     => $this->stockDate,
-                    'shift_type'     => $this->getProductStockShiftType(),
+                    'product_id' => $stockOpening['product_id'],
+                    'stock_date' => $this->stockDate,
+                    'shift_type' => $this->getProductStockShiftType(),
                 ];
 
                 if ($hasDepartmentColumn) {
@@ -799,38 +923,36 @@ class Index extends BaseComponent
                 ProductStock::updateOrCreate(
                     $lookup,
                     [
-                        'sales_shift_id'    => null, // Nullable - we use shifts table instead
-                        'department_id'     => $hasDepartmentColumn
+                        'sales_shift_id' => null, // Nullable - we use shifts table instead
+                        'department_id' => $hasDepartmentColumn
                             ? $primarySalesDepartmentId
                             : null,
-                        'opening_quantity'  => $actualOpening,
+                        'opening_quantity' => $actualOpening,
                         'addition_quantity' => $remainingAdditions, // prevent double-counting additions
-                        'production_date'   => $stockOpening['production_date'],
-                        'expiry_date'       => $stockOpening['expiry_date'],
-                        'notes'             => $stockOpening['notes'],
-                        'total_available'   => $actualOpening + $remainingAdditions,
-                        'closing_quantity'  => $actualOpening + $remainingAdditions,
+                        'production_date' => $stockOpening['production_date'],
+                        'expiry_date' => $stockOpening['expiry_date'],
+                        'notes' => $stockOpening['notes'],
                         'is_workflow_verified' => true,
-                        'verified_at'       => now(),
-                        'verified_by'       => auth()->id() ?? auth()->id(),
-                        'workflow_step'     => 'opening_verified',
+                        'verified_at' => now(),
+                        'verified_by' => auth()->id() ?? auth()->id(),
+                        'workflow_step' => 'opening_verified',
                     ]
                 );
             }
 
             // Get tracked products (selected + dispatch-linked + existing stock rows) to find unselected ones.
-        $trackedProductIds = array_values(array_unique(array_merge(
-            array_map(static fn ($id): string => (string) $id, $selectedProductIds),
-            $this->resolveDefaultProductIdsForStockOpening($salesDepartmentIds, $this->stockDate)
-        )));
+            $trackedProductIds = array_values(array_unique(array_merge(
+                array_map(static fn ($id): string => (string) $id, $selectedProductIds),
+                $this->resolveDefaultProductIdsForStockOpening($salesDepartmentIds, $this->stockDate)
+            )));
 
-        $trackedProducts = Product::query()
-            ->active()
-            ->available()
-            ->whereIn('id', $trackedProductIds)
-            ->whereIn('sales_department_id', $salesDepartmentIds)
-            ->select(['id', 'shelf_life_days'])
-            ->get();
+            $trackedProducts = Product::query()
+                ->active()
+                ->available()
+                ->whereIn('id', $trackedProductIds)
+                ->whereIn('sales_department_id', $salesDepartmentIds)
+                ->select(['id', 'shelf_life_days'])
+                ->get();
 
             // Save unselected products with 0.00 opening quantity
             foreach ($trackedProducts as $product) {
@@ -839,9 +961,9 @@ class Index extends BaseComponent
                 }
 
                 $lookup = [
-                    'product_id'     => $product->id,
-                    'stock_date'     => $this->stockDate,
-                    'shift_type'     => $this->getProductStockShiftType(),
+                    'product_id' => $product->id,
+                    'stock_date' => $this->stockDate,
+                    'shift_type' => $this->getProductStockShiftType(),
                 ];
 
                 if ($hasDepartmentColumn) {
@@ -850,33 +972,31 @@ class Index extends BaseComponent
 
                 // Check if record already exists
                 $existingStock = ProductStock::where($lookup)->first();
-                
-                if (!$existingStock) {
+
+                if (! $existingStock) {
                     // Create new record with 0.00 opening for unselected products
                     $productionDate = Carbon::today()->format('Y-m-d');
                     $expiryDate = null;
-                    
+
                     if ($product->shelf_life_days > 0) {
                         $expiryDate = Carbon::parse($productionDate)->addDays($product->shelf_life_days)->format('Y-m-d');
                     }
 
                     ProductStock::create(
                         array_merge($lookup, [
-                            'sales_shift_id'    => null,
-                            'department_id'     => $hasDepartmentColumn
+                            'sales_shift_id' => null,
+                            'department_id' => $hasDepartmentColumn
                                 ? $primarySalesDepartmentId
                                 : null,
-                            'opening_quantity'  => 0.00,
+                            'opening_quantity' => 0.00,
                             'addition_quantity' => 0.00,
-                            'production_date'   => $productionDate,
-                            'expiry_date'       => $expiryDate,
-                            'notes'             => 'Auto-recorded - product not selected during stock opening',
-                            'total_available'   => 0.00,
-                            'closing_quantity'  => 0.00,
+                            'production_date' => $productionDate,
+                            'expiry_date' => $expiryDate,
+                            'notes' => 'Auto-recorded - product not selected during stock opening',
                             'is_workflow_verified' => true,
-                            'verified_at'       => now(),
-                            'verified_by'       => auth()->id() ?? auth()->id(),
-                            'workflow_step'     => 'opening_verified',
+                            'verified_at' => now(),
+                            'verified_by' => auth()->id() ?? auth()->id(),
+                            'workflow_step' => 'opening_verified',
                         ])
                     );
                 }
@@ -884,6 +1004,7 @@ class Index extends BaseComponent
 
             DB::commit();
             $this->isVerified = true;
+            $this->isEditing = false;
 
             // Mark workflow step as completed for all users to unlock POS access
             $workflowService = app(SalesWorkflowService::class);
@@ -900,7 +1021,29 @@ class Index extends BaseComponent
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->toast()->error('Error saving stock opening: ' . $e->getMessage())->send();
+            $this->toast()->error('Error saving stock opening: '.$e->getMessage())->send();
+        }
+    }
+
+    /**
+     * Toggle editing mode for verified stock
+     */
+    public function toggleEdit(): void
+    {
+        // Safety check: Only allow editing if shift is still active
+        $activeShift = Shift::where('id', $this->currentShiftId)
+            ->where('status', 'active')
+            ->exists();
+
+        if (!$activeShift && !is_super_admin()) {
+            $this->toast()->error('Cannot edit stock for a completed or inactive shift.')->send();
+            return;
+        }
+
+        $this->isEditing = !$this->isEditing;
+        
+        if ($this->isEditing) {
+            $this->toast()->info('Stock opening unlocked for editing. Updates will recalculate closing balances.')->send();
         }
     }
 
@@ -949,15 +1092,52 @@ class Index extends BaseComponent
 
     public function updatedPage(): void
     {
-        $this->selectedProductIds = [];
-        $this->loadStockOpeningData();
+        // Load stock data for the new page while preserving user-entered values
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+
+        // Get current page product IDs
+        $this->productsPaginatorForView = null;
+        $paginator = $this->resolvePaginatedProductsForStockOpening($salesDepartmentIds);
+        $this->productsPaginatorForView = $paginator;
+
+        $currentPageProductIds = $paginator->getCollection()
+            ->pluck('id')
+            ->map(static fn ($id): string => (string) $id)
+            ->values()
+            ->all();
+
+        // Merge current page products with existing selection
+        $mergedProductIds = array_unique(array_merge($this->selectedProductIds, $currentPageProductIds));
+
+        // Load stock data for merged products (this preserves existing values and adds new ones)
+        $this->loadStockOpeningData($mergedProductIds);
     }
 
     public function gotoPage($page, $pageName = 'page')
     {
+        // Set page number explicitly before changing
+        $this->page = (string) $page;
         $this->setPage($page, $pageName);
-        $this->selectedProductIds = [];
-        $this->loadStockOpeningData();
+
+        // Load stock data for the new page while preserving user-entered values
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+
+        // Get current page product IDs
+        $this->productsPaginatorForView = null;
+        $paginator = $this->resolvePaginatedProductsForStockOpening($salesDepartmentIds);
+        $this->productsPaginatorForView = $paginator;
+
+        $currentPageProductIds = $paginator->getCollection()
+            ->pluck('id')
+            ->map(static fn ($id): string => (string) $id)
+            ->values()
+            ->all();
+
+        // Merge current page products with existing selection
+        $mergedProductIds = array_unique(array_merge($this->selectedProductIds, $currentPageProductIds));
+
+        // Load stock data for merged products (this preserves existing values and adds new ones)
+        $this->loadStockOpeningData($mergedProductIds);
     }
 
     public function render()
@@ -996,8 +1176,8 @@ class Index extends BaseComponent
             })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
-                    $subQuery->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('sku', 'like', '%' . $search . '%');
+                    $subQuery->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('sku', 'like', '%'.$search.'%');
                 });
             })
             ->orderBy('name')
@@ -1008,13 +1188,13 @@ class Index extends BaseComponent
                 'id' => (string) $product->id,
                 'name' => (string) $product->name,
                 'sku' => (string) ($product->sku ?? '-'),
-                'label' => trim((string) $product->name . ' (' . (string) ($product->sku ?? '-') . ')'),
+                'label' => trim((string) $product->name.' ('.(string) ($product->sku ?? '-').')'),
             ];
         })->all();
     }
 
     /**
-     * @param array<int> $salesDepartmentIds
+     * @param  array<int>  $salesDepartmentIds
      */
     private function loadProductTypes(array $salesDepartmentIds): void
     {
@@ -1062,8 +1242,8 @@ class Index extends BaseComponent
             })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
-                    $subQuery->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('sku', 'like', '%' . $search . '%');
+                    $subQuery->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('sku', 'like', '%'.$search.'%');
                 });
             })
             ->orderBy('name')
@@ -1099,8 +1279,8 @@ class Index extends BaseComponent
             })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
-                    $subQuery->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('sku', 'like', '%' . $search . '%');
+                    $subQuery->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('sku', 'like', '%'.$search.'%');
                 });
             })
             ->orderBy('name')
@@ -1128,9 +1308,9 @@ class Index extends BaseComponent
         }
 
         $stockProductIds = $stockQuery->whereHas('product', function ($query) use ($salesDepartmentIds) {
-                $query->whereIn('sales_department_id', $salesDepartmentIds)
-                    ->where('is_active', true);
-            })
+            $query->whereIn('sales_department_id', $salesDepartmentIds)
+                ->where('is_active', true);
+        })
             ->pluck('product_id')
             ->map(static fn ($id): string => (string) $id)
             ->unique()

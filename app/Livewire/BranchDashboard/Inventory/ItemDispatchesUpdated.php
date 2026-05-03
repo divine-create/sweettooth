@@ -89,7 +89,7 @@ class ItemDispatches extends Component
             ->when($this->filterDateTo, fn ($q) => $q->whereDate('created_at', '<=', $this->filterDateTo))
             ->orderBy('created_at', 'desc');
 
-        $requests = $query->paginate($this->quantity ?? 15);
+        $requests = $query->paginate((int) ($this->quantity ?? 15));
 
         // Pending requests for the accordion
         $pendingRequests = ItemRequest::with(['department', 'requestDetails.item'])

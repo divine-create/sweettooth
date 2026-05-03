@@ -128,10 +128,9 @@
                     <select wire:model.live="filterCategory"
                         class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-blue-500">
                         <option value="">All Categories</option>
-                        <option value="raw_material">Raw Material</option>
-                        <option value="packaging">Packaging</option>
-                        <option value="consumable">Consumable</option>
-                        <option value="equipment">Equipment</option>
+                        @foreach(\App\Models\ItemCategory::active()->forBranch(request()->query('b_id'))->orderBy('name')->get() as $cat)
+                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                        @endforeach
                     </select>
                 </div>
 
@@ -179,11 +178,11 @@
 
         @interact('column_category', $row)
             <span class="px-2 py-1 text-xs font-semibold rounded-full
-                {{ $row->category === 'raw_material' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : '' }}
-                {{ $row->category === 'packaging' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : '' }}
-                {{ $row->category === 'consumable' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : '' }}
-                {{ $row->category === 'equipment' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' : '' }}">
-                {{ ucfirst(str_replace('_', ' ', $row->category)) }}
+                {{ $row->category?->name === 'Raw Material' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : '' }}
+                {{ $row->category?->name === 'Packaging' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : '' }}
+                {{ $row->category?->name === 'Consumable' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : '' }}
+                {{ $row->category?->name === 'Equipment' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' : '' }}">
+                {{ $row->category?->name ?? 'N/A' }}
             </span>
         @endinteract
 

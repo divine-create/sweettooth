@@ -416,7 +416,7 @@ class Index extends BaseComponent
     public function render()
     {
         // Get filtered departments with pagination
-        $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 5);
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 5));
 
         // Return view with table structure and data
         return view('livewire.branch-dashboard.department-module.index', [

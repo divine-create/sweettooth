@@ -380,7 +380,7 @@ class Index extends BaseComponent
     {
         $cacheKey = $this->getCacheKey();
         $rows = Cache::remember($cacheKey, now()->addMinutes($this->cacheTtlMinutes), function () {
-            return $this->getFilteredQuery()->paginate($this->quantity ?? 10);
+            return $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
         });
 
         // Add sequential numbers to the rows

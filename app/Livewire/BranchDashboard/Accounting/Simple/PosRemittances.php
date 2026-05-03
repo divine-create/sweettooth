@@ -321,7 +321,7 @@ class PosRemittances extends Component
 
     public function render()
     {
-        $rows = $this->getRemittancesQuery()->paginate($this->quantity ?? 10);
+        $rows = $this->getRemittancesQuery()->paginate((int) ($this->quantity ?? 10));
 
         return view('livewire.branch-dashboard.accounting.simple.pos-remittances', [
             'rows' => $rows,

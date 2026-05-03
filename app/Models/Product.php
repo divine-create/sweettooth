@@ -20,6 +20,7 @@ class Product extends Model
         'name',
         'sku',
         'product_type_id',
+        'department_id',
         'sales_department_id',
         'category_id',
         'description',
@@ -113,6 +114,14 @@ class Product extends Model
     public function salesDepartment(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'sales_department_id');
+    }
+
+    /**
+     * Get the production department that owns this product.
+     */
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'department_id');
     }
 
     /**

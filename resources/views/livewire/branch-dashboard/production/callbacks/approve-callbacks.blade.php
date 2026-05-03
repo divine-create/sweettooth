@@ -1,17 +1,18 @@
 <div class="p-3 space-y-3">
-    <x-breadcrumb title="Production Callbacks" :items="[
+    <x-breadcrumb :title="__('Approve Returns')" :items="[
         ['label' => 'Dashboard', 'url' => branch_route('branch-dashboard.index')],
         ['label' => 'Production'],
-        ['label' => 'Callbacks'],
+        ['label' => $deptSlug ? ucfirst(str_replace('-', ' ', $deptSlug)) : 'Callbacks'],
+        ['label' => 'Approve Returns'],
     ]" :compact="false" :with-icons="true" />
 
     <!-- Header -->
-    <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-4 text-white shadow-lg">
+    <div class="bg-gradient-to-r from-red-600 to-red-700 rounded-lg p-4 text-white shadow-lg">
         <div class="flex justify-between items-center">
             <div>
-                <h2 class="text-xl font-bold">Production Callbacks Management</h2>
+                <h2 class="text-xl font-bold">{{ $deptSlug ? ucfirst(str_replace('-', ' ', $deptSlug)) . ' - ' : '' }} Approve Sales Returns</h2>
                 <p class="text-sm opacity-90 mt-1">
-                    Review and approve callbacks from sales departments
+                    Review and receive products returned from the Sales department
                 </p>
             </div>
         </div>

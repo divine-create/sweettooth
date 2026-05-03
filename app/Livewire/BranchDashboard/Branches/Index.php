@@ -311,7 +311,7 @@ class Index extends BaseComponent
 
     public function render()
     {
-        $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 10);
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
 
         // Only load users when modal is open to avoid loading on every render
         $users = $this->showBranchModal ? User::select('id', 'name')->get() : collect();

@@ -118,7 +118,7 @@
                             class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-blue-500">
                             <option value="">All Types</option>
                             @foreach ($productTypes as $type)
-                                <option value="{{ $type->id }}">{{ $type->name }} ({{ $type->department->name }})
+                                <option value="{{ $type->id }}">{{ $type->name }}@if($type->department) ({{ $type->department->name }})@endif
                                 </option>
                             @endforeach
                         </select>

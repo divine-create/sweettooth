@@ -67,9 +67,8 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
         Route::prefix('hr')->name('hr.')->group(function () {
             Route::prefix('appraisals')->name('appraisals.')->group(function () {
                 Route::get('/cycles', App\Livewire\BranchDashboard\HR\AppraisalCycles::class)->name('cycles');
-             
+
             });
-         
 
             Route::prefix('reports')->name('reports.')->group(function () {
                 Route::middleware('role_or_permission:manage-organization')->get(
@@ -122,7 +121,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
     Route::middleware(['role_or_permission:manage-settings', 'role.level:5'])
         ->get('settings', \App\Livewire\BranchDashboard\Settings\Index::class)
         ->name('settings.index');
-    
+
     // PROFILE SETTINGS (All authenticated users)
     Route::get('profile', \App\Livewire\BranchDashboard\Settings\Profile::class)
         ->name('profile');
@@ -169,6 +168,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
         // Inventory routes
         Route::prefix('inventory')->name('inventory.')->group(function () {
             Route::get('items', \App\Livewire\BranchDashboard\Inventory\Items::class)->name('items');
+            Route::get('item-categories', \App\Livewire\BranchDashboard\Inventory\ItemCategories\Index::class)->name('item-categories');
             Route::get('purchases', \App\Livewire\BranchDashboard\Inventory\Purchases::class)->name('purchases');
             Route::get('stocks', \App\Livewire\BranchDashboard\Inventory\Stocks::class)->name('stocks');
             Route::get('item-requests', \App\Livewire\BranchDashboard\Inventory\ItemRequests::class)->name('item-requests');
@@ -177,6 +177,10 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             Route::get('health-checks', \App\Livewire\BranchDashboard\Inventory\HealthChecks::class)->name('health-checks');
             Route::get('reports', \App\Livewire\BranchDashboard\Inventory\Reports\Index::class)->name('reports');
             Route::get('reports/{id}', \App\Livewire\BranchDashboard\Inventory\Reports\Show::class)->name('reports.show');
+
+            // Material Requests (new system)
+            Route::get('material-requests', \App\Livewire\BranchDashboard\Inventory\MaterialRequests::class)->name('material-requests');
+            Route::get('material-approvals', \App\Livewire\BranchDashboard\Inventory\MaterialApprovals::class)->name('material-approvals');
 
             // Shift Closing - Inventory (not department-based)
             Route::get('shift-closing', \App\Livewire\BranchDashboard\Inventory\ShiftClosing\Index::class)->name('shift-closing');
@@ -196,8 +200,6 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             Route::get('/{supplier}/performance', \App\Livewire\BranchDashboard\Supplier\SupplierPerformance::class)->name('performance');
         });
 
-      
-
         // Analytics routes
         Route::prefix('analytics')->name('analytics.')->group(function () {
             Route::get('overview', \App\Livewire\BranchDashboard\Analytics\OverallSummaryDashboard::class)->name('overview');
@@ -207,6 +209,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             Route::get('request-dispatch', \App\Livewire\BranchDashboard\Analytics\RequestDispatchAnalytics::class)->name('request-dispatch');
             Route::get('alerts', \App\Livewire\BranchDashboard\Analytics\AlertsDashboard::class)->name('alerts');
             Route::get('stock-valuation', \App\Livewire\BranchDashboard\Analytics\StockValuation::class)->name('stock-valuation');
+            Route::get('item-usage', \App\Livewire\BranchDashboard\Analytics\ItemUsageAnalytics::class)->name('item-usage');
         });
 
         // Print routes
@@ -340,6 +343,6 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
 
         // Sales Dashboard routes - Modular System
         // Protected by department.scope + workflow middleware for proper step validation
-    require __DIR__. '/production-sales-route.php';
+        require __DIR__.'/production-sales-route.php';
     }); // Close require_active_shift middleware group
 });

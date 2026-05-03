@@ -202,9 +202,7 @@ class Recipes extends BaseComponent
 
     public function render()
     {
-        $rows = Cache::remember($this->getCacheKey(), now()->addMinutes($this->cacheTtlMinutes), function () {
-            return $this->getFilteredQuery()->paginate($this->quantity ?? 10);
-        });
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
 
         $dropdownCacheKey = 'recipes_dropdowns_' . ($this->dept_slug ?? 'all');
         [

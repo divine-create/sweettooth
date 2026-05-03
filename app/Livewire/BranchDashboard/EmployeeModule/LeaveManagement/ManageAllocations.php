@@ -79,7 +79,7 @@ class ManageAllocations extends BaseComponent
             });
         }
 
-        return $query->orderBy('name')->paginate($this->quantity);
+        return $query->orderBy('name')->paginate((int) $this->quantity);
     }
 
     public function openAllocationModal($employeeId)

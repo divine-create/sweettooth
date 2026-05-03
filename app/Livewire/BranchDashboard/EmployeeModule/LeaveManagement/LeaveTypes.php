@@ -94,7 +94,7 @@ class LeaveTypes extends BaseComponent
             });
         }
 
-        return $query->orderBy('name')->paginate($this->quantity);
+        return $query->orderBy('name')->paginate((int) $this->quantity);
     }
 
     public function openCreateModal()

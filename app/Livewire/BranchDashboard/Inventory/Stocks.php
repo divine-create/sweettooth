@@ -140,7 +140,7 @@ class Stocks extends BaseComponent
             ->when($this->filterDateTo, fn ($q) => $q->whereDate('last_stock_take_date', '<=', $this->filterDateTo))
             ->orderBy('updated_at', 'desc');
 
-        $stocks = $query->paginate($this->quantity ?? 15);
+        $stocks = $query->paginate((int) ($this->quantity ?? 15));
 
         return view('livewire.branch-dashboard.inventory.stocks', [
             'stocks' => $stocks,

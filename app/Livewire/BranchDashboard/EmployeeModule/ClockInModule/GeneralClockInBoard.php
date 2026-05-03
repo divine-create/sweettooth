@@ -232,7 +232,7 @@ class GeneralClockInBoard extends BaseComponent
         $branchId = $this->b_id ?: current_branch_id();
         $branch = current_branch();
 
-        $shifts = $this->getGeneralClockIns()->paginate($this->quantity);
+        $shifts = $this->getGeneralClockIns()->paginate((int) $this->quantity);
         $stats = $this->getGeneralStats();
 
         // Get departments for this branch

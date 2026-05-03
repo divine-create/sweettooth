@@ -167,8 +167,8 @@
                     'equipment' => 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
                 ];
             @endphp
-            <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $categoryColors[$row->item->category ?? ''] ?? '' }}">
-                {{ ucfirst(str_replace('_', ' ', $row->item->category ?? 'N/A')) }}
+            <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $categoryColors[$row->item->category?->name ?? ''] ?? '' }}">
+                {{ ucfirst(str_replace('_', ' ', $row->item->category?->name ?? 'N/A')) }}
             </span>
         @endinteract
 

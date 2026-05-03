@@ -247,8 +247,8 @@ class ProductionAuditService
             null,
             [
                 'recipe_name' => $recipe->product_name,
-                'yield' => $recipe->yield,
-                'unit_cost' => $recipe->unit_cost,
+                'yield' => $recipe->yield_quantity,
+                'unit_cost' => $recipe->cost_per_unit,
                 'ingredients_count' => count($ingredients ?? []),
                 'ingredients' => $ingredients,
             ]

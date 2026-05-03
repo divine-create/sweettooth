@@ -23,6 +23,8 @@ class Recipe extends Model
         'preparation_time',
         'instructions',
         'status',
+        'is_wip',
+        'is_active',
         'created_by_id',
         'created_by_type',
     ];
@@ -32,6 +34,8 @@ class Recipe extends Model
         'status' => 'string',
         'cost_per_unit' => 'decimal:4',
         'yield_quantity' => 'decimal:2',
+        'is_wip' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function branch(): BelongsTo

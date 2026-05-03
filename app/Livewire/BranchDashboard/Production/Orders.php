@@ -155,7 +155,7 @@ class Orders extends BaseComponent
 
     public function render()
     {
-        $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 20);
+        $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 20));
         $departments = Department::orderBy('name')->get();
 
         return view('livewire.branch-dashboard.production.orders', [

@@ -133,19 +133,19 @@ class DepartmentObserver
                 'order' => 8,
             ],
 
-            // Callbacks Section
+            // Material Returns Section
             [
-                'name' => 'View Callbacks',
-                'slug' => 'callbacks-index',
-                'route_name' => "branch-dashboard.production.callbacks.index",
-                'icon' => 'arrow-path',
+                'name' => 'Return History',
+                'slug' => 'material-returns-history',
+                'route_name' => "branch-dashboard.production.material-returns.history",
+                'icon' => 'clock',
                 'order' => 9,
             ],
             [
-                'name' => 'Approve Sales Callbacks',
-                'slug' => 'callbacks-approve',
-                'route_name' => "branch-dashboard.production.callbacks.approve-sales-callbacks",
-                'icon' => 'check-circle',
+                'name' => 'Return Item',
+                'slug' => 'material-returns-create',
+                'route_name' => "branch-dashboard.production.material-returns.create",
+                'icon' => 'arrow-path',
                 'order' => 10,
             ],
 
