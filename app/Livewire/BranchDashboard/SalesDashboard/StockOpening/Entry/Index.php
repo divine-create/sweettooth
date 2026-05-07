@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\Shift;
+use App\Models\Callback;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -53,23 +54,29 @@ class Index extends BaseComponent
 
         $branchId = $this->getBranchId();
 
-        // First try branch-specific department
-        $department = Department::where('slug', $this->salesDeptSlug)
-            ->where('branch_id', $branchId)
-            ->first();
-
-        // Then try global department
-        if (! $department) {
+        // If we have a slug, resolve it first
+        if ($this->salesDeptSlug) {
             $department = Department::where('slug', $this->salesDeptSlug)
-                ->whereNull('branch_id')
+                ->where('branch_id', $branchId)
                 ->first();
+
+            if (! $department) {
+                $department = Department::where('slug', $this->salesDeptSlug)
+                    ->whereNull('branch_id')
+                    ->first();
+            }
+
+            if ($department) {
+                return [$department->id];
+            }
         }
 
-        if (! $department) {
-            return [];
+        // Fallback to explicit departmentId if provided
+        if ($this->departmentId) {
+            return [(int) $this->departmentId];
         }
 
-        return [$department->id];
+        return [];
     }
 
     protected function loadAvailableShifts(): void
@@ -125,35 +132,62 @@ class Index extends BaseComponent
             ->orderBy('name')
             ->get();
 
-        // Get today's existing stock records
-        $todayStocks = ProductStock::where('stock_date', $stockDate)
+        // Get today's existing stock records - scoped to this employee's shift
+        $todayStocksQuery = ProductStock::where('stock_date', $stockDate)
             ->whereIn('product_id', $selectedProductIds)
-            ->get()
-            ->keyBy('product_id');
+            ->where('shift_type', $this->shiftType);
+
+        if ($this->currentShiftId) {
+            $todayStocksQuery->where('shift_id', (int) $this->currentShiftId);
+        } elseif (! empty($salesDepartmentIds)) {
+            $todayStocksQuery->whereIn('department_id', $salesDepartmentIds);
+        }
+
+        $todayStocks = $todayStocksQuery->get()->keyBy('product_id');
+
+        $todayStockIds = $todayStocks->pluck('id')->filter()->all();
 
         // Get previous shift's closing - the most recent closing before current shift
-        // For morning: get yesterday's closing
-        // For afternoon/other: get today's morning closing (or most recent before this shift)
+        $primaryDeptId = ! empty($salesDepartmentIds) ? reset($salesDepartmentIds) : null;
         $previousClosingQuery = ProductStock::query()
             ->whereIn('product_id', $selectedProductIds)
-            ->whereIn('department_id', $salesDepartmentIds)
-            ->whereNotNull('closing_quantity')
-            ->where('closing_quantity', '>', 0);
+            ->whereNotNull('closing_quantity');
 
-        if ($this->shiftType === 'morning') {
-            // Morning shift: load yesterday's closing
-            $previousClosingQuery->where('stock_date', '<', $stockDate);
-        } else {
-            // Afternoon/other shift: load today's closing from earlier shift(s)
-            $previousClosingQuery->where('stock_date', '<=', $stockDate);
+        if (! empty($salesDepartmentIds)) {
+            $previousClosingQuery->whereIn('department_id', $salesDepartmentIds);
+            if ($primaryDeptId) {
+                $previousClosingQuery->orderByRaw('department_id = ? DESC', [$primaryDeptId]);
+            }
+        }
+
+        $previousClosingQuery->orderByDesc('id');
+
+        if (! empty($todayStockIds)) {
+            $minId = min($todayStockIds);
+            $previousClosingQuery->where('id', '<', $minId);
         }
 
         $previousStocks = $previousClosingQuery
-            ->orderByDesc('stock_date')
-            ->orderByDesc('id')
             ->get()
             ->unique('product_id')
             ->keyBy('product_id');
+
+        // Get today's dispatches (additions)
+        $dispatchRows = \App\Models\ProductDispatch::query()
+            ->whereIn('product_id', $selectedProductIds)
+            ->whereIn('sales_department_id', $salesDepartmentIds)
+            ->whereIn('status', ['pending_verification', 'accepted', 'received'])
+            ->where(function ($query) use ($stockDate) {
+                $query->whereDate('dispatch_date', $stockDate)
+                    ->orWhereDate('dispatch_time', $stockDate)
+                    ->orWhereDate('received_at', $stockDate);
+            })
+            ->get(['product_id', 'quantity', 'received_quantity', 'shift_type', 'created_at', 'received_at', 'dispatch_time']);
+
+        $dispatchRowsByProduct = [];
+        foreach ($dispatchRows as $row) {
+            $dispatchRowsByProduct[(string) $row->product_id][] = $row;
+        }
 
         $stockOpenings = [];
         foreach ($products as $product) {
@@ -161,8 +195,30 @@ class Index extends BaseComponent
             $todayStock = $todayStocks[$productId] ?? null;
             $previousStock = $previousStocks[$productId] ?? null;
 
+            $todayAdditions = 0;
+            $productDispatches = $dispatchRowsByProduct[$productId] ?? [];
+
+            foreach ($productDispatches as $dispatchRow) {
+                // If previous stock record is from TODAY, we must be careful not to double-count
+                if ($previousStock && $previousStock->stock_date?->isToday()) {
+                    // Skip if dispatch was for a different shift type (likely already captured in previous stock)
+                    if ($dispatchRow->shift_type && $dispatchRow->shift_type !== $this->shiftType) {
+                        continue;
+                    }
+
+                    // Secondary safety: use cutoff timestamp if shift_type is null or ambiguous
+                    $dispatchTimestamp = $dispatchRow->received_at ?? $dispatchRow->dispatch_time ?? $dispatchRow->created_at;
+                    if ($dispatchTimestamp && $previousStock->created_at && Carbon::parse($dispatchTimestamp)->lte($previousStock->created_at)) {
+                        continue;
+                    }
+                }
+
+                $qty = (float) ($dispatchRow->received_quantity ?? $dispatchRow->quantity);
+                $todayAdditions += $qty;
+            }
+
             $previousClosing = $previousStock ? (float) $previousStock->closing_quantity : 0;
-            $expectedOpening = $previousClosing;
+            $expectedOpening = $previousClosing + $todayAdditions;
             $actualOpening = $todayStock ? (float) $todayStock->opening_quantity : $expectedOpening;
             $variance = $actualOpening - $expectedOpening;
 
@@ -172,6 +228,7 @@ class Index extends BaseComponent
                 'product_sku' => $product->sku,
                 'product_uom' => $product->unitOfMeasure?->symbol,
                 'yesterday_closing' => $previousClosing,
+                'today_additions' => $todayAdditions,
                 'expected_opening' => $expectedOpening,
                 'actual_opening' => $actualOpening,
                 'variance' => $variance,
@@ -188,7 +245,12 @@ class Index extends BaseComponent
 
     public function updatedStockOpenings()
     {
-        // Variance is recalculated automatically via wire:model binding in the view
+        // Recalculate variances if actual opening changes
+        foreach ($this->stockOpenings as $index => $entry) {
+            $expected = (float) ($entry['expected_opening'] ?? 0);
+            $actual = (float) ($entry['actual_opening'] ?? 0);
+            $this->stockOpenings[$index]['variance'] = $actual - $expected;
+        }
     }
 
     public function saveAll()
@@ -203,43 +265,63 @@ class Index extends BaseComponent
         $primaryDeptId = reset($salesDepartmentIds);
 
         foreach ($this->stockOpenings as $entry) {
-            $existingStock = ProductStock::where('stock_date', $stockDate)
+            // Find existing record scoped to this employee's shift
+            $existingStockQuery = ProductStock::where('stock_date', $stockDate)
                 ->where('product_id', $entry['product_id'])
-                ->first();
+                ->where('department_id', $primaryDeptId);
+
+            if ($this->currentShiftId) {
+                $existingStockQuery->where('shift_id', (int) $this->currentShiftId);
+            }
+
+            $existingStock = $existingStockQuery->first();
+
+            $updateData = [
+                'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
+                'opening_quantity' => $entry['actual_opening'],
+                'addition_quantity' => $entry['today_additions'] ?? 0,
+                'production_date' => ! empty($entry['production_date']) ? Carbon::parse($entry['production_date']) : null,
+                'expiry_date' => ! empty($entry['expiry_date']) ? Carbon::parse($entry['expiry_date']) : null,
+                'notes' => $entry['notes'] ?? '',
+                'shift_type' => $this->shiftType,
+                'is_workflow_verified' => true,
+                'verified_at' => now(),
+                'verified_by' => auth()->id(),
+                'workflow_step' => 'opening_verified',
+            ];
 
             if ($existingStock) {
-                $existingStock->update([
-                    'opening_quantity' => $entry['actual_opening'],
-                    'production_date' => ! empty($entry['production_date']) ? Carbon::parse($entry['production_date']) : null,
-                    'expiry_date' => ! empty($entry['expiry_date']) ? Carbon::parse($entry['expiry_date']) : null,
-                    'notes' => $entry['notes'] ?? '',
-                    'shift_type' => $this->shiftType,
-                    'is_workflow_verified' => true,
-                    'verified_at' => now(),
-                    'verified_by' => auth()->id(),
-                ]);
+                $existingStock->update($updateData);
             } else {
-                ProductStock::create([
+                $createData = array_merge($updateData, [
+                    'sales_shift_id' => null,
+                    'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                     'branch_id' => $this->b_id,
                     'department_id' => $primaryDeptId,
                     'product_id' => $entry['product_id'],
                     'stock_date' => $stockDate,
-                    'opening_quantity' => $entry['actual_opening'],
-                    'quantity_available' => $entry['actual_opening'],
                     'quantity_sold' => 0,
-                    'closing_quantity' => $entry['actual_opening'],
-                    'production_date' => ! empty($entry['production_date']) ? Carbon::parse($entry['production_date']) : null,
-                    'expiry_date' => ! empty($entry['expiry_date']) ? Carbon::parse($entry['expiry_date']) : null,
-                    'notes' => $entry['notes'] ?? '',
+                ]);
+                ProductStock::create($createData);
+            }
+
+            // Create variance callback if actual differs from expected
+            $variance = (float)($entry['actual_opening'] ?? 0) - (float)($entry['expected_opening'] ?? 0);
+            if (abs($variance) > 0.001) {
+                Callback::create([
+                    'branch_id' => $this->b_id,
+                    'department_id' => $primaryDeptId,
+                    'product_id' => $entry['product_id'],
+                    'quantity' => abs($variance),
+                    'reason' => $variance < 0 ? 'shortage' : 'excess',
+                    'callback_date' => $stockDate,
                     'shift_type' => $this->shiftType,
-                    'workflow_step' => 'opening_verified',
-                    'is_workflow_verified' => true,
-                    'verified_at' => now(),
-                    'verified_by' => auth()->id(),
+                    'notes' => 'Stock opening variance recorded during shift start.',
+                    'status' => 'pending',
                 ]);
             }
 
-            // Mark as saved
+            // Mark as saved in local state
             $entry['is_saved'] = true;
         }
 

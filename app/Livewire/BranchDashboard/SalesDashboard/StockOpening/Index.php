@@ -343,7 +343,11 @@ class Index extends BaseComponent
             }
         }
 
-        if ($currentUserId) {
+        if ($this->currentShiftId) {
+            // Per-employee isolation: only load this staff member's own stock rows
+            $todayStocksQuery->where('shift_id', (int) $this->currentShiftId);
+        } elseif ($currentUserId) {
+            // Legacy fallback for records without shift_id
             $todayStocksQuery->where(function ($q) use ($currentUserId) {
                 $q->where('verified_by', $currentUserId)
                     ->orWhereNull('verified_by');
@@ -452,14 +456,24 @@ class Index extends BaseComponent
             $dispatchCount = 0;
             $productDispatches = $dispatchRowsByProduct[$productId] ?? [];
             foreach ($productDispatches as $dispatchRow) {
-                $dispatchTimestamp = $dispatchRow->received_at
-                    ?? $dispatchRow->dispatch_time
-                    ?? $dispatchRow->created_at;
-                if (! $dispatchTimestamp && $dispatchRow->dispatch_date) {
-                    $dispatchTimestamp = Carbon::parse($dispatchRow->dispatch_date)->startOfDay();
-                }
-                if ($cutoffTimestamp && $dispatchTimestamp && Carbon::parse($dispatchTimestamp)->lte($cutoffTimestamp)) {
-                    continue;
+                // If previous stock record is from TODAY, we must be careful not to double-count
+                if ($previousStock && $previousStock->stock_date?->isToday()) {
+                    // Skip if dispatch was for a different shift type (likely already captured in previous stock)
+                    if ($dispatchRow->shift_type && $dispatchRow->shift_type !== $this->getProductStockShiftType()) {
+                        continue;
+                    }
+
+                    // Secondary safety: use cutoff timestamp if shift_type is null or ambiguous
+                    $dispatchTimestamp = $dispatchRow->received_at ?? $dispatchRow->dispatch_time ?? $dispatchRow->created_at;
+                    if ($dispatchTimestamp && $previousStock->created_at && Carbon::parse($dispatchTimestamp)->lte($previousStock->created_at)) {
+                        continue;
+                    }
+                } elseif ($cutoffTimestamp) {
+                    // Fallback to cutoff for non-today previous stocks if applicable (usually null)
+                    $dispatchTimestamp = $dispatchRow->received_at ?? $dispatchRow->dispatch_time ?? $dispatchRow->created_at;
+                    if ($dispatchTimestamp && Carbon::parse($dispatchTimestamp)->lte($cutoffTimestamp)) {
+                        continue;
+                    }
                 }
 
                 $quantity = $dispatchRow->status === 'received'
@@ -486,8 +500,9 @@ class Index extends BaseComponent
 
             $varianceSource = 'None';
             if ($variance !== 0.0) {
-                $sourceLabel = trim((string) $previousClosingSource.' '.(string) $previousClosingShift);
-                $varianceSource = 'Stock count difference vs expected opening ('.($sourceLabel !== '' ? $sourceLabel : 'previous closing').' + production)';
+                $sourceDate = $previousStock?->stock_date?->format('Y-m-d') ?? 'unknown date';
+                $sourceShift = $previousStock?->shift_type ?? 'unknown shift';
+                $varianceSource = "Difference vs last recorded closing ({$sourceDate} {$sourceShift}) + additions";
             }
 
             $stockOpeningEntry = [
@@ -582,26 +597,10 @@ class Index extends BaseComponent
 
     private function getExpectedPreviousShiftContext(string $stockDate, string $currentShiftType): array
     {
-        $date = Carbon::parse($stockDate)->toDateString();
-
-        return match ($currentShiftType) {
-            'morning' => [
-                'date' => Carbon::parse($date)->subDay()->toDateString(),
-                'shift' => 'night',
-            ],
-            'afternoon' => [
-                'date' => $date,
-                'shift' => 'morning',
-            ],
-            'night' => [
-                'date' => $date,
-                'shift' => 'afternoon',
-            ],
-            default => [
-                'date' => Carbon::parse($date)->subDay()->toDateString(),
-                'shift' => null,
-            ],
-        };
+        return [
+            'date' => null, // Date no longer strictly enforced for previous
+            'shift' => 'Previous Recorded Shift',
+        ];
     }
 
     /**
@@ -624,41 +623,24 @@ class Index extends BaseComponent
             return [];
         }
 
-        $shiftOrder = [
-            'morning' => 1,
-            'afternoon' => 2,
-            'night' => 3,
-        ];
-        $currentShiftType = $this->getProductStockShiftType();
-        $currentShiftOrder = $shiftOrder[$currentShiftType] ?? 0;
-
         $query = ProductStock::query()
             ->select($stockSelect)
-            ->whereIn('product_id', $productIds)
-            ->where(function ($query) use ($stockDate, $currentShiftOrder): void {
-                $query->where('stock_date', '<', $stockDate);
+            ->whereIn('product_id', $productIds);
 
-                if ($currentShiftOrder > 0) {
-                    $query->orWhere(function ($query) use ($stockDate, $currentShiftOrder): void {
-                        $query->where('stock_date', $stockDate)
-                            ->whereRaw("CASE shift_type WHEN 'morning' THEN 1 WHEN 'afternoon' THEN 2 WHEN 'night' THEN 3 ELSE 0 END <= ?", [$currentShiftOrder]);
-                    });
-                }
-            })
-            ->orderByDesc('stock_date')
-            ->orderByRaw("CASE shift_type WHEN 'morning' THEN 1 WHEN 'afternoon' THEN 2 WHEN 'night' THEN 3 ELSE 0 END DESC")
-            ->orderByDesc('id');
-
-        if ($hasDepartmentColumn) {
-            $query->whereIn('department_id', $salesDepartmentIds);
-            if ($primarySalesDepartmentId !== null) {
-                $query->orderByRaw('department_id = ? DESC', [$primarySalesDepartmentId]);
-            }
+        // Department isolation: ONLY look at the specific department being opened
+        if ($primarySalesDepartmentId !== null) {
+            $query->where('department_id', $primarySalesDepartmentId);
         }
 
+        // Chronological logic: ignore shift names/dates and just look for the absolute 
+        // latest record created before the current shift's records.
         if (! empty($excludeStockIds)) {
-            $query->whereNotIn('id', $excludeStockIds);
+            $minCurrentId = min($excludeStockIds);
+            $query->where('id', '<', $minCurrentId);
         }
+
+        // Final fail-safe chronological sort
+        $query->orderByDesc('id');
 
         return $this->buildPreferredStockMap($query->get(), $primarySalesDepartmentId, $hasDepartmentColumn);
     }
@@ -672,16 +654,11 @@ class Index extends BaseComponent
             return false;
         }
 
-        $currentUserId = auth()->id();
-        if (! $currentUserId) {
-            return false;
-        }
-
         $query = ProductStock::query()
             ->where('stock_date', $this->stockDate)
             ->where('shift_type', $this->getProductStockShiftType())
             ->where('workflow_step', 'opening_verified')
-            ->where('verified_by', $currentUserId);
+            ->where('shift_id', (int) $this->currentShiftId);
 
         if ($this->hasProductStocksDepartmentColumn()) {
             $query->whereIn('department_id', $salesDepartmentIds);
@@ -834,6 +811,7 @@ class Index extends BaseComponent
                     'product_id' => $stockOpening['product_id'],
                     'stock_date' => $this->stockDate,
                     'shift_type' => $this->getProductStockShiftType(),
+                    'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                 ];
 
                 if ($hasDepartmentColumn) {
@@ -843,6 +821,7 @@ class Index extends BaseComponent
                 ProductStock::updateOrCreate(
                     $lookup,
                     [
+                        'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                         'opening_quantity' => (float) $stockOpening['actual_opening'],
                         'production_date' => $stockOpening['production_date'],
                         'expiry_date' => $stockOpening['expiry_date'],
@@ -914,6 +893,7 @@ class Index extends BaseComponent
                     'product_id' => $stockOpening['product_id'],
                     'stock_date' => $this->stockDate,
                     'shift_type' => $this->getProductStockShiftType(),
+                    'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                 ];
 
                 if ($hasDepartmentColumn) {
@@ -924,6 +904,7 @@ class Index extends BaseComponent
                     $lookup,
                     [
                         'sales_shift_id' => null, // Nullable - we use shifts table instead
+                        'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                         'department_id' => $hasDepartmentColumn
                             ? $primarySalesDepartmentId
                             : null,
@@ -964,13 +945,14 @@ class Index extends BaseComponent
                     'product_id' => $product->id,
                     'stock_date' => $this->stockDate,
                     'shift_type' => $this->getProductStockShiftType(),
+                    'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                 ];
 
                 if ($hasDepartmentColumn) {
                     $lookup['department_id'] = $primarySalesDepartmentId;
                 }
 
-                // Check if record already exists
+                // Check if record already exists for this shift
                 $existingStock = ProductStock::where($lookup)->first();
 
                 if (! $existingStock) {
@@ -985,6 +967,7 @@ class Index extends BaseComponent
                     ProductStock::create(
                         array_merge($lookup, [
                             'sales_shift_id' => null,
+                            'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                             'department_id' => $hasDepartmentColumn
                                 ? $primarySalesDepartmentId
                                 : null,
@@ -1301,7 +1284,8 @@ class Index extends BaseComponent
 
         $stockQuery = ProductStock::query()
             ->where('stock_date', $stockDate)
-            ->where('shift_type', $this->getProductStockShiftType());
+            ->where('shift_type', $this->getProductStockShiftType())
+            ->when($this->currentShiftId, fn ($q) => $q->where('shift_id', (int) $this->currentShiftId));
 
         if ($this->hasProductStocksDepartmentColumn()) {
             $stockQuery->whereIn('department_id', $salesDepartmentIds);
@@ -1346,11 +1330,6 @@ class Index extends BaseComponent
             ->all();
     }
 
-    /**
-     * Resolve equivalent sales department IDs from slug in branch/global scope.
-     *
-     * @return array<int>
-     */
     private function resolveEquivalentSalesDepartmentIds(): array
     {
         $signature = implode('|', [
@@ -1362,85 +1341,38 @@ class Index extends BaseComponent
             return $this->cachedSalesDepartmentIds;
         }
 
-        if (! $this->departmentId && ! $this->salesDeptSlug) {
-            $this->cachedSalesDepartmentSignature = $signature;
-            $this->cachedSalesDepartmentIds = [];
-
-            return $this->cachedSalesDepartmentIds;
-        }
+        $branchId = $this->getBranchId();
+        $department = null;
 
         // Prefer explicit slug resolution (branch-specific first, then global).
         if ($this->salesDeptSlug) {
-            $branchId = $this->getBranchId();
-            $department = null;
+            $department = Department::query()
+                ->where('slug', $this->salesDeptSlug)
+                ->where('branch_id', $branchId)
+                ->first();
 
-            if ($branchId) {
+            if (! $department) {
                 $department = Department::query()
                     ->where('slug', $this->salesDeptSlug)
-                    ->where('branch_id', $branchId)
-                    ->first();
-
-                if (! $department) {
-                    $department = Department::query()
-                        ->where('slug', $this->salesDeptSlug)
-                        ->whereNull('branch_id')
-                        ->first();
-                }
-            } else {
-                $department = Department::query()
-                    ->where('slug', $this->salesDeptSlug)
+                    ->whereNull('branch_id')
                     ->first();
             }
-
-            if ($department) {
-                $this->cachedSalesDepartmentSignature = $signature;
-                $this->cachedSalesDepartmentIds = [(int) $department->id];
-
-                return $this->cachedSalesDepartmentIds;
-            }
         }
 
-        $branchId = $this->getBranchId();
-        $query = Department::query()
-            ->whereHas('category', function ($categoryQuery) {
-                $categoryQuery->whereRaw('LOWER(name) = ?', ['sales']);
-            });
-
-        if ($this->salesDeptSlug) {
-            $query->where('slug', $this->salesDeptSlug);
-        } elseif ($this->departmentId) {
-            $query->where('id', (int) $this->departmentId);
+        // If no department found by slug, use departmentId from context
+        if (! $department && $this->departmentId) {
+            $department = Department::find($this->departmentId);
         }
 
-        if ($branchId) {
-            $query->where(function ($scopeQuery) use ($branchId) {
-                $scopeQuery->where('branch_id', $branchId)
-                    ->orWhereNull('branch_id');
-            });
-        }
-
-        $ids = $query->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        if (! empty($ids)) {
+        if ($department) {
             $this->cachedSalesDepartmentSignature = $signature;
-            $this->cachedSalesDepartmentIds = $ids;
-
-            return $this->cachedSalesDepartmentIds;
-        }
-
-        if ($this->departmentId) {
-            $this->cachedSalesDepartmentSignature = $signature;
-            $this->cachedSalesDepartmentIds = [(int) $this->departmentId];
+            $this->cachedSalesDepartmentIds = [(int) $department->id];
 
             return $this->cachedSalesDepartmentIds;
         }
 
         $this->cachedSalesDepartmentSignature = $signature;
-        $this->cachedSalesDepartmentIds = $this->departmentId ? [(int) $this->departmentId] : [];
+        $this->cachedSalesDepartmentIds = [];
 
         return $this->cachedSalesDepartmentIds;
     }

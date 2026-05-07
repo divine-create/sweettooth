@@ -123,31 +123,39 @@ class Index extends BaseComponent
 
         $stocks = ProductStock::where('stock_date', $this->shiftDate)
             ->where('shift_type', $this->getProductStockShiftType())
-            ->when(Schema::hasColumn('product_stocks', 'department_id'), function ($query) {
+            ->when(Schema::hasColumn('product_stocks', 'department_id') && $this->departmentId, function ($query) {
                 $query->where('department_id', $this->departmentId);
-            })
-            ->whereHas('product', function($q) {
-                $q->whereHas('departments', function($dq) {
-                    $dq->where('department_id', $this->departmentId);
-                });
             })
             ->with('product')
             ->get();
 
         $closingStocks = [];
         foreach ($stocks as $stock) {
-            // Calculate sold quantity from SaleItems
-            $soldQuantity = SaleItem::whereHas('sale', function($q) use ($shift) {
-                $q->where('branch_id', $this->branchId)
-                  ->where('department_id', $this->departmentId)
-                  ->whereDate('sale_time', $this->shiftDate)
-                  ->where('status', '!=', 'cancelled');
+            // Calculate sold quantity from SaleItems for this employee's shift only
+            $soldQuantity = SaleItem::whereHas('sale', function($q) {
+                if ($this->currentShiftId) {
+                    $q->where('shift_id', $this->currentShiftId);
+                } else {
+                    $q->where('branch_id', $this->branchId)
+                      ->where('department_id', $this->departmentId)
+                      ->whereDate('sale_time', $this->shiftDate);
+                }
+                $q->where('status', '!=', 'cancelled');
             })
             ->where('product_id', $stock->product_id)
             ->sum('quantity');
 
-            // Calculate expected closing: opening + additions - sold
-            $expectedClosing = ($stock->opening_quantity + $stock->addition_quantity) - $soldQuantity;
+            // Calculate expected closing using model formula: Opening + Addition - Callback - Redress - Transfer - Glovo - Sold
+            $expectedClosing = (
+                (float) $stock->opening_quantity + 
+                (float) $stock->addition_quantity - 
+                (float) $stock->callback_quantity - 
+                (float) $stock->redress_quantity - 
+                (float) $stock->transfer_quantity - 
+                (float) $stock->glovo_quantity - 
+                (float) $soldQuantity -
+                (float) ($stock->quantity_reserved ?? 0)
+            );
 
             // Actual closing defaults to expected unless this stock was already closed.
             $actualClosing = ($stock->workflow_step ?? null) === 'closing_completed'
@@ -194,12 +202,16 @@ class Index extends BaseComponent
         $shift = Shift::find($this->currentShiftId);
         if (!$shift) return;
 
-        $sales = Sale::where('branch_id', $this->branchId)
-            ->where('department_id', $this->departmentId)
-            ->whereBetween('sale_time', [
-                $shift->clock_in ?? $shift->shift_date->startOfDay(),
-                now()
-            ])
+        $salesQuery = $this->currentShiftId
+            ? Sale::where('shift_id', $this->currentShiftId)
+            : Sale::where('branch_id', $this->branchId)
+                ->where('department_id', $this->departmentId)
+                ->whereBetween('sale_time', [
+                    $shift->clock_in ?? $shift->shift_date->startOfDay(),
+                    now()
+                ]);
+
+        $sales = $salesQuery
             ->where('status', '!=', 'cancelled')
             ->with(['saleItems.product', 'payments'])
             ->get();
@@ -287,12 +299,16 @@ class Index extends BaseComponent
         if (!$shift) return;
 
         $payments = Payment::whereHas('sale', function($q) use ($shift) {
-            $q->where('branch_id', $this->branchId)
-              ->where('department_id', $this->departmentId)
-              ->whereBetween('sale_time', [
-                  $shift->clock_in ?? $shift->shift_date->startOfDay(),
-                  now()
-              ]);
+            if ($this->currentShiftId) {
+                $q->where('shift_id', $this->currentShiftId);
+            } else {
+                $q->where('branch_id', $this->branchId)
+                  ->where('department_id', $this->departmentId)
+                  ->whereBetween('sale_time', [
+                      $shift->clock_in ?? $shift->shift_date->startOfDay(),
+                      now()
+                  ]);
+            }
         })
         ->where('status', 'completed')
         ->get();
@@ -414,8 +430,8 @@ class Index extends BaseComponent
                 $productStock = ProductStock::where('stock_date', $this->shiftDate)
                     ->where('shift_type', $this->getProductStockShiftType())
                     ->where('product_id', $stockData['product_id'])
-                    ->when(Schema::hasColumn('product_stocks', 'department_id'), function ($query) {
-                        $query->where('department_id', $this->departmentId);
+                    ->when(Schema::hasColumn('product_stocks', 'department_id') && $this->departmentId, function ($q) {
+                        $q->where('department_id', $this->departmentId);
                     })
                     ->first();
 
@@ -496,9 +512,11 @@ class Index extends BaseComponent
 
             // Update workflow metadata
             $metadata = $shift->metadata ?? [];
-            $salesScope = Sale::where('branch_id', $this->branchId)
-                ->where('department_id', $this->departmentId)
-                ->whereBetween('sale_time', [$shiftStart, $shiftEnd]);
+            $salesScope = $this->currentShiftId
+                ? Sale::where('shift_id', $this->currentShiftId)
+                : Sale::where('branch_id', $this->branchId)
+                    ->where('department_id', $this->departmentId)
+                    ->whereBetween('sale_time', [$shiftStart, $shiftEnd]);
 
             // Finalize any pending sales that are fully paid.
             $finalizedPendingSales = 0;

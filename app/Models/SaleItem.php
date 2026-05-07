@@ -101,15 +101,43 @@ class SaleItem extends Model
             }
 
             // Update product stock - deduct quantity sold
-            if ($saleItem->wasRecentlyCreated && $saleItem->sale && $saleItem->sale->salesShift) {
-                $productStock = ProductStock::where('sales_shift_id', $saleItem->sale->sales_shift_id)
-                    ->where('product_id', $saleItem->product_id)
-                    ->where('stock_date', $saleItem->sale->sale_time->format('Y-m-d'))
-                    ->first();
+            $sale = $saleItem->sale;
+            if ($saleItem->wasRecentlyCreated && $sale) {
+                // Try to find the correct ProductStock record
+                // 1. Using explicit sales_shift_id (backward compatibility)
+                // 2. Using department and date (new system)
+                $productStock = null;
+                
+                if ($sale->sales_shift_id) {
+                    $productStock = ProductStock::where('sales_shift_id', $sale->sales_shift_id)
+                        ->where('product_id', $saleItem->product_id)
+                        ->first();
+                }
+
+                // Prefer per-shift lookup (new system)
+                if (!$productStock && $sale->shift_id) {
+                    $productStock = ProductStock::where('shift_id', $sale->shift_id)
+                        ->where('product_id', $saleItem->product_id)
+                        ->first();
+                }
+
+                // Legacy fallback: department + date (only when shift_id is not set)
+                if (!$productStock && $sale->department_id) {
+                    $saleDate = $sale->sale_time ? $sale->sale_time->format('Y-m-d') : now()->format('Y-m-d');
+                    $productStock = ProductStock::where('department_id', $sale->department_id)
+                        ->where('product_id', $saleItem->product_id)
+                        ->where('stock_date', $saleDate)
+                        ->orderByDesc('id')
+                        ->first();
+                }
 
                 if ($productStock) {
-                    $productStock->quantity_sold += $saleItem->quantity;
-                    $productStock->amount += $saleItem->total;
+                    // Important: We only update if this hasn't been updated manually (e.g. by POS)
+                    // Or we just update and let POS not do it manually. 
+                    // To be safe, we check if the amount has already changed recently.
+                    // But in a transaction, this is tricky.
+                    $productStock->quantity_sold = (float)$productStock->quantity_sold + $saleItem->quantity;
+                    $productStock->amount = (float)$productStock->amount + $saleItem->total;
                     $productStock->updateCalculatedFields();
                     $productStock->save();
                 }

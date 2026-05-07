@@ -28,11 +28,12 @@ class SalesStockVerificationService
             return true; // No products to verify
         }
 
-        // Check if stock records exist for today's shift
+        // Check if stock records exist for this specific employee's shift
         $verifiedCount = ProductStock::whereDate('stock_date', $shift->shift_date)
             ->where('shift_type', $shift->shift_type)
             ->whereIn('product_id', $productIds)
-            ->whereNotNull('opening_quantity') // Must have opening quantity set
+            ->whereNotNull('opening_quantity')
+            ->where('shift_id', (int) $shiftId)
             ->count();
 
         return $verifiedCount > 0;

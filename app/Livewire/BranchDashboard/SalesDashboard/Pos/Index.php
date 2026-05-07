@@ -50,6 +50,7 @@ class Index extends BaseComponent
     public array $payments = [];
     public float $paymentTotal = 0.0;
     public float $paymentRemaining = 0.0;
+    public string $shiftType = 'morning';
     protected ?CursorPaginator $productsForView = null;
     protected ?array $productAvailabilityForView = null;
     protected ?array $productsPayloadForView = null;
@@ -186,9 +187,13 @@ class Index extends BaseComponent
             ->whereDate('shift_date', Carbon::today())
             ->first();
 
-        $this->activeShiftId = $shift?->id;
+        if ($shift) {
+            $this->activeShiftId = $shift->id;
+            $this->shiftType = (string) ($shift->shift_type ?: 'morning');
+        } else {
+            $this->activeShiftId = null;
+        }
     }
-
 
     #[Computed]
     public function activeShift()
@@ -538,6 +543,7 @@ class Index extends BaseComponent
 
             $sale = Sale::create([
                 'sales_shift_id' => null, // Nullable - using general shifts table instead
+                'shift_id' => $this->activeShiftId,
                 'branch_id' => $this->branchId,
                 'department_id' => $this->departmentId,
                 'table_id' => $this->selectedTableId,
@@ -696,6 +702,7 @@ class Index extends BaseComponent
         // Persist as draft without affecting stock
         $sale = Sale::create([
             'sales_shift_id' => null, // Nullable - using general shifts table instead
+            'shift_id' => $this->activeShiftId,
             'branch_id' => $this->branchId,
             'department_id' => $this->departmentId,
             'table_id' => $this->selectedTableId,
@@ -791,6 +798,7 @@ class Index extends BaseComponent
 
         $q = ProductStock::query()
             ->whereDate('stock_date', Carbon::today())
+            ->where('shift_type', $this->getProductStockShiftType())
             ->where('product_id', $productId);
 
         if ($hasDepartmentColumn) {
@@ -857,7 +865,12 @@ class Index extends BaseComponent
         $q = Product::query()
             ->active()
             ->available()
-            ->whereIn('sales_department_id', $departmentIds)
+            ->where(function($q) use ($departmentIds) {
+                $q->whereIn('sales_department_id', $departmentIds)
+                  ->orWhereHas('departments', function($dq) use ($departmentIds) {
+                      $dq->whereIn('department_id', $departmentIds);
+                  });
+            })
             ->select(['products.id', 'products.name', 'products.price', 'products.sku', 'products.uom_id', 'products.sales_uom_id'])
             ->with(['unitOfMeasure:id,symbol', 'salesUom:id,symbol'])
             ->orderBy('name');
@@ -877,7 +890,9 @@ class Index extends BaseComponent
 
         $latestStockIds = ProductStock::query()
             ->selectRaw('MAX(id) as id, product_id')
-            ->when($hasDepartmentColumn, function ($query) use ($departmentIdsForStock) {
+            ->whereDate('stock_date', Carbon::today())
+            ->where('shift_type', $this->getProductStockShiftType())
+            ->when($hasDepartmentColumn && ! empty($departmentIdsForStock), function ($query) use ($departmentIdsForStock) {
                 $query->whereIn('department_id', $departmentIdsForStock);
             })
             ->when($hasBranchColumn && $this->branchId, function ($query) {
@@ -895,11 +910,18 @@ class Index extends BaseComponent
         ->when($hasBranchColumn && $this->branchId, function ($query) {
             $query->where('ps.branch_id', $this->branchId);
         })
-        ->whereRaw(
-            $hasReservedColumn
-                ? 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold - ps.quantity_reserved)) > 0'
-                : 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold)) > 0'
-        );
+        ->where(function ($query) use ($hasReservedColumn) {
+            $query->whereRaw(
+                $hasReservedColumn
+                    ? 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold - ps.quantity_reserved)) > 0'
+                    : 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold)) > 0'
+            );
+
+            // Also include products that have been verified for TODAY, even if zero stock
+            if (Schema::hasColumn('product_stocks', 'stock_date')) {
+                $query->orWhereDate('ps.stock_date', Carbon::today());
+            }
+        });
 
         if (strlen($this->search)) {
             $q->where(function ($query) {
@@ -1197,6 +1219,7 @@ class Index extends BaseComponent
                 // Create new sale
                 $sale = Sale::create([
                     'sales_shift_id' => null, // Nullable - using general shifts table instead
+                    'shift_id' => $this->activeShiftId,
                     'branch_id' => $this->branchId,
                     'department_id' => $this->departmentId,
                     'table_id' => $table->id,
@@ -1614,4 +1637,8 @@ class Index extends BaseComponent
         return count($sharedTokens) === $shorterTokenCount;
     }
 
+    private function getProductStockShiftType(): string
+    {
+        return ProductStock::normalizeShiftType($this->shiftType);
+    }
 }

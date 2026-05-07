@@ -6,23 +6,24 @@ use App\Services\UomConversionService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Shift;
 
 class ProductStock extends Model
 {
     public static function normalizeShiftType(?string $shiftType): string
     {
-        $shiftType = strtolower(trim((string) $shiftType));
+        $shiftType = strtolower(trim((string) ($shiftType ?? 'morning')));
 
-        if (in_array($shiftType, ['morning', 'afternoon'], true)) {
+        if (in_array($shiftType, ['morning', 'afternoon', 'night'], true)) {
             return $shiftType;
         }
 
-        // Product stocks only support morning/afternoon. Map others (night, etc.) to afternoon.
-        return 'afternoon';
+        return 'morning';
     }
 
     protected $fillable = [
         'sales_shift_id',
+        'shift_id',
         'department_id',
         'product_id',
         'stock_date',
@@ -65,6 +66,11 @@ class ProductStock extends Model
     {
         // sales_shift_id is nullable - we use the general shifts table instead
         return $this->belongsTo(SalesShift::class, 'sales_shift_id');
+    }
+
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class);
     }
 
     public function product(): BelongsTo
@@ -183,7 +189,11 @@ class ProductStock extends Model
     public function updateCalculatedFields(): void
     {
         $this->total_available = $this->calculateTotalAvailable();
-        $this->closing_quantity = $this->calculateClosing();
+        
+        // Preserve manually entered closing quantity if shift is already completed
+        if (($this->workflow_step ?? null) !== 'closing_completed') {
+            $this->closing_quantity = $this->calculateClosing();
+        }
 
         // Auto-calculate expiry if production date is set
         if ($this->production_date && ! $this->expiry_date) {

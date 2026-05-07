@@ -12,6 +12,7 @@ class Sale extends Model
 {
     protected $fillable = [
         'sales_shift_id',
+        'shift_id',
         'branch_id',
         'department_id',
         'table_id',
@@ -44,6 +45,11 @@ class Sale extends Model
     public function salesShift(): BelongsTo
     {
         return $this->belongsTo(SalesShift::class, 'sales_shift_id');
+    }
+
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class);
     }
 
     public function branch(): BelongsTo
