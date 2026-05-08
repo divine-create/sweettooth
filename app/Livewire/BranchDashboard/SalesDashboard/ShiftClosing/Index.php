@@ -436,27 +436,33 @@ class Index extends BaseComponent
                     ->first();
 
                 if ($productStock) {
-                    $productStock->closing_quantity = $stockData['actual_closing'];
-                    $productStock->quantity_sold = $stockData['sold_quantity'];
-                    $productStock->notes = $stockData['notes'];
-                    $productStock->workflow_step = 'closing_completed';
-                    $productStock->is_workflow_verified = true;
-                    $productStock->verified_at = now();
-                    $productStock->verified_by = auth()->id();
-                    $productStock->save();
+                    // Use direct DB update to preserve the manually entered closing_quantity
+                    // without triggering the saving hook (which would recalculate and overwrite it)
+                    DB::table('product_stocks')->where('id', $productStock->id)->update([
+                        'closing_quantity' => $stockData['actual_closing'],
+                        'quantity_sold'    => $stockData['sold_quantity'],
+                        'notes'            => $stockData['notes'],
+                        'workflow_step'    => 'closing_completed',
+                        'is_workflow_verified' => true,
+                        'verified_at'      => now(),
+                        'verified_by'      => auth()->id(),
+                        'updated_at'       => now(),
+                    ]);
 
                     // Create callback for significant variance
                     if (abs($stockData['variance']) > 0) {
                         Callback::create([
-                            'branch_id' => $this->branchId,
-                            'department_id' => $this->departmentId,
-                            'product_id' => $stockData['product_id'],
-                            'quantity' => abs($stockData['variance']),
-                            'reason' => $stockData['variance'] < 0 ? 'shortage' : 'excess',
-                            'callback_date' => $this->shiftDate,
-                            'shift_type' => $this->getProductStockShiftType(),
-                            'notes' => $stockData['notes'] . ' | Shift closing variance',
-                            'status' => 'pending',
+                            'branch_id'         => $this->branchId,
+                            'department_id'     => $this->departmentId,
+                            'product_id'        => $stockData['product_id'],
+                            'quantity'          => abs($stockData['variance']),
+                            'reason'            => $stockData['variance'] < 0 ? 'shortage' : 'excess',
+                            'callback_date'     => $this->shiftDate,
+                            'shift_type'        => $this->getProductStockShiftType(),
+                            'notes'             => $stockData['notes'] . ' | Shift closing variance',
+                            'status'            => 'pending',
+                            'product_stock_id'  => $productStock->id,
+                            'expected_quantity' => $stockData['expected_closing'],
                         ]);
                     }
 

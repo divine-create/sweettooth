@@ -189,13 +189,19 @@ class ProductStock extends Model
     public function updateCalculatedFields(): void
     {
         $this->total_available = $this->calculateTotalAvailable();
-        
-        // Preserve manually entered closing quantity if shift is already completed
-        if (($this->workflow_step ?? null) !== 'closing_completed') {
+
+        // For closing_completed records, only recalculate closing_quantity when sales-side fields
+        // actually changed (POS deduction, reservation, transfer, glovo). Block recalculation for
+        // non-sales saves (e.g. Entry page updating opening_quantity) so manually corrected
+        // closing values are preserved. Check getOriginal() because the caller may have already
+        // changed workflow_step on the in-memory model before the hook fires.
+        $isClosingCompleted = ($this->getOriginal('workflow_step') ?? null) === 'closing_completed';
+        $hasSalesChange = $this->isDirty(['quantity_sold', 'quantity_reserved', 'transfer_quantity', 'glovo_quantity']);
+
+        if (! $isClosingCompleted || $hasSalesChange) {
             $this->closing_quantity = $this->calculateClosing();
         }
 
-        // Auto-calculate expiry if production date is set
         if ($this->production_date && ! $this->expiry_date) {
             $this->expiry_date = $this->calculateExpiry();
         }

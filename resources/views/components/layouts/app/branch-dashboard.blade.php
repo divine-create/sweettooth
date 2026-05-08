@@ -399,16 +399,6 @@
                         :current="request()->routeIs('branch-dashboard.inventory.health-checks')" wire:navigate>
                         {{ __('Health Check') }}
                     </flux:navlist.item>
-                    <flux:navlist.item icon="clipboard-document-list"
-                        :href="branch_route('branch-dashboard.inventory.item-requests')"
-                        :current="request()->routeIs('branch-dashboard.inventory.item-requests')" wire:navigate>
-                        {{ __('Item Requests') }}
-                    </flux:navlist.item>
-<flux:navlist.item icon="truck"
-                         :href="branch_route('branch-dashboard.inventory.item-dispatches')"
-                         :current="request()->routeIs('branch-dashboard.inventory.item-dispatches')" wire:navigate>
-                         {{ __('Dispatches') }}
-                      </flux:navlist.item>
 
                       <flux:navlist.item icon="cube"
                           :href="branch_route('branch-dashboard.inventory.material-requests')"
@@ -464,11 +454,6 @@
                 <flux:navlist.item icon="shopping-cart" :href="branch_route('branch-dashboard.analytics.purchase')"
                     :current="request()->routeIs('branch-dashboard.analytics.purchase')">
                     {{ __('Purchases') }}
-                </flux:navlist.item>
-                <flux:navlist.item icon="clipboard-document-list"
-                    :href="branch_route('branch-dashboard.analytics.request-dispatch')"
-                    :current="request()->routeIs('branch-dashboard.analytics.request-dispatch')">
-                    {{ __('Requests & Dispatch') }}
                 </flux:navlist.item>
                 <flux:navlist.item icon="currency-dollar"
                     :href="branch_route('branch-dashboard.analytics.stock-valuation')"
@@ -561,7 +546,8 @@
                         $dept->pages = $dept->pages->reject(
                             fn($p) => str_contains($p->route_name, 'edit') ||
                                 str_contains($p->route_name, 'detail') ||
-                                str_contains($p->route_name, 'shift-closing'),
+                                str_contains($p->route_name, 'shift-closing') ||
+                                str_contains($p->route_name, 'daily-produce'),
                         );
                         return $dept;
                     });
@@ -733,6 +719,7 @@
                         'branch-dashboard.sales-dashboard.helper',
                         'branch-dashboard.sales-dashboard.callbacks.index',
                         'branch-dashboard.sales-dashboard.callbacks.dispatch-callbacks',
+                        'branch-dashboard.sales-dashboard.variance-resolution.index',
                     ];
                     $excludedSalesNames = [
                         'Stock Opening',
@@ -900,6 +887,31 @@
                                 {{ __('Dispatch Callbacks') }}
                             </flux:navlist.item>
                         </flux:navlist.group>
+
+                        @if($isSalesSupervisor || $isSalesManager || $isAdmin || $isSuperAdmin)
+                            @php
+                                $pendingVarianceCount = \Illuminate\Support\Facades\Cache::remember(
+                                    "pending_variances_{$branchId}",
+                                    3600,
+                                    fn () => \App\Models\Callback::where('branch_id', $branchId)
+                                        ->whereNotNull('product_stock_id')
+                                        ->whereIn('reason', ['shortage', 'excess'])
+                                        ->where('status', 'pending')
+                                        ->count()
+                                );
+                            @endphp
+                            <flux:navlist.item icon="exclamation-triangle"
+                                :href="branch_route('branch-dashboard.sales-dashboard.variance-resolution.index', [
+                                    'salesDeptSlug' => $dept->slug,
+                                    'sales_dept_slug' => $dept->slug,
+                                ])"
+                                :current="request()->routeIs('branch-dashboard.sales-dashboard.variance-resolution.*')" wire:navigate>
+                                {{ __('Variance Resolution') }}
+                                @if($pendingVarianceCount > 0)
+                                    <flux:badge size="sm" color="amber" class="ml-auto">{{ $pendingVarianceCount }}</flux:badge>
+                                @endif
+                            </flux:navlist.item>
+                        @endif
 
                         @forelse($dept->pages as $page)
                             <flux:navlist.item icon="{{ $page->icon ?? 'o-shopping-bag' }}"

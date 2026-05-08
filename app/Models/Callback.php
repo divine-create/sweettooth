@@ -17,11 +17,21 @@ class Callback extends Model
         'shift_type',
         'notes',
         'status',
+        'product_stock_id',
+        'expected_quantity',
+        'resolution_type',
+        'corrected_quantity',
+        'resolved_by',
+        'resolved_at',
+        'resolution_notes',
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:2',
-        'callback_date' => 'date',
+        'quantity'           => 'decimal:2',
+        'callback_date'      => 'date',
+        'expected_quantity'  => 'decimal:2',
+        'corrected_quantity' => 'decimal:2',
+        'resolved_at'        => 'datetime',
     ];
 
     public function branch(): BelongsTo
@@ -37,5 +47,15 @@ class Callback extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function productStock(): BelongsTo
+    {
+        return $this->belongsTo(ProductStock::class);
+    }
+
+    public function resolvedBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'resolved_by');
     }
 }

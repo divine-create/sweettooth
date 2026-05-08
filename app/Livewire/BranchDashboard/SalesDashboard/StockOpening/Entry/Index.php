@@ -268,7 +268,9 @@ class Index extends BaseComponent
             // Find existing record scoped to this employee's shift
             $existingStockQuery = ProductStock::where('stock_date', $stockDate)
                 ->where('product_id', $entry['product_id'])
-                ->where('department_id', $primaryDeptId);
+                ->where('department_id', $primaryDeptId)
+                ->where('shift_type', $this->shiftType)
+                ->where('workflow_step', '!=', 'closing_completed');
 
             if ($this->currentShiftId) {
                 $existingStockQuery->where('shift_id', (int) $this->currentShiftId);

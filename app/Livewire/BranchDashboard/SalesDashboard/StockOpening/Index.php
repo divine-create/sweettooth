@@ -4,6 +4,7 @@ namespace App\Livewire\BranchDashboard\SalesDashboard\StockOpening;
 
 use App\Livewire\BaseComponent;
 use App\Livewire\Concerns\SalesDepartmentContext;
+use App\Models\Callback;
 use App\Models\Department;
 use App\Models\Product;
 use App\Models\ProductDispatch;
@@ -65,6 +66,8 @@ class Index extends BaseComponent
     public array $rows = [];
 
     public array $unclosedProducts = [];
+
+    public array $unresolvedVariances = [];
 
     public bool $isVerified = false;
     public bool $isEditing = false;
@@ -162,6 +165,7 @@ class Index extends BaseComponent
         $this->loadAvailableShifts();
         $this->loadCurrentShift();
         $this->loadStockOpeningData();
+        $this->loadUnresolvedVariances();
     }
 
     // loadBranchAndDepartment is now handled by SalesDepartmentContext trait
@@ -229,6 +233,28 @@ class Index extends BaseComponent
             $this->currentShiftId = $activeShift->id;
             $this->shiftType = $activeShift->shift_type ?? 'morning';
         }
+    }
+
+    protected function loadUnresolvedVariances(): void
+    {
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+
+        if (empty($salesDepartmentIds)) {
+            $this->unresolvedVariances = [];
+            return;
+        }
+
+        $this->unresolvedVariances = Callback::with('product:id,name')
+            ->where('branch_id', $this->getBranchId())
+            ->whereIn('department_id', $salesDepartmentIds)
+            ->whereIn('reason', ['shortage', 'excess'])
+            ->whereNotNull('product_stock_id')
+            ->where('status', 'pending')
+            ->whereDate('callback_date', '>=', now()->subDays(7))
+            ->orderBy('callback_date', 'desc')
+            ->limit(10)
+            ->get(['id', 'product_id', 'quantity', 'reason', 'callback_date', 'shift_type'])
+            ->toArray();
     }
 
     /**
@@ -1130,12 +1156,15 @@ class Index extends BaseComponent
             $this->productsPaginatorForView = $this->resolvePaginatedProductsForStockOpening($salesDepartmentIds);
         }
 
+        $this->loadUnresolvedVariances();
+
         return view('livewire.branch-dashboard.sales-dashboard.stock-opening.index', [
-            'productTypes' => $this->productTypes,
+            'productTypes'        => $this->productTypes,
             'productLookupOptions' => $this->productLookupOptions,
-            'rows' => $this->rows,
-            'stockOpenings' => $this->stockOpenings,
-            'productsPaginator' => $this->productsPaginatorForView,
+            'rows'                => $this->rows,
+            'stockOpenings'       => $this->stockOpenings,
+            'productsPaginator'   => $this->productsPaginatorForView,
+            'unresolvedVariances' => $this->unresolvedVariances,
         ]);
     }
 

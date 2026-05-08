@@ -127,6 +127,7 @@ class SaleItem extends Model
                     $productStock = ProductStock::where('department_id', $sale->department_id)
                         ->where('product_id', $saleItem->product_id)
                         ->where('stock_date', $saleDate)
+                        ->where('workflow_step', '!=', 'closing_completed')
                         ->orderByDesc('id')
                         ->first();
                 }

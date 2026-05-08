@@ -62,6 +62,42 @@
         </div>
     </div>
 
+    <!-- Unresolved Variance Banner -->
+    @if(count($unresolvedVariances) > 0)
+        <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                        {{ count($unresolvedVariances) }} unresolved stock variance{{ count($unresolvedVariances) > 1 ? 's' : '' }} from the last 7 days
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @foreach($unresolvedVariances as $variance)
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                                {{ $variance['reason'] === 'shortage' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' }}">
+                                {{ $variance['product']['name'] ?? 'Unknown' }}
+                                &mdash; {{ $variance['reason'] }} {{ number_format($variance['quantity'], 2) }}
+                                <span class="text-opacity-70">({{ \Carbon\Carbon::parse($variance['callback_date'])->format('M d') }})</span>
+                            </span>
+                        @endforeach
+                    </div>
+                    @php $userRoleLevel = function_exists('get_user_role_level') ? get_user_role_level(auth()->user()) : 1; @endphp
+                    @if($userRoleLevel >= 2)
+                        <div class="mt-2">
+                            <a href="{{ branch_route('branch-dashboard.sales-dashboard.variance-resolution.index', ['salesDeptSlug' => $salesDeptSlug]) }}"
+                                class="text-xs font-medium text-amber-700 dark:text-amber-400 underline hover:text-amber-900 dark:hover:text-amber-200" wire:navigate>
+                                Resolve variances &rarr;
+                            </a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Shift Selector -->
     @if(count($availableShifts) > 0)
         <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700 p-4">

@@ -72,6 +72,10 @@ Route::prefix('production')->name('production.')->middleware(['department.scope'
 
     $registerProductionDepartmentRoutes();
 
+    // Customer Orders — branch-wide, no department context required
+    Route::get('/customer-orders', \App\Livewire\BranchDashboard\Production\CustomerOrders\Index::class)
+        ->name('customer-orders.index');
+
     // Production Reports - Grouped
     Route::prefix('reports')->name('reports.')->group(function () {
         // Grouped report pages
@@ -132,6 +136,11 @@ Route::prefix('sales-dashboard')->name('sales-dashboard.')->middleware([
         Route::prefix('callbacks')->name('callbacks.')->group(function () {
             Route::get('/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\Callbacks\Index::class)->name('index');
             Route::get('/dispatch-callbacks/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\Callbacks\CreateDispatchCallback::class)->name('dispatch-callbacks');
+        });
+
+        // Variance Resolution - Supervisor+ only
+        Route::prefix('variance-resolution')->name('variance-resolution.')->middleware(['role.level:2'])->group(function () {
+            Route::get('/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\VarianceResolution\Index::class)->name('index');
         });
     };
 
