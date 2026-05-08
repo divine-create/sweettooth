@@ -196,7 +196,10 @@ class ProductStock extends Model
         // closing values are preserved. Check getOriginal() because the caller may have already
         // changed workflow_step on the in-memory model before the hook fires.
         $isClosingCompleted = ($this->getOriginal('workflow_step') ?? null) === 'closing_completed';
-        $hasSalesChange = $this->isDirty(['quantity_sold', 'quantity_reserved', 'transfer_quantity', 'glovo_quantity']);
+        $hasSalesChange = $this->isDirty([
+            'quantity_sold', 'quantity_reserved', 'transfer_quantity', 'glovo_quantity',
+            'addition_quantity', 'callback_quantity', 'redress_quantity',
+        ]);
 
         if (! $isClosingCompleted || $hasSalesChange) {
             $this->closing_quantity = $this->calculateClosing();

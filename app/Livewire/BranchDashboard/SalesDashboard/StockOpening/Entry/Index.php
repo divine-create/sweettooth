@@ -10,6 +10,7 @@ use App\Models\ProductStock;
 use App\Models\Shift;
 use App\Models\Callback;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use TallStackUi\Traits\Interactions;
@@ -269,8 +270,7 @@ class Index extends BaseComponent
             $existingStockQuery = ProductStock::where('stock_date', $stockDate)
                 ->where('product_id', $entry['product_id'])
                 ->where('department_id', $primaryDeptId)
-                ->where('shift_type', $this->shiftType)
-                ->where('workflow_step', '!=', 'closing_completed');
+                ->where('shift_type', $this->shiftType);
 
             if ($this->currentShiftId) {
                 $existingStockQuery->where('shift_id', (int) $this->currentShiftId);
@@ -293,7 +293,12 @@ class Index extends BaseComponent
             ];
 
             if ($existingStock) {
-                $existingStock->update($updateData);
+                // Use DB::table to bypass the saving hook so closing_quantity on
+                // closing_completed records (e.g. corrected variances) is never
+                // accidentally recalculated by an opening_quantity/addition_quantity change.
+                DB::table('product_stocks')
+                    ->where('id', $existingStock->id)
+                    ->update(array_merge($updateData, ['updated_at' => now()]));
             } else {
                 $createData = array_merge($updateData, [
                     'sales_shift_id' => null,
