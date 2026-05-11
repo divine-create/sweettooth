@@ -57,6 +57,10 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
+// Public customer order page — no auth required
+Route::get('/order/{branchCode}', \App\Livewire\Public\CustomerOrder\PlaceOrder::class)
+    ->name('public.customer-order');
+
 // Dynamic asset routes
 Route::get('/favicon.ico', [App\Http\Controllers\FaviconController::class, 'getFavicon']);
 Route::get('/favicon.svg', [App\Http\Controllers\FaviconController::class, 'getSvgFavicon']);

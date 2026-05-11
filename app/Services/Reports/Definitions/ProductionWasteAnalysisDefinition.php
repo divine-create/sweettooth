@@ -31,7 +31,10 @@ class ProductionWasteAnalysisDefinition implements ReportDefinition
                 }
             })
             ->where('quantity_rejected', '>', 0)
-            ->whereBetween('production_time', [$context['period_from'], $context['period_to']])
+            ->whereBetween('production_time', [
+                Carbon::parse($context['period_from'])->startOfDay(),
+                Carbon::parse($context['period_to'])->endOfDay()
+            ])
             ->get();
 
         $callbacks = ProductionCallback::query()
@@ -42,18 +45,25 @@ class ProductionWasteAnalysisDefinition implements ReportDefinition
                     $q->where('department_id', $context['department_id']);
                 }
             })
-            ->whereBetween('callback_time', [$context['period_from'], $context['period_to']])
+            ->whereBetween('callback_time', [
+                Carbon::parse($context['period_from'])->startOfDay(),
+                Carbon::parse($context['period_to'])->endOfDay()
+            ])
             ->get();
 
         $periodDays = Carbon::parse($context['period_from'])
             ->diffInDays(Carbon::parse($context['period_to'])) + 1;
+
+        $finishedWaste = $productionRecords->filter(fn($p) => !($p->recipe?->is_wip ?? false));
+        $wipWaste = $productionRecords->filter(fn($p) => (bool)($p->recipe?->is_wip ?? false));
 
         return [
             'waste_overview' => $this->buildWasteOverview($productionRecords, $callbacks),
             'production_waste' => $this->buildProductionWaste($productionRecords),
             'callback_waste' => $this->buildCallbackWaste($callbacks),
             'waste_by_reason' => $this->buildWasteByReason($productionRecords, $callbacks),
-            'waste_by_product' => $this->buildWasteByProduct($productionRecords, $callbacks),
+            'finished_goods_waste' => $this->buildWasteByProduct($finishedWaste, $callbacks),
+            'wip_goods_waste' => $this->buildWasteByProduct($wipWaste, collect()),
             'waste_by_item' => $this->buildWasteByItem($callbacks),
             'daily_waste_trends' => $this->buildDailyWasteTrends($productionRecords, $callbacks),
             'employee_waste_analysis' => $this->buildEmployeeWasteAnalysis($productionRecords),
@@ -167,8 +177,8 @@ class ProductionWasteAnalysisDefinition implements ReportDefinition
                     ];
                 }, $data['waste_by_reason'] ?? []),
             ],
-            'waste_by_product' => [
-                'headers' => ['Product', 'Production Waste', 'Callback Waste', 'Total Waste', 'Incidents'],
+            'finished_goods_waste' => [
+                'headers' => ['Produce Finished Good', 'Production Waste', 'Callback Waste', 'Total Waste', 'Incidents'],
                 'rows' => array_map(function ($row) {
                     return [
                         $row['product'] ?? '-',
@@ -177,7 +187,19 @@ class ProductionWasteAnalysisDefinition implements ReportDefinition
                         $row['total_waste'] ?? 0,
                         $row['incidents'] ?? 0,
                     ];
-                }, $data['waste_by_product'] ?? []),
+                }, $data['finished_goods_waste'] ?? []),
+            ],
+            'wip_goods_waste' => [
+                'headers' => ['WIP Produce', 'Production Waste', 'Callback Waste', 'Total Waste', 'Incidents'],
+                'rows' => array_map(function ($row) {
+                    return [
+                        $row['product'] ?? '-',
+                        $row['production_waste'] ?? 0,
+                        $row['callback_waste'] ?? 0,
+                        $row['total_waste'] ?? 0,
+                        $row['incidents'] ?? 0,
+                    ];
+                }, $data['wip_goods_waste'] ?? []),
             ],
             'waste_by_item' => [
                 'headers' => ['Item', 'Callback Waste', 'Incidents'],

@@ -4,7 +4,7 @@ namespace App\Livewire\BranchDashboard\SalesDashboard\VarianceResolution;
 
 use App\Livewire\BaseComponent;
 use App\Livewire\Concerns\SalesDepartmentContext;
-use App\Models\Callback;
+use App\Models\StockVariance;
 use App\Models\Department;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -55,7 +55,7 @@ class Index extends BaseComponent
 
     protected function getModelClass(): string
     {
-        return Callback::class;
+        return StockVariance::class;
     }
 
     protected function getAllSelectableIds(): array
@@ -113,17 +113,16 @@ class Index extends BaseComponent
     {
         $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
 
-        return Callback::with(['product:id,name', 'productStock:id,closing_quantity', 'resolvedBy:id,name'])
+        return StockVariance::with(['product:id,name', 'productStock:id,closing_quantity', 'resolvedBy:id,name'])
             ->where('branch_id', $this->getBranchId())
             ->when(! empty($salesDepartmentIds), fn ($q) => $q->whereIn('department_id', $salesDepartmentIds))
-            ->whereNotNull('product_stock_id')
             ->whereIn('reason', ['shortage', 'excess'])
             ->when($this->filterReason, fn ($q) => $q->where('reason', $this->filterReason))
             ->when($this->filterStatus, fn ($q) => $q->where('status', $this->filterStatus))
             ->when($this->search, fn ($q) => $q->whereHas('product', fn ($pq) => $pq->where('name', 'like', "%{$this->search}%")))
-            ->when($this->startDate, fn ($q) => $q->whereDate('callback_date', '>=', $this->startDate))
-            ->when($this->endDate, fn ($q) => $q->whereDate('callback_date', '<=', $this->endDate))
-            ->orderBy('callback_date', 'desc');
+            ->when($this->startDate, fn ($q) => $q->whereDate('variance_date', '>=', $this->startDate))
+            ->when($this->endDate, fn ($q) => $q->whereDate('variance_date', '<=', $this->endDate))
+            ->orderBy('variance_date', 'desc');
     }
 
     // --- Write-off flow ---
@@ -149,7 +148,7 @@ class Index extends BaseComponent
             return;
         }
 
-        $callback = Callback::findOrFail($this->writeOffCallbackId);
+        $callback = StockVariance::findOrFail($this->writeOffCallbackId);
 
         DB::transaction(function () use ($callback) {
             $callback->update([
@@ -173,7 +172,7 @@ class Index extends BaseComponent
 
     public function openCorrectionModal(int $callbackId): void
     {
-        $callback = Callback::with('productStock')->findOrFail($callbackId);
+        $callback = StockVariance::with('productStock')->findOrFail($callbackId);
         $this->correctionCallbackId = $callbackId;
         $this->correctionCurrentQty = (float) ($callback->productStock?->closing_quantity ?? $callback->quantity);
         $this->correctionExpectedQty = (float) ($callback->expected_quantity ?? 0);
@@ -200,7 +199,7 @@ class Index extends BaseComponent
             return;
         }
 
-        $callback = Callback::with('productStock')->findOrFail($this->correctionCallbackId);
+        $callback = StockVariance::with('productStock')->findOrFail($this->correctionCallbackId);
         $newQty = (float) $this->correctedQuantity;
 
         DB::transaction(function () use ($callback, $newQty) {
@@ -237,8 +236,7 @@ class Index extends BaseComponent
     {
         $rows = $this->getFilteredQuery()->paginate($this->quantity ?? 20);
 
-        $pendingCount = Callback::where('branch_id', $this->getBranchId())
-            ->whereNotNull('product_stock_id')
+        $pendingCount = StockVariance::where('branch_id', $this->getBranchId())
             ->whereIn('reason', ['shortage', 'excess'])
             ->where('status', 'pending')
             ->count();

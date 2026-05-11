@@ -91,7 +91,6 @@ class Stocks extends BaseComponent
         'quantity_available' => 'required|numeric|min:0',
         'quantity_reserved' => 'required|numeric|min:0',
         'quantity_damaged' => 'required|numeric|min:0',
-        'average_cost' => 'required|numeric|min:0',
         'health_status' => 'required|in:good,warning,critical,expired',
         'expiry_date' => 'nullable|date',
         'notes' => 'nullable|string|max:500',
@@ -176,7 +175,6 @@ class Stocks extends BaseComponent
             'quantity_available' => 'required|numeric|min:0',
             'quantity_reserved' => 'required|numeric|min:0',
             'quantity_damaged' => 'required|numeric|min:0',
-            'average_cost' => 'required|numeric|min:0',
             'health_status' => 'required|in:good,warning,critical,expired',
             'expiry_date' => 'nullable|date',
             'notes' => 'nullable|string|max:500',
@@ -221,7 +219,6 @@ class Stocks extends BaseComponent
                 'quantity_available' => (float) $this->quantity_available,
                 'quantity_reserved' => (float) $this->quantity_reserved,
                 'quantity_damaged' => (float) $this->quantity_damaged,
-                'average_cost' => (float) $this->average_cost,
                 'health_status' => $this->health_status,
                 'expiry_date' => $this->expiry_date ?: null,
                 'last_stock_take_date' => now(),
@@ -237,7 +234,7 @@ class Stocks extends BaseComponent
             }
 
             // Record stock movement if quantity changed
-            $unitCost = (float) ($this->average_cost ?? $oldAverageCost);
+            $unitCost = (float) $stock->average_cost;
             $actorId = Auth::guard('web')->id();
 
             if ((float) $oldQuantityAvailable != (float) $this->quantity_available) {
@@ -360,7 +357,6 @@ class Stocks extends BaseComponent
                     'quantity_available' => (float) $this->quantity_available,
                     'quantity_reserved' => (float) $this->quantity_reserved,
                     'quantity_damaged' => (float) $this->quantity_damaged,
-                    'average_cost' => (float) $this->average_cost,
                     'health_status' => $this->health_status ?? 'good',
                     'expiry_date' => $this->expiry_date ?: null,
                     'reorder_level' => (float) ($this->reorder_level ?? 0),

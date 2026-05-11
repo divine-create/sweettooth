@@ -51,27 +51,8 @@ class ShiftConfiguration extends Model
      */
     public function isWithinStrictClockInWindow(?Carbon $currentTime = null): bool
     {
-        $now = $currentTime ?? Carbon::now($this->timezone);
-
-        $startTimeRaw = $this->start_time instanceof Carbon
-            ? $this->start_time->format('H:i:s')
-            : (string) $this->start_time;
-        $endTimeRaw = $this->end_time instanceof Carbon
-            ? $this->end_time->format('H:i:s')
-            : (string) $this->end_time;
-
-        $start = Carbon::createFromTimeString($startTimeRaw)
-            ->setDateFrom($now);
-        $end = Carbon::createFromTimeString($endTimeRaw)
-            ->setDateFrom($now);
-
-        // Handle overnight shifts (end time next day)
-        if ($end <= $start) {
-            $end = $end->addDay();
-        }
-
-        // STRICT: Must be at or after start AND before end
-        return $now >= $start && $now < $end;
+        // DISABLING STRICT ENFORCEMENT: Shifts are selectable at any time
+        return true;
     }
 
     /**

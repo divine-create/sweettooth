@@ -31,7 +31,10 @@ class ProductionCostAnalysisDefinition implements ReportDefinition
                 }
             })
             ->where('quantity_dispatched', '>', 0)
-            ->whereBetween('updated_at', [$context['period_from'], $context['period_to']])
+            ->whereBetween('updated_at', [
+                Carbon::parse($context['period_from'])->startOfDay(),
+                Carbon::parse($context['period_to'])->endOfDay()
+            ])
             ->get();
 
         $productionRecords = ProductionRecord::query()
@@ -42,16 +45,23 @@ class ProductionCostAnalysisDefinition implements ReportDefinition
                     $q->where('department_id', $context['department_id']);
                 }
             })
-            ->whereBetween('production_time', [$context['period_from'], $context['period_to']])
+            ->whereBetween('production_time', [
+                Carbon::parse($context['period_from'])->startOfDay(),
+                Carbon::parse($context['period_to'])->endOfDay()
+            ])
             ->get();
 
         $periodDays = Carbon::parse($context['period_from'])
             ->diffInDays(Carbon::parse($context['period_to'])) + 1;
 
+        $finishedProduces = $productionRecords->filter(fn($p) => !($p->recipe?->is_wip ?? false));
+        $wipProduces = $productionRecords->filter(fn($p) => (bool)($p->recipe?->is_wip ?? false));
+
         return [
             'cost_overview' => $this->buildCostOverview($dispatchedItems, $productionRecords),
             'ingredient_costs' => $this->buildIngredientCosts($dispatchedItems),
-            'product_costs' => $this->buildProductCosts($productionRecords),
+            'finished_product_costs' => $this->buildProductCosts($finishedProduces),
+            'wip_product_costs' => $this->buildProductCosts($wipProduces),
             'cost_efficiency' => $this->buildCostEfficiency($productionRecords),
             'cost_trends' => $this->buildCostTrends($dispatchedItems, $productionRecords),
             'period_info' => [
@@ -141,20 +151,8 @@ class ProductionCostAnalysisDefinition implements ReportDefinition
                     ];
                 }, $data['ingredient_costs'] ?? []),
             ],
-            'ingredient_costs' => [
-                'headers' => ['Ingredient', 'Unit Cost', 'Dispatched', 'Total Cost', 'Dispatches'],
-                'rows' => array_map(function ($row) {
-                    return [
-                        $row['item_name'] ?? '-',
-                        $row['unit_cost'] ?? 0,
-                        $row['total_dispatched'] ?? 0,
-                        $row['total_cost'] ?? 0,
-                        $row['dispatches_count'] ?? 0,
-                    ];
-                }, $data['ingredient_costs'] ?? []),
-            ],
-            'product_costs' => [
-                'headers' => ['Product', 'Produced', 'Total Cost', 'Cost / Unit', 'Batches'],
+            'finished_product_costs' => [
+                'headers' => ['Produce Finished Good', 'Produced', 'Total Cost', 'Cost / Unit', 'Batches'],
                 'rows' => array_map(function ($row) {
                     return [
                         $row['product_name'] ?? '-',
@@ -163,7 +161,19 @@ class ProductionCostAnalysisDefinition implements ReportDefinition
                         $row['cost_per_unit'] ?? 0,
                         $row['batches_count'] ?? 0,
                     ];
-                }, $data['product_costs'] ?? []),
+                }, $data['finished_product_costs'] ?? []),
+            ],
+            'wip_product_costs' => [
+                'headers' => ['WIP Produce', 'Produced', 'Total Cost', 'Cost / Unit', 'Batches'],
+                'rows' => array_map(function ($row) {
+                    return [
+                        $row['product_name'] ?? '-',
+                        $row['total_produced'] ?? 0,
+                        $row['total_cost'] ?? 0,
+                        $row['cost_per_unit'] ?? 0,
+                        $row['batches_count'] ?? 0,
+                    ];
+                }, $data['wip_product_costs'] ?? []),
             ],
             'daily_costs' => [
                 'headers' => ['Date', 'Total Cost'],

@@ -2,7 +2,6 @@
 
 namespace App\Services\Reports\Definitions;
 
-use App\Models\DailyProduce;
 use App\Models\ProductionRecord;
 use Carbon\Carbon;
 
@@ -22,16 +21,6 @@ class ProductionEfficiencyDefinition implements ReportDefinition
 
     public function query(array $context): array
     {
-        $dailyProduces = DailyProduce::with(['recipe', 'shift'])
-            ->whereHas('shift', function ($q) use ($context) {
-                $q->where('branch_id', $context['branch_id']);
-                if ($context['department_id']) {
-                    $q->where('department_id', $context['department_id']);
-                }
-            })
-            ->whereBetween('produce_date', [$context['period_from'], $context['period_to']])
-            ->get();
-
         $productionRecords = ProductionRecord::with(['recipe', 'producedBy', 'dailyProduce.shift'])
             ->whereHas('dailyProduce.shift', function ($q) use ($context) {
                 $q->where('branch_id', $context['branch_id']);
@@ -39,19 +28,22 @@ class ProductionEfficiencyDefinition implements ReportDefinition
                     $q->where('department_id', $context['department_id']);
                 }
             })
-            ->whereBetween('production_time', [$context['period_from'], $context['period_to']])
+            ->whereBetween('production_time', [
+                Carbon::parse($context['period_from'])->startOfDay(),
+                Carbon::parse($context['period_to'])->endOfDay()
+            ])
             ->get();
 
         $periodDays = Carbon::parse($context['period_from'])
             ->diffInDays(Carbon::parse($context['period_to'])) + 1;
 
         return [
-            'daily_summary' => $this->buildDailySummary($dailyProduces),
-            'product_efficiency' => $this->buildProductEfficiency($dailyProduces),
-            'shift_performance' => $this->buildShiftPerformance($dailyProduces),
-            'variance_analysis' => $this->buildVarianceAnalysis($dailyProduces),
+            'daily_summary' => $this->buildDailySummary($productionRecords),
+            'product_efficiency' => $this->buildProductEfficiency($productionRecords),
+            'shift_performance' => $this->buildShiftPerformance($productionRecords),
+            'variance_analysis' => $this->buildVarianceAnalysis($productionRecords),
             'employee_performance' => $this->buildEmployeePerformance($productionRecords),
-            'trends' => $this->buildTrends($dailyProduces),
+            'trends' => $this->buildTrends($productionRecords),
             'period_info' => [
                 'from' => $context['period_from'],
                 'to' => $context['period_to'],
@@ -132,7 +124,7 @@ class ProductionEfficiencyDefinition implements ReportDefinition
     {
         return [
             'daily_summary' => [
-                'headers' => ['Date', 'Planned', 'Actual', 'Variance', 'Efficiency %', 'Products'],
+                'headers' => ['Date', 'Planned', 'Actual', 'Variance', 'Efficiency %', 'Batches'],
                 'rows' => array_map(function ($row) {
                     return [
                         $row['date'] ?? '-',
@@ -140,12 +132,12 @@ class ProductionEfficiencyDefinition implements ReportDefinition
                         $row['actual'] ?? 0,
                         $row['variance'] ?? 0,
                         $row['efficiency_percentage'] ?? 0,
-                        $row['products_count'] ?? 0,
+                        $row['batches_count'] ?? 0,
                     ];
                 }, $data['daily_summary'] ?? []),
             ],
             'product_efficiency' => [
-                'headers' => ['Product', 'Planned', 'Actual', 'Variance', 'Efficiency %', 'Days'],
+                'headers' => ['Product', 'Planned', 'Actual', 'Variance', 'Efficiency %', 'Production Days'],
                 'rows' => array_map(function ($row) {
                     return [
                         $row['product_name'] ?? '-',
@@ -158,7 +150,7 @@ class ProductionEfficiencyDefinition implements ReportDefinition
                 }, $data['product_efficiency'] ?? []),
             ],
             'shift_performance' => [
-                'headers' => ['Shift', 'Type', 'Planned', 'Actual', 'Variance', 'Efficiency %', 'Days'],
+                'headers' => ['Shift', 'Type', 'Planned', 'Actual', 'Variance', 'Efficiency %', 'Production Days'],
                 'rows' => array_map(function ($row) {
                     return [
                         $row['shift_name'] ?? '-',
@@ -167,7 +159,7 @@ class ProductionEfficiencyDefinition implements ReportDefinition
                         $row['actual'] ?? 0,
                         $row['variance'] ?? 0,
                         $row['efficiency_percentage'] ?? 0,
-                        $row['days_worked'] ?? 0,
+                        $row['production_days'] ?? 0,
                     ];
                 }, $data['shift_performance'] ?? []),
             ],
@@ -222,30 +214,32 @@ class ProductionEfficiencyDefinition implements ReportDefinition
         return $recommendations;
     }
 
-    private function buildDailySummary($dailyProduces): array
+    private function buildDailySummary($productionRecords): array
     {
-        return $dailyProduces->groupBy('produce_date')->map(function ($dayProduces) {
-            $planned = $dayProduces->sum('requested_quantity');
-            $actual = $dayProduces->sum('produced_quantity');
-            $variance = $dayProduces->sum('variance');
+        return $productionRecords->groupBy(function ($record) {
+            return $record->production_time->format('Y-m-d');
+        })->map(function ($dayRecords) {
+            $planned = $dayRecords->unique('daily_produce_id')->sum(fn($r) => $r->dailyProduce->requested_quantity);
+            $actual = $dayRecords->sum('quantity_produced');
+            $variance = $actual - $planned;
 
             return [
-                'date' => $dayProduces->first()->produce_date->format('Y-m-d'),
+                'date' => $dayRecords->first()->production_time->format('Y-m-d'),
                 'planned' => $planned,
                 'actual' => $actual,
                 'variance' => $variance,
                 'efficiency_percentage' => $planned > 0 ? round(($actual / $planned) * 100, 2) : 0,
-                'products_count' => $dayProduces->count(),
+                'batches_count' => $dayRecords->count(),
             ];
         })->values()->toArray();
     }
 
-    private function buildProductEfficiency($dailyProduces): array
+    private function buildProductEfficiency($productionRecords): array
     {
-        return $dailyProduces->groupBy('recipe_id')->map(function ($recipeProduces) {
-            $recipe = $recipeProduces->first()->recipe;
-            $planned = $recipeProduces->sum('requested_quantity');
-            $actual = $recipeProduces->sum('produced_quantity');
+        return $productionRecords->groupBy('recipe_id')->map(function ($recipeRecords) {
+            $recipe = $recipeRecords->first()->recipe;
+            $planned = $recipeRecords->unique('daily_produce_id')->sum(fn($r) => $r->dailyProduce->requested_quantity);
+            $actual = $recipeRecords->sum('quantity_produced');
 
             return [
                 'product_id' => $recipe->id ?? null,
@@ -254,17 +248,19 @@ class ProductionEfficiencyDefinition implements ReportDefinition
                 'actual' => $actual,
                 'variance' => $actual - $planned,
                 'efficiency_percentage' => $planned > 0 ? round(($actual / $planned) * 100, 2) : 0,
-                'production_days' => $recipeProduces->count(),
+                'production_days' => $recipeRecords->unique(fn($r) => $r->production_time->format('Y-m-d'))->count(),
             ];
         })->sortByDesc('actual')->values()->toArray();
     }
 
-    private function buildShiftPerformance($dailyProduces): array
+    private function buildShiftPerformance($productionRecords): array
     {
-        return $dailyProduces->groupBy('shift_id')->map(function ($shiftProduces) {
-            $shift = $shiftProduces->first()->shift;
-            $planned = $shiftProduces->sum('requested_quantity');
-            $actual = $shiftProduces->sum('produced_quantity');
+        return $productionRecords->groupBy(function ($r) {
+            return $r->dailyProduce->shift_id ?? 'none';
+        })->map(function ($shiftRecords) {
+            $shift = $shiftRecords->first()->dailyProduce->shift ?? null;
+            $planned = $shiftRecords->unique('daily_produce_id')->sum(fn($r) => $r->dailyProduce->requested_quantity);
+            $actual = $shiftRecords->sum('quantity_produced');
 
             return [
                 'shift_id' => $shift->id ?? null,
@@ -274,31 +270,31 @@ class ProductionEfficiencyDefinition implements ReportDefinition
                 'actual' => $actual,
                 'variance' => $actual - $planned,
                 'efficiency_percentage' => $planned > 0 ? round(($actual / $planned) * 100, 2) : 0,
-                'days_worked' => $shiftProduces->unique('produce_date')->count(),
+                'production_days' => $shiftRecords->unique(fn($r) => $r->production_time->format('Y-m-d'))->count(),
             ];
         })->values()->toArray();
     }
 
-    private function buildVarianceAnalysis($dailyProduces): array
+    private function buildVarianceAnalysis($productionRecords): array
     {
-        $positiveVariance = $dailyProduces->where('variance', '>', 0);
-        $negativeVariance = $dailyProduces->where('variance', '<', 0);
-        $zeroVariance = $dailyProduces->where('variance', '=', 0);
+        $dailyData = collect($this->buildDailySummary($productionRecords));
+        $over = $dailyData->where('variance', '>', 0)->count();
+        $under = $dailyData->where('variance', '<', 0)->count();
+        $onTarget = $dailyData->where('variance', '=', 0)->count();
+        $total = $dailyData->count();
 
         return [
             'over_production' => [
-                'count' => $positiveVariance->count(),
-                'total_variance' => $positiveVariance->sum('variance'),
-                'percentage' => $this->percent($positiveVariance->count(), $dailyProduces->count()),
+                'count' => $over,
+                'percentage' => $this->percent($over, $total),
             ],
             'under_production' => [
-                'count' => $negativeVariance->count(),
-                'total_variance' => abs($negativeVariance->sum('variance')),
-                'percentage' => $this->percent($negativeVariance->count(), $dailyProduces->count()),
+                'count' => $under,
+                'percentage' => $this->percent($under, $total),
             ],
             'on_target' => [
-                'count' => $zeroVariance->count(),
-                'percentage' => $this->percent($zeroVariance->count(), $dailyProduces->count()),
+                'count' => $onTarget,
+                'percentage' => $this->percent($onTarget, $total),
             ],
         ];
     }
@@ -320,13 +316,13 @@ class ProductionEfficiencyDefinition implements ReportDefinition
         })->sortByDesc('total_produced')->values()->toArray();
     }
 
-    private function buildTrends($dailyProduces): array
+    private function buildTrends($productionRecords): array
     {
-        $weeklyTrends = $dailyProduces->groupBy(function ($item) {
-            return $item->produce_date->startOfWeek()->format('Y-m-d');
-        })->map(function ($weekProduces, $week) {
-            $planned = $weekProduces->sum('requested_quantity');
-            $actual = $weekProduces->sum('produced_quantity');
+        $weeklyTrends = $productionRecords->groupBy(function ($item) {
+            return $item->production_time->startOfWeek()->format('Y-m-d');
+        })->map(function ($weekRecords, $week) {
+            $planned = $weekRecords->unique('daily_produce_id')->sum(fn($r) => $r->dailyProduce->requested_quantity);
+            $actual = $weekRecords->sum('quantity_produced');
 
             return [
                 'week_start' => $week,
@@ -352,3 +348,4 @@ class ProductionEfficiencyDefinition implements ReportDefinition
         return $total > 0 ? round(($part / $total) * 100, 2) : 0;
     }
 }
+

@@ -101,19 +101,6 @@
                     </div>
                 </a>
 
-                <!-- Daily Produce -->
-                <a href="{{ route('branch-dashboard.production.daily-produce.index', $deptSlug ?? ($userDepartment?->slug ?? 'kitchen')) }}" 
-                   class="p-4 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-300 transition flex items-center gap-3">
-                    <div class="p-2 bg-red-100 rounded-lg">
-                        <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.3A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="font-medium text-gray-900">Daily Produce</p>
-                        <p class="text-sm text-gray-600">Track daily output</p>
-                    </div>
-                </a>
 
                 <!-- Raw Material Tracking -->
                 <a href="{{ route('branch-dashboard.production.raw-material-tracking') }}" 

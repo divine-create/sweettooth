@@ -40,6 +40,16 @@ class ProductionPipelineService
     }
 
     /**
+     * Create a production request triggered by a customer order.
+     *
+     * @param array<string, mixed> $attributes
+     */
+    public function createFromCustomerOrder(array $attributes): ProductionRequest
+    {
+        return $this->createRequest($attributes, ProductionRequestSourceType::CUSTOMER_ORDER);
+    }
+
+    /**
      * @param array<string, mixed> $attributes
      */
     protected function createRequest(array $attributes, ProductionRequestSourceType $sourceType): ProductionRequest

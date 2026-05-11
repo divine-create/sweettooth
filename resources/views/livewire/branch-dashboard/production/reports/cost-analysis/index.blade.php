@@ -173,50 +173,92 @@
             </div>
         </div>
 
-        {{-- Product Efficiency Table --}}
+        {{-- Produce Finished Good Cost Analysis Table --}}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Product Efficiency Analysis</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Produce Finished Good Cost Analysis</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Planned</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actual</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Variance</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Efficiency %</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produced</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Cost</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cost / Unit</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Batches</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        @forelse($reportData['product_efficiency'] ?? [] as $product)
+                        @forelse($reportData['finished_product_costs'] ?? [] as $product)
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                     {{ $product['product_name'] }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
-                                    {{ number_format($product['planned']) }}
+                                    {{ number_format($product['total_produced']) }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
-                                    {{ number_format($product['actual']) }}
+                                    {{ \App\Helpers\LocalizationHelper::formatCurrency($product['total_cost']) }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
-                                    <span class="{{ $product['variance'] >= 0 ? 'text-green-600' : 'text-red-600' }} font-medium">
-                                        {{ $product['variance'] >= 0 ? '+' : '' }}{{ number_format($product['variance']) }}
-                                    </span>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-purple-600 font-semibold">
+                                    {{ \App\Helpers\LocalizationHelper::formatCurrency($product['cost_per_unit']) }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                        {{ $product['efficiency_percentage'] >= 95 ? 'bg-green-100 text-green-800' : ($product['efficiency_percentage'] >= 80 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                        {{ number_format($product['efficiency_percentage'], 1) }}%
-                                    </span>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+                                    {{ number_format($product['batches_count']) }}
                                 </td>
                             </tr>
                         @empty
                             <tr>
                                 <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                                    No product data available for this period
+                                    No finished good cost data available
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- WIP Produce Cost Analysis Table --}}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">WIP Produce Cost Analysis</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-900">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produced</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Cost</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cost / Unit</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Batches</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        @forelse($reportData['wip_product_costs'] ?? [] as $product)
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                    {{ $product['product_name'] }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+                                    {{ number_format($product['total_produced']) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+                                    {{ \App\Helpers\LocalizationHelper::formatCurrency($product['total_cost']) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-purple-600 font-semibold">
+                                    {{ \App\Helpers\LocalizationHelper::formatCurrency($product['cost_per_unit']) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+                                    {{ number_format($product['batches_count']) }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                    No WIP produce cost data available
                                 </td>
                             </tr>
                         @endforelse

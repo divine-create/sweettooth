@@ -18,6 +18,7 @@ class ProductDispatch extends Model
         'production_shift_id',
         'sales_shift_id',
         'sales_department_id',
+        'customer_order_id',
         'product_id',
         'dispatched_by_id',
         'dispatched_by_type',
@@ -86,6 +87,11 @@ class ProductDispatch extends Model
     public function salesDepartment(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'sales_department_id');
+    }
+
+    public function customerOrder(): BelongsTo
+    {
+        return $this->belongsTo(CustomerOrder::class);
     }
 
     public function product(): BelongsTo

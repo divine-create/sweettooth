@@ -8,7 +8,7 @@ use App\Models\Department;
 use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\Shift;
-use App\Models\Callback;
+use App\Models\StockVariance;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -92,7 +92,7 @@ class Index extends BaseComponent
             ->where('shift_date', $this->stockDate)
             ->whereIn('department_id', $salesDepartmentIds)
             ->orderBy('clock_in', 'desc')
-            ->get(['id', 'shift_number', 'shift_type', 'clock_in']);
+            ->get(['id', 'shift_number', 'shift_type', 'status', 'clock_in']);
 
         $this->availableShifts = $shifts->toArray();
 
@@ -200,18 +200,11 @@ class Index extends BaseComponent
             $productDispatches = $dispatchRowsByProduct[$productId] ?? [];
 
             foreach ($productDispatches as $dispatchRow) {
-                // If previous stock record is from TODAY, we must be careful not to double-count
+                // When the previous shift closed today, its closing_quantity already incorporates
+                // every dispatch received during that shift. Counting them again here would
+                // inflate expected_opening and produce a false variance.
                 if ($previousStock && $previousStock->stock_date?->isToday()) {
-                    // Skip if dispatch was for a different shift type (likely already captured in previous stock)
-                    if ($dispatchRow->shift_type && $dispatchRow->shift_type !== $this->shiftType) {
-                        continue;
-                    }
-
-                    // Secondary safety: use cutoff timestamp if shift_type is null or ambiguous
-                    $dispatchTimestamp = $dispatchRow->received_at ?? $dispatchRow->dispatch_time ?? $dispatchRow->created_at;
-                    if ($dispatchTimestamp && $previousStock->created_at && Carbon::parse($dispatchTimestamp)->lte($previousStock->created_at)) {
-                        continue;
-                    }
+                    continue;
                 }
 
                 $qty = (float) ($dispatchRow->received_quantity ?? $dispatchRow->quantity);
@@ -266,17 +259,13 @@ class Index extends BaseComponent
         $primaryDeptId = reset($salesDepartmentIds);
 
         foreach ($this->stockOpenings as $entry) {
-            // Find existing record scoped to this employee's shift
-            $existingStockQuery = ProductStock::where('stock_date', $stockDate)
+            // Match on the unique constraint columns — (dept, product, date, shift_type) is guaranteed unique,
+            // so shift_id is not needed and would miss records created without a shift link.
+            $existingStock = ProductStock::where('stock_date', $stockDate)
                 ->where('product_id', $entry['product_id'])
                 ->where('department_id', $primaryDeptId)
-                ->where('shift_type', $this->shiftType);
-
-            if ($this->currentShiftId) {
-                $existingStockQuery->where('shift_id', (int) $this->currentShiftId);
-            }
-
-            $existingStock = $existingStockQuery->first();
+                ->where('shift_type', $this->shiftType)
+                ->first();
 
             $updateData = [
                 'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
@@ -291,6 +280,13 @@ class Index extends BaseComponent
                 'verified_by' => auth()->id(),
                 'workflow_step' => 'opening_verified',
             ];
+
+            // When the found record was already closed by a prior shift, preserve its
+            // workflow/audit state — only update opening data and the shift link.
+            if ($existingStock && $existingStock->workflow_step === 'closing_completed') {
+                unset($updateData['workflow_step'], $updateData['is_workflow_verified'],
+                      $updateData['verified_at'], $updateData['verified_by']);
+            }
 
             if ($existingStock) {
                 // Use DB::table to bypass the saving hook so closing_quantity on
@@ -312,19 +308,20 @@ class Index extends BaseComponent
                 ProductStock::create($createData);
             }
 
-            // Create variance callback if actual differs from expected
+            // Create variance record if actual differs from expected
             $variance = (float)($entry['actual_opening'] ?? 0) - (float)($entry['expected_opening'] ?? 0);
             if (abs($variance) > 0.001) {
-                Callback::create([
-                    'branch_id' => $this->b_id,
-                    'department_id' => $primaryDeptId,
-                    'product_id' => $entry['product_id'],
-                    'quantity' => abs($variance),
-                    'reason' => $variance < 0 ? 'shortage' : 'excess',
-                    'callback_date' => $stockDate,
-                    'shift_type' => $this->shiftType,
-                    'notes' => 'Stock opening variance recorded during shift start.',
-                    'status' => 'pending',
+                StockVariance::create([
+                    'branch_id'         => $this->b_id,
+                    'department_id'     => $primaryDeptId,
+                    'product_id'        => $entry['product_id'],
+                    'quantity'          => abs($variance),
+                    'expected_quantity' => $entry['expected_opening'] ?? 0,
+                    'reason'            => $variance < 0 ? 'shortage' : 'excess',
+                    'variance_date'     => $stockDate,
+                    'shift_type'        => $this->shiftType,
+                    'notes'             => 'Stock opening variance recorded during shift start.',
+                    'status'            => 'pending',
                 ]);
             }
 

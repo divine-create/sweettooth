@@ -30,7 +30,10 @@ class ProductionQualityDefinition implements ReportDefinition
                     $q->where('department_id', $context['department_id']);
                 }
             })
-            ->whereBetween('production_time', [$context['period_from'], $context['period_to']])
+            ->whereBetween('production_time', [
+                Carbon::parse($context['period_from'])->startOfDay(),
+                Carbon::parse($context['period_to'])->endOfDay()
+            ])
             ->get();
 
         $callbacks = ProductionCallback::query()
@@ -41,16 +44,23 @@ class ProductionQualityDefinition implements ReportDefinition
                     $q->where('department_id', $context['department_id']);
                 }
             })
-            ->whereBetween('created_at', [$context['period_from'], $context['period_to']])
+            ->whereBetween('created_at', [
+                Carbon::parse($context['period_from'])->startOfDay(),
+                Carbon::parse($context['period_to'])->endOfDay()
+            ])
             ->get();
 
         $periodDays = Carbon::parse($context['period_from'])
             ->diffInDays(Carbon::parse($context['period_to'])) + 1;
 
+        $finishedProduces = $productionRecords->filter(fn($p) => !($p->recipe?->is_wip ?? false));
+        $wipProduces = $productionRecords->filter(fn($p) => (bool)($p->recipe?->is_wip ?? false));
+
         return [
             'quality_overview' => $this->buildQualityOverview($productionRecords),
             'rejection_analysis' => $this->buildRejectionAnalysis($productionRecords),
-            'product_quality' => $this->buildProductQuality($productionRecords),
+            'finished_quality' => $this->buildProductQuality($finishedProduces),
+            'wip_quality' => $this->buildProductQuality($wipProduces),
             'callback_analysis' => $this->buildCallbackAnalysis($callbacks),
             'employee_quality' => $this->buildEmployeeQuality($productionRecords),
             'trends' => $this->buildQualityTrends($productionRecords),
@@ -71,7 +81,8 @@ class ProductionQualityDefinition implements ReportDefinition
             'overall_approval_rate' => $overview['approval_rate'] ?? 0,
             'overall_rejection_rate' => $overview['rejection_rate'] ?? 0,
             'total_callbacks' => $data['callback_analysis']['total_callbacks'] ?? 0,
-            'products_analyzed' => count($data['product_quality'] ?? []),
+            'finished_analyzed' => count($data['finished_quality'] ?? []),
+            'wip_analyzed' => count($data['wip_quality'] ?? []),
             'employees_tracked' => count($data['employee_quality'] ?? []),
             'top_rejection_reason' => $data['rejection_analysis']['top_rejection_reason']['reason'] ?? 'N/A',
             'best_performer' => !empty($data['employee_quality'])
@@ -121,8 +132,8 @@ class ProductionQualityDefinition implements ReportDefinition
     public function tables(array $data, array $summary, array $context): array
     {
         return [
-            'product_quality' => [
-                'headers' => ['Product', 'Batches', 'Produced', 'Approved', 'Rejected', 'Approval %', 'Rejection %'],
+            'finished_quality' => [
+                'headers' => ['Produce Finished Good', 'Batches', 'Produced', 'Approved', 'Rejected', 'Approval %', 'Rejection %'],
                 'rows' => array_map(function ($row) {
                     return [
                         $row['product_name'] ?? '-',
@@ -133,7 +144,21 @@ class ProductionQualityDefinition implements ReportDefinition
                         $row['approval_rate'] ?? 0,
                         $row['rejection_rate'] ?? 0,
                     ];
-                }, $data['product_quality'] ?? []),
+                }, $data['finished_quality'] ?? []),
+            ],
+            'wip_quality' => [
+                'headers' => ['WIP Produce', 'Batches', 'Produced', 'Approved', 'Rejected', 'Approval %', 'Rejection %'],
+                'rows' => array_map(function ($row) {
+                    return [
+                        $row['product_name'] ?? '-',
+                        $row['total_batches'] ?? 0,
+                        $row['total_produced'] ?? 0,
+                        $row['total_approved'] ?? 0,
+                        $row['total_rejected'] ?? 0,
+                        $row['approval_rate'] ?? 0,
+                        $row['rejection_rate'] ?? 0,
+                    ];
+                }, $data['wip_quality'] ?? []),
             ],
             'employee_quality' => [
                 'headers' => ['Employee', 'Batches', 'Produced', 'Approved', 'Rejected', 'Approval %', 'Rejection %'],

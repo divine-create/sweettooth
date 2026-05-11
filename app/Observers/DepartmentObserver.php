@@ -107,13 +107,6 @@ class DepartmentObserver
                 'icon' => 'clipboard',
                 'order' => 5,
             ],
-            [
-                'name' => 'Daily Produce',
-                'slug' => 'daily-produce',
-                'route_name' => "branch-dashboard.production.daily-produce.index",
-                'icon' => 'calendar',
-                'order' => 6,
-            ],
 
             // Inventory & Tracking
             [

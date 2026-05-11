@@ -3,7 +3,7 @@
 namespace App\Livewire\BranchDashboard\Analytics;
 
 use App\Models\Department;
-use App\Models\ItemDispatch;
+use App\Models\MaterialRequestDispatch;
 use App\Models\StockMovement;
 use App\Services\Reports\AnalyticsSnapshotReportService;
 use Carbon\Carbon;
@@ -115,9 +115,9 @@ class ItemUsageAnalytics extends Component
             ->when($this->departmentFilter, fn ($q) => $q->where('department_id', $this->departmentFilter))
             ->get();
 
-        $dispatches = ItemDispatch::where('branch_id', $this->branchId)
+        $dispatches = MaterialRequestDispatch::whereHas('request', fn($q) => $q->where('branch_id', $this->branchId))
             ->whereBetween('dispatch_time', [$dateFrom, $dateTo])
-            ->when($this->departmentFilter, fn ($q) => $q->where('department_id', $this->departmentFilter))
+            ->when($this->departmentFilter, fn ($q) => $q->whereHas('request', fn($rq) => $rq->where('department_id', $this->departmentFilter)))
             ->get();
 
         $productionUsage = $stockMovements->where('type', 'out')->sum('quantity');
@@ -154,9 +154,9 @@ class ItemUsageAnalytics extends Component
             ->when($this->departmentFilter, fn ($q) => $q->where('department_id', $this->departmentFilter))
             ->get();
 
-        $dispatches = ItemDispatch::where('branch_id', $this->branchId)
+        $dispatches = MaterialRequestDispatch::whereHas('request', fn($q) => $q->where('branch_id', $this->branchId))
             ->whereBetween('dispatch_time', [$dateFrom, $dateTo])
-            ->when($this->departmentFilter, fn ($q) => $q->where('department_id', $this->departmentFilter))
+            ->when($this->departmentFilter, fn ($q) => $q->whereHas('request', fn($rq) => $rq->where('department_id', $this->departmentFilter)))
             ->get();
 
         $sources = [];

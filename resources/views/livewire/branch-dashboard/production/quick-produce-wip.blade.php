@@ -172,7 +172,6 @@
                     @endif
 
                     <div class="flex justify-end gap-2">
-                        <button wire:click="$set('showDispatchModal', false)" class="px-4 py-2 border rounded">Close</button>
                     </div>
                 </div>
             </div>

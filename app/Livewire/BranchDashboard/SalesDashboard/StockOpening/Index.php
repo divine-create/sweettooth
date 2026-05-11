@@ -4,7 +4,7 @@ namespace App\Livewire\BranchDashboard\SalesDashboard\StockOpening;
 
 use App\Livewire\BaseComponent;
 use App\Livewire\Concerns\SalesDepartmentContext;
-use App\Models\Callback;
+use App\Models\StockVariance;
 use App\Models\Department;
 use App\Models\Product;
 use App\Models\ProductDispatch;
@@ -244,16 +244,15 @@ class Index extends BaseComponent
             return;
         }
 
-        $this->unresolvedVariances = Callback::with('product:id,name')
+        $this->unresolvedVariances = StockVariance::with('product:id,name')
             ->where('branch_id', $this->getBranchId())
             ->whereIn('department_id', $salesDepartmentIds)
             ->whereIn('reason', ['shortage', 'excess'])
-            ->whereNotNull('product_stock_id')
             ->where('status', 'pending')
-            ->whereDate('callback_date', '>=', now()->subDays(7))
-            ->orderBy('callback_date', 'desc')
+            ->whereDate('variance_date', '>=', now()->subDays(7))
+            ->orderBy('variance_date', 'desc')
             ->limit(10)
-            ->get(['id', 'product_id', 'quantity', 'reason', 'callback_date', 'shift_type'])
+            ->get(['id', 'product_id', 'quantity', 'reason', 'variance_date', 'shift_type'])
             ->toArray();
     }
 

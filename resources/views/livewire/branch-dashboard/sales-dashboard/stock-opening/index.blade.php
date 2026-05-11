@@ -80,7 +80,7 @@
                                 {{ $variance['reason'] === 'shortage' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' }}">
                                 {{ $variance['product']['name'] ?? 'Unknown' }}
                                 &mdash; {{ $variance['reason'] }} {{ number_format($variance['quantity'], 2) }}
-                                <span class="text-opacity-70">({{ \Carbon\Carbon::parse($variance['callback_date'])->format('M d') }})</span>
+                                <span class="text-opacity-70">({{ \Carbon\Carbon::parse($variance['variance_date'])->format('M d') }})</span>
                             </span>
                         @endforeach
                     </div>

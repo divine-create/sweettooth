@@ -560,6 +560,7 @@
                     $nonDepartmentRoutes = [
                         'branch-dashboard.production.material-returns.create',
                         'branch-dashboard.production.material-returns.history',
+                        'branch-dashboard.production.customer-orders.index',
                     ];                    
                     $isProductionRoute = in_array($currentRoute, $nonDepartmentRoutes);
 
@@ -664,6 +665,13 @@
                         {{ __('No production departments') }}
                     </div>
                 @endforelse
+
+                <flux:navlist.item icon="shopping-bag"
+                    :href="branch_route('branch-dashboard.production.customer-orders.index')"
+                    :current="request()->routeIs('branch-dashboard.production.customer-orders.*')"
+                    wire:navigate>
+                    {{ __('Customer Orders') }}
+                </flux:navlist.item>
             </flux:navlist.group>
             @endif
 

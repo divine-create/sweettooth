@@ -27,6 +27,9 @@ class Index extends Component
     #[Url(keep: true)]
     public string $tab = 'records';
 
+    #[Url(keep: true)]
+    public string $recordType = 'finished'; // New: Default to finished goods
+
     public ?Department $department = null;
 
     public string $search = '';
@@ -105,15 +108,18 @@ class Index extends Component
 
         $query = ProductionRecord::query()
             ->with(['recipe.product', 'producedBy'])
-            ->when($departmentId, function ($q) use ($departmentId, $branchId) {
-                $q->whereHas('recipe', function ($recipe) use ($departmentId, $branchId) {
-                    $recipe->where('department_id', $departmentId)
-                        ->when($branchId, function ($recipe) use ($branchId) {
-                            $recipe->where(function ($sub) use ($branchId) {
-                                $sub->where('branch_id', $branchId)
-                                    ->orWhereNull('branch_id');
-                            });
-                        });
+            ->whereHas('recipe', function ($recipe) use ($departmentId, $branchId) {
+                // Filter by production type
+                $recipe->where('is_wip', $this->recordType === 'wip');
+
+                $recipe->when($departmentId, function ($q) use ($departmentId) {
+                    $q->where('department_id', $departmentId);
+                })
+                ->when($branchId, function ($q) use ($branchId) {
+                    $q->where(function ($sub) use ($branchId) {
+                        $sub->where('branch_id', $branchId)
+                            ->orWhereNull('branch_id');
+                    });
                 });
             });
 
@@ -178,6 +184,9 @@ class Index extends Component
         $recordQuery = ProductionRecord::query()
             ->when($departmentId, function ($q) use ($departmentId, $branchId) {
                 $q->whereHas('recipe', function ($recipe) use ($departmentId, $branchId) {
+                    // Filter by production type
+                    $recipe->where('is_wip', $this->recordType === 'wip');
+
                     $recipe->where('department_id', $departmentId)
                         ->when($branchId, function ($recipe) use ($branchId) {
                             $recipe->where(function ($sub) use ($branchId) {

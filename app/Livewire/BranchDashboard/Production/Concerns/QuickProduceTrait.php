@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Production\Concerns;
 
+use App\Models\CustomerOrder;
 use App\Models\Department;
 use App\Models\Item;
 use App\Models\ProductDispatch;
@@ -10,6 +11,7 @@ use App\Models\ProductionStoreMovement;
 use App\Models\ProductionStoreStock;
 use App\Models\Recipe;
 use App\Models\Shift;
+use App\Services\CustomerOrderService;
 use App\Services\ProductionStoreService;
 use Illuminate\Support\Facades\DB;
 
@@ -48,7 +50,7 @@ trait QuickProduceTrait
 
     public bool $showDispatchModal = false;
 
-    public string $dispatchType = 'sales';
+    public string $dispatchType = '';
 
     public ?int $selectedOrderId = null;
 
@@ -57,6 +59,8 @@ trait QuickProduceTrait
     public ?ProductionStore $productionStore = null;
 
     public array $pendingOrders = [];
+
+    public ?int $lastProductionRecordId = null;
 
     abstract public function getBranchId(): ?string;
 
@@ -111,6 +115,7 @@ trait QuickProduceTrait
         $this->calculateYield();
         $this->resolveIngredients();
         $this->checkStock();
+        $this->loadPendingOrders();
     }
 
     public function updatedQuantity()
@@ -257,7 +262,30 @@ trait QuickProduceTrait
 
         try {
             DB::transaction(function () use ($store, $actor) {
-                // Scenario A: Consume ingredients for the TOTAL batch produced (Approved + Rejected)
+                // Ensure active shift exists
+                $shift = $this->getCurrentShift();
+                if (!$shift) {
+                    throw new \Exception('No active shift found. Please clock in to record production.');
+                }
+
+                // 1. Ensure DailyProduce exists for this recipe and shift
+                $dailyProduce = \App\Models\DailyProduce::firstOrCreate([
+                    'shift_id' => $shift->id,
+                    'recipe_id' => $this->selectedRecipe->id,
+                ], [
+                    'produce_date' => $shift->shift_date,
+                    'shift_type' => $shift->shift_type,
+                    'opening_quantity' => \App\Models\DailyProduce::getOpeningQuantityFromPreviousShift(
+                        $this->selectedRecipe->id,
+                        $shift->branch_id,
+                        $shift->shift_date,
+                        $shift->shift_type
+                    ),
+                    'status' => 'in_progress',
+                    'requested_quantity' => 0,
+                ]);
+
+                // 2. Consume ingredients for the TOTAL batch produced (Approved + Rejected)
                 foreach ($this->ingredients as $ing) {
                     $modelClass = $ing['item_type'] ?? \App\Models\Item::class;
                     $item = $modelClass::find($ing['item_id']);
@@ -295,7 +323,35 @@ trait QuickProduceTrait
                     }
                 }
 
-                // Only add APPROVED quantity to WIP stock if it's a WIP
+                // 3. Capture ProductionRecord
+                $batchNumber = 'BATCH-' . now()->format('YmdHis');
+                $record = \App\Models\ProductionRecord::create([
+                    'daily_produce_id' => $dailyProduce->id,
+                    'recipe_id' => $this->selectedRecipe->id,
+                    'batch_number' => $batchNumber,
+                    'produced_by_id' => $actor->id,
+                    'produced_by_type' => get_class($actor),
+                    'quantity_produced' => $this->yieldOutput,
+                    'quantity_approved' => $this->approvedQuantity,
+                    'quantity_rejected' => $this->rejectedQuantity,
+                    'quantity_remaining' => $this->approvedQuantity,
+                    'production_time' => now(),
+                    'quality_status' => $this->rejectedQuantity > 0 ? 'acceptable' : 'good',
+                    'dispatch_status' => 'available',
+                    'rejection_reason' => $this->rejectionReason,
+                    'notes' => 'Quick Produce Batch',
+                ]);
+
+                $this->lastProductionRecordId = $record->id;
+
+                // 4. Update DailyProduce totals
+                $dailyProduce->produced_quantity += $this->approvedQuantity;
+                $dailyProduce->save();
+
+                // 5. Audit Log
+                \App\Services\ProductionAuditService::logBatchProduced($actor, $record);
+
+                // 6. Only add APPROVED quantity to WIP stock if it's a WIP
                 if ($this->selectedRecipe->is_wip) {
                     if (!$this->selectedRecipe->product_id) {
                         throw new \Exception('WIP recipe must be linked to a product for auto-stocking.');
@@ -339,10 +395,7 @@ trait QuickProduceTrait
                 if ($this->rejectedQuantity > 0) {
                     \App\Services\ProductionAuditService::logWaste(
                         $actor,
-                        // We don't have a DailyProduce record here, so we might need to adjust logWaste 
-                        // or just use a generic AuditService log. 
-                        // For now, let's see if we can find a related DailyProduce or skip if not in shift.
-                        $this->resolveDailyProduceForAudit() ?? new \App\Models\DailyProduce(), 
+                        $dailyProduce, 
                         $this->rejectedQuantity,
                         $this->rejectionReasonOptions[$this->rejectionReason] ?? 'Rejected during quick produce'
                     );
@@ -407,9 +460,13 @@ trait QuickProduceTrait
             return;
         }
 
+        $record = \App\Models\ProductionRecord::find($this->lastProductionRecordId);
+
         ProductDispatch::create([
             'branch_id' => $this->getBranchId(),
             'department_id' => $this->department->id,
+            'production_record_id' => $this->lastProductionRecordId,
+            'daily_produce_id' => $record?->daily_produce_id,
             'production_shift_id' => $shift?->id,
             'shift_type' => $shift?->shift_type,
             'recipe_id' => $this->selectedRecipe->id,
@@ -424,13 +481,23 @@ trait QuickProduceTrait
             'notes' => 'Quick Produce Dispatch',
         ]);
 
+        // Update production record remaining quantity if linked
+        if ($record) {
+            $record->quantity_sent_out += $this->yieldOutput;
+            $record->updateQuantityRemaining();
+        }
+
         $this->toast()->success('Dispatched to Sales! Pending confirmation.')->send();
         $this->resetProduction();
     }
 
-    public function dispatchToOrder($orderId)
+    public function dispatchToOrder()
     {
+        $orderId = $this->selectedOrderId;
+
         if (! $this->selectedRecipe || ! $orderId) {
+            $this->toast()->error('Please select a customer order.')->send();
+
             return;
         }
 
@@ -456,36 +523,62 @@ trait QuickProduceTrait
             return;
         }
 
-        ProductDispatch::create([
+        $order = CustomerOrder::find($orderId);
+
+        if (! $order) {
+            $this->toast()->error('Customer order not found.')->send();
+
+            return;
+        }
+
+        $record = \App\Models\ProductionRecord::find($this->lastProductionRecordId);
+
+        $dispatch = ProductDispatch::create([
             'branch_id' => $this->getBranchId(),
             'department_id' => $this->department->id,
+            'production_record_id' => $this->lastProductionRecordId,
+            'daily_produce_id' => $record?->daily_produce_id,
             'production_shift_id' => $shift?->id,
             'shift_type' => $shift?->shift_type,
             'recipe_id' => $this->selectedRecipe->id,
             'product_id' => $this->selectedRecipe->product_id,
+            'customer_order_id' => $order->id,
             'quantity' => $this->yieldOutput,
             'uom' => $this->selectedRecipe->unitOfMeasure->symbol ?? 'units',
             'status' => 'pending_verification',
             'dispatched_by_id' => $actor?->id,
             'dispatched_by_type' => get_class($actor),
             'dispatch_date' => now()->toDateString(),
-            'notes' => "Quick Produce Dispatch - Order #{$orderId}",
+            'notes' => "Customer Order {$order->order_number} — {$order->customer_name}",
         ]);
 
-        $this->toast()->success("Dispatched to Order #{$orderId}: {$this->selectedRecipe->product_name}")->send();
+        // Update production record remaining quantity if linked
+        if ($record) {
+            $record->quantity_for_order += $this->yieldOutput;
+            $record->updateQuantityRemaining();
+        }
+
+        // Advance customer order status (IN_PRODUCTION or COMPLETED)
+        app(CustomerOrderService::class)->recordDispatch($order, $dispatch);
+
+        $this->toast()->success("Dispatched to Order {$order->order_number} ({$order->customer_name})")->send();
         $this->resetProduction();
     }
 
     protected function resetProduction()
     {
         $this->showDispatchModal = false;
+        $this->dispatchType = '';
         $this->selectedRecipe = null;
         $this->selectedSalesDepartmentId = null;
+        $this->selectedOrderId = null;
+        $this->lastProductionRecordId = null;
         $this->quantity = 1;
         $this->ingredients = [];
         $this->ingredientStock = [];
         $this->hasInsufficientStock = false;
         $this->insufficientItems = [];
+        $this->pendingOrders = [];
     }
 
     protected function loadPendingOrders()
@@ -495,7 +588,9 @@ trait QuickProduceTrait
 
     public function getSalesDepartments()
     {
-        return Department::with('category')
+        $productId = $this->selectedRecipe?->product_id;
+
+        $query = Department::with('category')
             ->whereHas('category', function ($q) {
                 $q->whereRaw('LOWER(name) = ?', ['sales']);
             })
@@ -503,8 +598,29 @@ trait QuickProduceTrait
                 $q->where('branch_id', $this->getBranchId())
                   ->orWhereNull('branch_id');
             })
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+            ->where('is_active', true);
+
+        if ($productId) {
+            $product = \App\Models\Product::with('departments:id')->find($productId);
+            if ($product) {
+                $allowedIds = $product->departments->pluck('id')->toArray();
+                if ($product->sales_department_id) {
+                    $allowedIds[] = (int) $product->sales_department_id;
+                }
+                $allowedIds = array_unique($allowedIds);
+
+                if (! empty($allowedIds)) {
+                    $query->whereIn('id', $allowedIds);
+                } else {
+                    // Strictly return empty if product has no assignments
+                    return collect();
+                }
+            }
+        } else {
+            // If recipe is not linked to a product, it shouldn't be dispatched to sales
+            return collect();
+        }
+
+        return $query->orderBy('name')->get();
     }
 }

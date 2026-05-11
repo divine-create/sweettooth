@@ -163,21 +163,42 @@
                         </div>
                     @endif
 
-                    <h4 class="font-medium text-zinc-700 dark:text-zinc-300 mb-2">Dispatch Options</h4>
-                    <div class="space-y-2 mb-4">
-                        <label class="flex items-center gap-2 p-2 rounded border cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700 {{ !$selectedRecipe?->product_id ? 'opacity-50' : '' }}">
-                            <input type="radio" wire:model="dispatchType" value="sales" class="" @disabled(!$selectedRecipe?->product_id)/>
-                            <span>Send to Sales Department</span>
-                        </label>
-                        <label class="flex items-center gap-2 p-2 rounded border cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700 {{ !$selectedRecipe?->product_id ? 'opacity-50' : '' }}">
-                            <input type="radio" wire:model="dispatchType" value="order" class="" @disabled(!$selectedRecipe?->product_id)/>
-                            <span>Add to Order</span>
-                        </label>
-                    </div>
+                    {{-- Step 1: Choose dispatch type --}}
+                    @if($dispatchType === 'sales' || $dispatchType === 'order')
+                    @else
+                    <h4 class="font-medium text-zinc-700 dark:text-zinc-300 mb-3">Where should this go?</h4>
+                    @endif
 
+                    @if($dispatchType !== 'sales' && $dispatchType !== 'order')
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <button wire:click="$set('dispatchType', 'sales')"
+                                    @disabled(!$selectedRecipe?->product_id)
+                                    class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-zinc-200 dark:border-zinc-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition {{ !$selectedRecipe?->product_id ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer' }}">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                </svg>
+                                <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Sales Department</span>
+                                <span class="text-xs text-zinc-500 text-center">Goes into sales stock</span>
+                            </button>
+                            <button wire:click="$set('dispatchType', 'order')"
+                                    @disabled(!$selectedRecipe?->product_id)
+                                    class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-zinc-200 dark:border-zinc-600 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition {{ !$selectedRecipe?->product_id ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer' }}">
+                                <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                </svg>
+                                <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Customer Order</span>
+                                <span class="text-xs text-zinc-500 text-center">Fulfils a pending order</span>
+                            </button>
+                        </div>
+                    @endif
+
+                    {{-- Sales flow --}}
                     @if($dispatchType === 'sales')
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Select Sales Department</label>
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-zinc-700 dark:text-zinc-300">Sales Department</h4>
+                                <button wire:click="$set('dispatchType', '')" class="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">← Back</button>
+                            </div>
                             <select wire:model="selectedSalesDepartmentId" class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600">
                                 <option value="">-- Select Department --</option>
                                 @foreach($this->getSalesDepartments() as $dept)
@@ -185,25 +206,47 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="flex justify-end">
+                            <button wire:click="dispatchToSales" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                                Confirm Dispatch to Sales
+                            </button>
+                        </div>
                     @endif
 
+                    {{-- Order flow --}}
                     @if($dispatchType === 'order')
-                        <input type="number" wire:model="selectedOrderId" placeholder="Enter Order #"
-                               class="w-full rounded border p-2 mb-4"/>
-                    @endif
-
-                    <div class="flex justify-end gap-2">
-                        <button wire:click="$set('showDispatchModal', false)" class="px-4 py-2 border rounded">Skip</button>
-                        @if($dispatchType === 'sales')
-                            <button wire:click="dispatchToSales" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                Dispatch to Sales
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-zinc-700 dark:text-zinc-300">Customer Order</h4>
+                                <button wire:click="$set('dispatchType', '')" class="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">← Back</button>
+                            </div>
+                            @if(empty($pendingOrders))
+                                <div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-sm text-yellow-700 dark:text-yellow-300">
+                                    No approved customer orders found for this product.
+                                </div>
+                            @else
+                                <select wire:model.live="selectedOrderId" class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600">
+                                    <option value="">-- Select Order --</option>
+                                    @foreach($pendingOrders as $order)
+                                        <option value="{{ $order['id'] }}">
+                                            {{ $order['order_number'] }} — {{ $order['customer_name'] }}
+                                            @if($order['item_qty']) (needs {{ $order['item_qty'] }}) @endif
+                                            [{{ $order['status'] }}]
+                                        </option>
+                                    @endforeach
+                                </select>
+                            @endif
+                        </div>
+                        @if(!empty($pendingOrders))
+                        <div class="flex justify-end">
+                            <button wire:click="dispatchToOrder"
+                                    @disabled(!$selectedOrderId)
+                                    class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
+                                Confirm Dispatch to Order
                             </button>
-                        @else
-                            <button wire:click="dispatchToOrder({{ $selectedOrderId }})" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                Add to Order
-                            </button>
+                        </div>
                         @endif
-                    </div>
+                    @endif
                 </div>
             </div>
         </div>

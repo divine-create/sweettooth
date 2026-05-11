@@ -87,7 +87,7 @@
                                 {{ $row->product?->name ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                                {{ $row->callback_date?->format('M d, Y') }}
+                                {{ $row->variance_date?->format('M d, Y') }}
                             </td>
                             <td class="px-4 py-3 text-zinc-600 dark:text-zinc-400 capitalize">
                                 {{ $row->shift_type }}

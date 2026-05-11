@@ -116,7 +116,10 @@ class Index extends Component
                     $q->where('department_id', $this->departmentId);
                 }
                 if ($this->customDateFrom && $this->customDateTo) {
-                    $q->whereBetween('shift_date', [$this->customDateFrom, $this->customDateTo]);
+                    $q->whereBetween('shift_date', [
+                        Carbon::parse($this->customDateFrom)->startOfDay(),
+                        Carbon::parse($this->customDateTo)->endOfDay()
+                    ]);
                 }
             });
     }
@@ -125,11 +128,12 @@ class Index extends Component
     {
         $utilizations = $this->utilizationQuery()->get();
 
-        $rows = $utilizations
+        $allRows = $utilizations
             ->groupBy(function ($row) {
                 return ($row->item_id ?? 'unknown') . '|' . ($row->recipe_id ?? 'unknown');
             })
             ->map(function ($items) {
+                $recipe = $items->first()->recipe;
                 $required = $items->sum('quantity_required');
                 $used = $items->sum('quantity_used');
                 $variance = $items->sum('variance');
@@ -139,35 +143,40 @@ class Index extends Component
 
                 return [
                     'item' => $items->first()->item?->name ?? 'Unknown',
-                    'recipe' => $items->first()->recipe?->product_name ?? 'Unknown',
+                    'recipe' => $recipe?->product_name ?? 'Unknown',
                     'required' => $required,
                     'used' => $used,
                     'variance' => $variance,
                     'variance_type' => $types->count() === 1 ? $types->first() : ($types->isEmpty() ? 'n/a' : 'mixed'),
                     'units_produced' => $unitsProduced,
                     'cost_impact' => $costImpact,
+                    'is_wip' => (bool) ($recipe?->is_wip ?? false),
                 ];
             })
             ->sortByDesc('cost_impact')
             ->values();
 
+        $finishedRows = $allRows->where('is_wip', false)->values();
+        $wipRows = $allRows->where('is_wip', true)->values();
+
         $summary = [
-            'total_required' => $rows->sum('required'),
-            'total_used' => $rows->sum('used'),
-            'total_variance' => $rows->sum('variance'),
-            'total_cost_impact' => $rows->sum('cost_impact'),
+            'total_required' => $allRows->sum('required'),
+            'total_used' => $allRows->sum('used'),
+            'total_variance' => $allRows->sum('variance'),
+            'total_cost_impact' => $allRows->sum('cost_impact'),
         ];
 
         return [
             'report_data' => [
-                'rows' => $rows->toArray(),
+                'finished_rows' => $finishedRows->toArray(),
+                'wip_rows' => $wipRows->toArray(),
                 'summary' => $summary,
             ],
             'summary_metrics' => $summary,
             'tables' => [
-                'ingredient_utilization' => [
+                'finished_utilization' => [
                     'headers' => [
-                        'Product',
+                        'Produce Finished Good',
                         'Ingredient',
                         'Required',
                         'Used',
@@ -176,7 +185,31 @@ class Index extends Component
                         'Units Produced',
                         'Cost Impact',
                     ],
-                    'rows' => $rows->map(function ($row) {
+                    'rows' => $finishedRows->map(function ($row) {
+                        return [
+                            $row['recipe'],
+                            $row['item'],
+                            $row['required'],
+                            $row['used'],
+                            $row['variance'],
+                            $row['variance_type'],
+                            $row['units_produced'],
+                            $row['cost_impact'],
+                        ];
+                    })->values()->toArray(),
+                ],
+                'wip_utilization' => [
+                    'headers' => [
+                        'WIP Produce',
+                        'Ingredient',
+                        'Required',
+                        'Used',
+                        'Variance',
+                        'Variance Type',
+                        'Units Produced',
+                        'Cost Impact',
+                    ],
+                    'rows' => $wipRows->map(function ($row) {
                         return [
                             $row['recipe'],
                             $row['item'],

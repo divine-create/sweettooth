@@ -7,6 +7,7 @@ enum ProductionRequestSourceType: string
     case SALES_DEMAND = 'SALES_DEMAND';
     case RESTOCK = 'RESTOCK';
     case MANUAL = 'MANUAL';
+    case CUSTOMER_ORDER = 'CUSTOMER_ORDER';
 
     /**
      * @return array<int, string>

@@ -50,9 +50,20 @@
     </div>
 
     @if($tab === 'records')
+        <div class="flex items-center gap-4 mb-2">
+            <button type="button" wire:click="$set('recordType', 'finished')"
+                class="text-sm font-semibold {{ $recordType === 'finished' ? 'text-emerald-700 dark:text-emerald-400 border-b-2 border-emerald-600 pb-1' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 pb-1' }}">
+                Finished Goods
+            </button>
+            <button type="button" wire:click="$set('recordType', 'wip')"
+                class="text-sm font-semibold {{ $recordType === 'wip' ? 'text-emerald-700 dark:text-emerald-400 border-b-2 border-emerald-600 pb-1' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 pb-1' }}">
+                WIP Goods
+            </button>
+        </div>
+
         <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
             <div class="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-                Production Records
+                {{ $recordType === 'wip' ? 'Produced WIP Goods' : 'Produced Finished Goods' }}
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">

@@ -1,0 +1,186 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - button "Toggle sidebar" [ref=e3]:
+      - img [ref=e4]
+    - link "Sweetooth Confectioneries Sweetooth Confectioneries" [ref=e6] [cursor=pointer]:
+      - /url: http://127.0.0.1:8000/branch-dashboard?b_id=019c850c-7294-72ea-9ec5-1b00d6b0bdd8
+      - img "Sweetooth Confectioneries" [ref=e8]
+      - generic [ref=e10]: Sweetooth Confectioneries
+    - navigation [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e15]: Leave Management
+        - generic [ref=e16]:
+          - link "Apply Leave" [ref=e17] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/leave/apply?b_id=019c850c-7294-72ea-9ec5-1b00d6b0bdd8
+            - img [ref=e19]
+            - generic [ref=e21]: Apply Leave
+          - link "My Leaves" [ref=e22] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/leave/my-leaves?b_id=019c850c-7294-72ea-9ec5-1b00d6b0bdd8
+            - img [ref=e24]
+            - generic [ref=e26]: My Leaves
+          - link "Leave Balance" [ref=e27] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/leave/balance?b_id=019c850c-7294-72ea-9ec5-1b00d6b0bdd8
+            - img [ref=e29]
+            - generic [ref=e32]: Leave Balance
+      - generic [ref=e33]:
+        - generic [ref=e35]: Sales Departments
+        - button "Till Sales" [ref=e38]:
+          - img [ref=e40]
+          - generic [ref=e42]: Till Sales
+      - generic [ref=e43]:
+        - generic [ref=e45]: Reporting
+        - generic [ref=e46]:
+          - link "Dashboard" [ref=e47] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/branch-dashboard/reporting/dashboard?b_id=019c850c-7294-72ea-9ec5-1b00d6b0bdd8
+            - img [ref=e49]
+            - generic [ref=e51]: Dashboard
+          - link "Review Reports" [ref=e52] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/branch-dashboard/reporting/review?b_id=019c850c-7294-72ea-9ec5-1b00d6b0bdd8
+            - img [ref=e54]
+            - generic [ref=e56]: Review Reports
+          - link "Compile Reports" [ref=e57] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/branch-dashboard/reporting/compile?b_id=019c850c-7294-72ea-9ec5-1b00d6b0bdd8
+            - img [ref=e59]
+            - generic [ref=e61]: Compile Reports
+          - link "Send to Managing Director" [ref=e62] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/branch-dashboard/reporting/send-to-md?b_id=019c850c-7294-72ea-9ec5-1b00d6b0bdd8
+            - img [ref=e64]
+            - generic [ref=e66]: Send to Managing Director
+  - banner [ref=e67]:
+    - button "Toggle sidebar" [ref=e68]:
+      - img [ref=e69]
+    - button "FC" [ref=e72]:
+      - generic [ref=e75]: FC
+      - img [ref=e77]
+  - banner [ref=e79]:
+    - generic [ref=e80]:
+      - button "Toggle sidebar" [ref=e81]:
+        - img [ref=e82]
+      - link "Clock In" [ref=e86] [cursor=pointer]:
+        - /url: http://127.0.0.1:8000/branch-dashboard/auth/shift
+        - img [ref=e87]
+        - text: Clock In
+      - navigation [ref=e89]:
+        - button "Search Ctrl + K" [ref=e91]:
+          - img [ref=e92]
+          - generic [ref=e94]: Search
+          - generic [ref=e95]:
+            - generic [ref=e96]: Ctrl
+            - generic [ref=e97]: +
+            - generic [ref=e98]: K
+      - button "FC" [ref=e100] [cursor=pointer]:
+        - generic [ref=e103]: FC
+        - img [ref=e105]
+  - generic [ref=e109]:
+    - generic [ref=e110]:
+      - heading "Shift Closing - Till Sales" [level=1] [ref=e111]
+      - paragraph [ref=e112]: Close your shift, reconcile stock and cash
+    - generic [ref=e114]:
+      - generic [ref=e115]: "Date: May 07, 2026"
+      - generic [ref=e116]: "Shift: Morning"
+      - generic [ref=e117]: "Department: Till Sales"
+      - generic [ref=e118]: "Status: Active"
+    - generic [ref=e119]:
+      - generic [ref=e120]:
+        - heading "Sales Summary" [level=3] [ref=e121]
+        - generic [ref=e122]:
+          - generic [ref=e123]:
+            - generic [ref=e124]: "Total Sales:"
+            - generic [ref=e125]: NGN 53,000.00
+          - generic [ref=e126]:
+            - generic [ref=e127]: "Total Orders:"
+            - generic [ref=e128]: "2"
+          - generic [ref=e129]:
+            - generic [ref=e130]: "Avg Order Value:"
+            - generic [ref=e131]: NGN 26,500.00
+          - generic [ref=e132]:
+            - generic [ref=e133]: "Total Discount:"
+            - generic [ref=e134]: NGN 0.00
+          - generic [ref=e135]:
+            - generic [ref=e136]: "Cancelled Orders:"
+            - generic [ref=e137]: "0"
+      - generic [ref=e138]:
+        - heading "Payment Methods" [level=3] [ref=e139]
+        - generic [ref=e141]:
+          - generic [ref=e142]: "cash:"
+          - generic [ref=e143]: NGN 53,000.00
+      - generic [ref=e144]:
+        - heading "Top Selling Products" [level=3] [ref=e145]
+        - generic [ref=e146]:
+          - generic [ref=e147]:
+            - generic [ref=e148]:
+              - paragraph [ref=e149]: Burger Ice
+              - paragraph [ref=e150]: "Qty: 4"
+            - generic [ref=e151]: NGN 40,000.00
+          - generic [ref=e152]:
+            - generic [ref=e153]:
+              - paragraph [ref=e154]: JAMBALAYA RICE
+              - paragraph [ref=e155]: "Qty: 1"
+            - generic [ref=e156]: NGN 13,000.00
+    - generic [ref=e157]:
+      - heading "Cash Reconciliation" [level=3] [ref=e158]
+      - generic [ref=e159]:
+        - generic [ref=e160]:
+          - heading "Cash" [level=4] [ref=e161]
+          - generic [ref=e162]:
+            - generic [ref=e163]:
+              - generic [ref=e164]: "Expected:"
+              - generic [ref=e165]: NGN 53,000.00
+            - generic [ref=e166]:
+              - generic [ref=e167]: "Actual Count:"
+              - spinbutton [ref=e168]: "0"
+            - generic [ref=e169]:
+              - generic [ref=e170]: "Variance:"
+              - generic [ref=e171]: "-NGN 53,000.00"
+            - generic [ref=e172]:
+              - generic [ref=e173]: "Reason Required:"
+              - textbox "Explain variance..." [ref=e174]
+        - generic [ref=e175]:
+          - heading "POS/Card" [level=4] [ref=e176]
+          - generic [ref=e177]:
+            - generic [ref=e178]:
+              - generic [ref=e179]: "Expected:"
+              - generic [ref=e180]: NGN 0.00
+            - generic [ref=e181]:
+              - generic [ref=e182]: "Actual Count:"
+              - spinbutton [ref=e183]: "0"
+            - generic [ref=e184]:
+              - generic [ref=e185]: "Variance:"
+              - generic [ref=e186]: NGN 0.00
+        - generic [ref=e187]:
+          - heading "Transfer" [level=4] [ref=e188]
+          - generic [ref=e189]:
+            - generic [ref=e190]:
+              - generic [ref=e191]: "Expected:"
+              - generic [ref=e192]: NGN 0.00
+            - generic [ref=e193]:
+              - generic [ref=e194]: "Actual Count:"
+              - spinbutton [ref=e195]: "0"
+            - generic [ref=e196]:
+              - generic [ref=e197]: "Variance:"
+              - generic [ref=e198]: NGN 0.00
+      - generic [ref=e200]:
+        - generic [ref=e201]: "Total Variance:"
+        - generic [ref=e202]: "-NGN 53,000.00"
+    - generic [ref=e203]:
+      - heading "Stock Closing" [level=3] [ref=e204]
+      - table [ref=e206]:
+        - rowgroup [ref=e207]:
+          - row "Product Opening Additions Sold Expected Actual Variance Status" [ref=e208]:
+            - columnheader "Product" [ref=e209]
+            - columnheader "Opening" [ref=e210]
+            - columnheader "Additions" [ref=e211]
+            - columnheader "Sold" [ref=e212]
+            - columnheader "Expected" [ref=e213]
+            - columnheader "Actual" [ref=e214]
+            - columnheader "Variance" [ref=e215]
+            - columnheader "Status" [ref=e216]
+        - rowgroup [ref=e217]:
+          - row "No stock data available" [ref=e218]:
+            - cell "No stock data available" [ref=e219]
+    - generic [ref=e220]:
+      - generic [ref=e221]: Closing Notes
+      - textbox "Add any notes about this shift..." [ref=e222]
+    - generic [ref=e223]:
+      - button "Refresh Data" [ref=e224]: Refresh Data
+      - button "Close Shift" [ref=e225]: Close Shift

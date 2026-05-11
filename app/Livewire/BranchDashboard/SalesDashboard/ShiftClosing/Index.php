@@ -13,6 +13,7 @@ use App\Models\Branch;
 use App\Models\Department;
 use App\Models\Product;
 use App\Models\Callback;
+use App\Models\StockVariance;
 use App\Services\SalesWorkflowService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -157,8 +158,13 @@ class Index extends BaseComponent
                 (float) ($stock->quantity_reserved ?? 0)
             );
 
-            // Actual closing defaults to expected unless this stock was already closed.
-            $actualClosing = ($stock->workflow_step ?? null) === 'closing_completed'
+            // Actual closing defaults to expected unless THIS shift already closed the record.
+            // A prior shift may have left workflow_step=closing_completed on the same shared
+            // row — using its closing_quantity would show a false variance for the current shift.
+            $closedByCurrentShift = ($stock->workflow_step ?? null) === 'closing_completed'
+                && $this->currentShiftId
+                && (int) $stock->shift_id === (int) $this->currentShiftId;
+            $actualClosing = $closedByCurrentShift
                 ? (float) $stock->closing_quantity
                 : $expectedClosing;
 
@@ -449,20 +455,23 @@ class Index extends BaseComponent
                         'updated_at'       => now(),
                     ]);
 
-                    // Create callback for significant variance
-                    if (abs($stockData['variance']) > 0) {
-                        Callback::create([
+                    // Recalculate variance at save time — the pre-loaded 'variance' field
+                    // defaults to 0 at page load (actualClosing = expectedClosing before staff edits)
+                    // and is never updated when staff types a different actual_closing value.
+                    $liveVariance = (float) $stockData['actual_closing'] - (float) $stockData['expected_closing'];
+                    if (abs($liveVariance) > 0.001) {
+                        StockVariance::create([
                             'branch_id'         => $this->branchId,
                             'department_id'     => $this->departmentId,
                             'product_id'        => $stockData['product_id'],
-                            'quantity'          => abs($stockData['variance']),
-                            'reason'            => $stockData['variance'] < 0 ? 'shortage' : 'excess',
-                            'callback_date'     => $this->shiftDate,
+                            'product_stock_id'  => $productStock->id,
+                            'quantity'          => abs($liveVariance),
+                            'expected_quantity' => $stockData['expected_closing'],
+                            'reason'            => $liveVariance < 0 ? 'shortage' : 'excess',
+                            'variance_date'     => $this->shiftDate,
                             'shift_type'        => $this->getProductStockShiftType(),
                             'notes'             => $stockData['notes'] . ' | Shift closing variance',
                             'status'            => 'pending',
-                            'product_stock_id'  => $productStock->id,
-                            'expected_quantity' => $stockData['expected_closing'],
                         ]);
                     }
 

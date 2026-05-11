@@ -19,33 +19,7 @@ class ShiftTimingValidator
         ?string $branchId = null,
         ?Carbon $requestedTime = null
     ): ValidationResult {
-        $currentTime = $requestedTime ?? Carbon::now();
-
-        // Get shift configuration with STRICT time windows
-        $config = $this->getStrictShiftConfiguration($shiftType, $branchId);
-
-        if (!$config) {
-            return ValidationResult::invalid("Shift configuration not found for {$shiftType}");
-        }
-
-        // STRICT VALIDATION: Must be within exact clock-in window
-        if (!$config->isWithinStrictClockInWindow($currentTime)) {
-            $violationDetails = $this->getStrictViolationDetails($config, $currentTime);
-
-            // Log security violation
-            Log::warning('STRICT SHIFT TIME VIOLATION', [
-                'shift_type' => $shiftType,
-                'requested_time' => $currentTime->format('Y-m-d H:i:s'),
-                'allowed_window' => $violationDetails['window'],
-                'violation_type' => $violationDetails['type'],
-                'branch_id' => $branchId,
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent()
-            ]);
-
-            return ValidationResult::invalid($violationDetails['message']);
-        }
-
+        // DISABLING STRICT TIME WINDOWS: Allow staff to clock in whenever they want
         return ValidationResult::valid();
     }
 
@@ -130,48 +104,7 @@ class ShiftTimingValidator
         string $branchId,
         ?Carbon $requestedTime = null
     ): ValidationResult {
-        $currentTime = $requestedTime ?? Carbon::now();
-
-        // Check for active shifts today
-        $activeShift = \App\Models\Shift::where('employee_id', $employeeId)
-            ->where('shift_date', $currentTime->toDateString())
-            ->where('status', 'active')
-            ->whereNull('clock_out')
-            ->first();
-
-        if ($activeShift) {
-            return ValidationResult::invalid(
-                "You already have an active {$activeShift->shift_type} shift today. Please clock out first."
-            );
-        }
-
-        // Check for shifts that would overlap.
-        // Only consider open/active shifts; closed shifts should not block a new clock-in.
-        $config = ShiftConfiguration::forBranchAndType($branchId, $shiftType)->first();
-
-        if ($config) {
-            $shiftEnd = Carbon::createFromTimeString($config->end_time)->setDateFrom($currentTime);
-
-            $overlappingShift = \App\Models\Shift::where('employee_id', $employeeId)
-                ->where('shift_date', $currentTime->toDateString())
-                ->where('status', 'active')
-                ->where(function ($query) use ($currentTime, $shiftEnd) {
-                    $query->whereBetween('clock_in', [$currentTime, $shiftEnd])
-                          ->orWhereBetween('clock_out', [$currentTime, $shiftEnd])
-                          ->orWhere(function ($q) use ($currentTime, $shiftEnd) {
-                              $q->where('clock_in', '<=', $currentTime)
-                                ->where('clock_out', '>=', $shiftEnd);
-                          });
-                })
-                ->first();
-
-            if ($overlappingShift) {
-                return ValidationResult::invalid(
-                    "This shift would overlap with your existing shift today."
-                );
-            }
-        }
-
+        // DISABLING CONFLICT VALIDATION: Allow multiple clock-ins and overlapping shift records
         return ValidationResult::valid();
     }
 

@@ -1,0 +1,23 @@
+- generic [ref=e3]:
+  - link "Sweetooth Confectioneries" [ref=e4] [cursor=pointer]:
+    - /url: http://127.0.0.1:8000
+    - img [ref=e6]
+    - generic [ref=e7]: Sweetooth Confectioneries
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - img [ref=e13]
+      - heading "Clock In" [level=1] [ref=e15]
+      - paragraph [ref=e16]: Select your shift to start working
+    - generic [ref=e17]:
+      - paragraph [ref=e18]: Thursday, May 7, 2026
+      - paragraph [ref=e19]: 04:44 PM
+      - paragraph [ref=e20]: Server-side time validation enabled
+    - generic [ref=e21]:
+      - generic [ref=e22]: Select Shift
+      - button "Choose a shift" [ref=e23]:
+        - generic [ref=e24]: Choose a shift
+        - img [ref=e25]
+    - generic [ref=e27]:
+      - generic [ref=e28]: Notes (Optional)
+      - textbox "Add any notes about your shift..." [ref=e29]
+    - paragraph [ref=e31]: Time-based shift validation enabled

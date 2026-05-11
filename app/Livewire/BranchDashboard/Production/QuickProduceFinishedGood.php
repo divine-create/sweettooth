@@ -2,7 +2,9 @@
 
 namespace App\Livewire\BranchDashboard\Production;
 
+use App\Enums\CustomerOrderStatus;
 use App\Livewire\BranchDashboard\Production\Concerns\QuickProduceTrait;
+use App\Models\CustomerOrder;
 use App\Models\Recipe;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -34,6 +36,42 @@ class QuickProduceFinishedGood extends Component
             ->with('productType', 'unitOfMeasure')
             ->orderBy('product_name')
             ->get();
+    }
+
+    protected function loadPendingOrders(): void
+    {
+        $branchId = $this->getBranchId();
+        $productId = $this->selectedRecipe?->product_id;
+
+        if (! $branchId) {
+            $this->pendingOrders = [];
+
+            return;
+        }
+
+        $query = CustomerOrder::with('items.product')
+            ->where('branch_id', $branchId)
+            ->whereIn('status', [
+                CustomerOrderStatus::APPROVED->value,
+                CustomerOrderStatus::IN_PRODUCTION->value,
+            ]);
+
+        if ($productId) {
+            $query->whereHas('items', fn ($q) => $q->where('product_id', $productId));
+        }
+
+        $this->pendingOrders = $query->latest()
+            ->get()
+            ->map(fn (CustomerOrder $order) => [
+                'id'            => $order->id,
+                'order_number'  => $order->order_number,
+                'customer_name' => $order->customer_name,
+                'status'        => $order->status->label(),
+                'item_qty'      => $productId
+                    ? (float) $order->items->where('product_id', $productId)->first()?->quantity
+                    : null,
+            ])
+            ->toArray();
     }
 
     public function render()

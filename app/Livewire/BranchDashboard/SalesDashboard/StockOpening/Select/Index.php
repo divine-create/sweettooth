@@ -67,11 +67,24 @@ class Index extends BaseComponent
             return [];
         }
 
-        // Get products with closing_quantity > 0 from previous shifts (before today)
-        return ProductStock::where('stock_date', '<', $today)
-            ->where('closing_quantity', '>', 0)
+        // Get IDs of today's existing stock records to exclude them from "previous" search
+        $todayStockIds = ProductStock::where('stock_date', $today)
             ->whereIn('department_id', $salesDepartmentIds)
-            ->distinct()
+            ->pluck('id')
+            ->toArray();
+
+        // Get products with closing_quantity > 0 from previous shift records chronologically
+        $query = ProductStock::whereIn('department_id', $salesDepartmentIds)
+            ->whereNotNull('closing_quantity')
+            ->where('closing_quantity', '>', 0)
+            ->orderByDesc('id');
+
+        if (! empty($todayStockIds)) {
+            $minId = min($todayStockIds);
+            $query->where('id', '<', $minId);
+        }
+
+        return $query->distinct()
             ->pluck('product_id')
             ->toArray();
     }
@@ -186,7 +199,12 @@ class Index extends BaseComponent
         return Product::query()
             ->active()
             ->available()
-            ->whereIn('sales_department_id', $salesDepartmentIds)
+            ->where(function($q) use ($salesDepartmentIds) {
+                $q->whereIn('sales_department_id', $salesDepartmentIds)
+                  ->orWhereHas('departments', function($dq) use ($salesDepartmentIds) {
+                      $dq->whereIn('department_id', $salesDepartmentIds);
+                  });
+            })
             ->when($this->filterProductType, function ($query) {
                 $query->where('product_type_id', $this->filterProductType);
             })

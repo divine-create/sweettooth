@@ -12,13 +12,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('audit_logs', function (Blueprint $table) {
-            // Drop the old unsignedBigInteger column and recreate as UUID
-            $table->dropColumn('auditable_id');
+            if (Schema::hasColumn('audit_logs', 'auditable_id')) {
+                // Drop the old unsignedBigInteger column and recreate as UUID
+                $table->dropColumn('auditable_id');
+            }
         });
 
         Schema::table('audit_logs', function (Blueprint $table) {
-            // Add as UUID to match Employee model's UUID primary key
-            $table->uuid('auditable_id')->nullable()->after('auditable_type');
+            if (!Schema::hasColumn('audit_logs', 'auditable_id')) {
+                // Add as UUID to match Employee model's UUID primary key
+                $table->uuid('auditable_id')->nullable()->after('auditable_type');
+            }
         });
     }
 

@@ -124,8 +124,13 @@ class StockMovement extends Model
             return 'Purchases';
         }
 
-        // 2. ItemRequest, Issue, Transfer, etc. → try common relations
-        $relations = ['department', 'fromDepartment', 'toDepartment', 'from_department', 'to_department'];
+        // 2. MaterialRequestDetail → get from request
+        if (is_a($ref, \App\Models\MaterialRequestDetail::class, true)) {
+            return $ref->request?->department?->name;
+        }
+
+        // 3. ItemRequest, Issue, Transfer, etc. → try common relations
+        $relations = ['department', 'fromDepartment', 'toDepartment', 'from_department', 'to_department', 'request'];
 
         foreach ($relations as $relation) {
             if (method_exists($ref, $relation)) {

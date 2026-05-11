@@ -174,7 +174,7 @@
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Daily Produce Summary</h3>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Finished Good Produce Summary</h3>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
@@ -189,7 +189,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @forelse($dailyProduces as $row)
+                    @forelse($finishedGoodsSummary as $row)
                         <tr>
                             <td class="px-4 py-2 text-gray-600 dark:text-gray-300">
                                 {{ $row['date'] ?? '-' }}
@@ -212,7 +212,55 @@
                         </tr>
                     @empty
                         <tr>
-                            <td class="px-4 py-6 text-center text-gray-500" colspan="6">No daily production data for this period.</td>
+                            <td class="px-4 py-6 text-center text-gray-500" colspan="6">No finished good production data for this period.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">WIP Produce Summary</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Product</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Requested</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Produced</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Sent Out</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Variance</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    @forelse($wipGoodsSummary as $row)
+                        <tr>
+                            <td class="px-4 py-2 text-gray-600 dark:text-gray-300">
+                                {{ $row['date'] ?? '-' }}
+                            </td>
+                            <td class="px-4 py-2 text-gray-900 dark:text-white">
+                                {{ $row['product'] ?? 'Unknown' }}
+                            </td>
+                            <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                                {{ number_format($row['requested'] ?? 0, 2) }}
+                            </td>
+                            <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                                {{ number_format($row['produced'] ?? 0, 2) }}
+                            </td>
+                            <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                                {{ number_format($row['sent_out'] ?? 0, 2) }}
+                            </td>
+                            <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                                {{ number_format($row['variance'] ?? 0, 2) }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td class="px-4 py-6 text-center text-gray-500" colspan="6">No WIP production data for this period.</td>
                         </tr>
                     @endforelse
                 </tbody>

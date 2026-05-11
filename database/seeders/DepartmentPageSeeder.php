@@ -115,13 +115,6 @@ class DepartmentPageSeeder extends Seeder
                 'icon' => 'clipboard',
                 'order' => 7,
             ],
-            [
-                'name' => 'Daily Produce',
-                'slug' => 'daily-produce',
-                'route_name' => 'branch-dashboard.production.daily-produce.index',
-                'icon' => 'calendar',
-                'order' => 8,
-            ],
 
             // Inventory & Tracking
             [

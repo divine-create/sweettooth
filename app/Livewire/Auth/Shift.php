@@ -88,6 +88,32 @@ class Shift extends Component
         // Get the authenticated user
         $user = Auth::user();
 
+        // AUTO-CLOSE FORGOTTEN SHIFTS: If user has an active shift today, close it automatically before starting a new one.
+        $staleShift = ShiftModel::where('employee_id', $user->id)
+            ->where('shift_date', Carbon::today())
+            ->where('status', 'active')
+            ->whereNull('clock_out')
+            ->first();
+
+        if ($staleShift) {
+            $staleShift->update([
+                'clock_out' => Carbon::now(),
+                'status' => 'closed',
+                'workflow_state' => 'completed',
+                'notes' => ($staleShift->notes ? $staleShift->notes . ' | ' : '') . 'Auto-closed due to new clock-in.'
+            ]);
+            
+            // Also close the corresponding SalesShift if it exists
+            SalesShift::where('employee_id', $user->id)
+                ->where('shift_date', Carbon::today())
+                ->where('status', 'active')
+                ->whereNull('clock_out')
+                ->update([
+                    'clock_out' => Carbon::now(),
+                    'status' => 'closed',
+                ]);
+        }
+
         try {
             if (! $this->b_id) {
                 $this->toast()->error('No branch selected. Please contact administrator.')->send();

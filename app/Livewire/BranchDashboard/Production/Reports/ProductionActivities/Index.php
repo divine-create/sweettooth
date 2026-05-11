@@ -150,7 +150,10 @@ class Index extends Component
                     $q->where('shift_type', $this->shiftType);
                 }
             })
-            ->whereBetween('production_time', [$this->customDateFrom, $this->customDateTo]);
+            ->whereBetween('production_time', [
+                Carbon::parse($this->customDateFrom)->startOfDay(),
+                Carbon::parse($this->customDateTo)->endOfDay()
+            ]);
     }
 
     private function productionRequestsQuery()
@@ -168,7 +171,10 @@ class Index extends Component
                     $q->where('shift_type', $this->shiftType);
                 }
                 if ($this->customDateFrom && $this->customDateTo) {
-                    $q->whereBetween('shift_date', [$this->customDateFrom, $this->customDateTo]);
+                    $q->whereBetween('shift_date', [
+                        Carbon::parse($this->customDateFrom)->startOfDay(),
+                        Carbon::parse($this->customDateTo)->endOfDay()
+                    ]);
                 }
             });
 
@@ -181,36 +187,34 @@ class Index extends Component
 
     private function buildReportPayload(): array
     {
-        $dailyProduces = $this->dailyProducesQuery()->get();
         $records = $this->productionRecordsQuery()
             ->orderByDesc('production_time')
-            ->limit(50)
             ->get();
         $requests = $this->productionRequestsQuery()
             ->orderByDesc('created_at')
             ->limit(50)
             ->get();
 
-        $totalProduced = $dailyProduces->sum('produced_quantity');
-        $totalRequested = $dailyProduces->sum('requested_quantity');
-        $totalSentOut = $dailyProduces->sum('sent_out_quantity');
-        $totalVariance = $dailyProduces->sum('variance');
+        $totalProduced = $records->sum('quantity_produced');
+        $totalRequested = $records->unique('daily_produce_id')->sum(fn($r) => $r->dailyProduce->requested_quantity);
+        $totalSentOut = $records->sum('quantity_sent_out');
+        $totalVariance = $totalProduced - $totalRequested;
 
-        $productionValue = $dailyProduces->sum(function ($row) {
-            $price = $row->recipe?->product?->price;
-            $fallback = $row->recipe?->cost_per_unit;
+        $productionValue = $records->sum(function ($record) {
+            $price = $record->recipe?->product?->price;
+            $fallback = $record->recipe?->cost_per_unit;
             $unitValue = $price ?? $fallback ?? 0;
 
-            return (float) $row->produced_quantity * (float) $unitValue;
+            return (float) $record->quantity_produced * (float) $unitValue;
         });
 
-        $unfulfilledQuantity = $dailyProduces->sum(function ($row) {
-            $requested = (float) $row->requested_quantity;
-            $produced = (float) $row->produced_quantity;
+        $unfulfilledQuantity = $records->unique('daily_produce_id')->sum(function ($record) {
+            $requested = (float) $record->dailyProduce->requested_quantity;
+            $produced = (float) $record->dailyProduce->produced_quantity;
             return max(0, $requested - $produced);
         });
 
-        $recordsData = $records->map(function ($record) {
+        $recordsPreview = $records->take(50)->map(function ($record) {
             return [
                 'time' => optional($record->production_time)->format('Y-m-d H:i') ?? '-',
                 'product' => $record->recipe?->product_name ?? 'Unknown',
@@ -228,16 +232,27 @@ class Index extends Component
             ];
         })->values()->toArray();
 
-        $dailySummary = $dailyProduces->map(function ($row) {
+        $dailySummary = $records->groupBy(function ($r) {
+            return $r->production_time->format('Y-m-d') . '|' . $r->recipe_id;
+        })->map(function ($rows) {
+            $recipe = $rows->first()->recipe;
+            $planned = $rows->unique('daily_produce_id')->sum(fn($r) => $r->dailyProduce->requested_quantity);
+            $produced = $rows->sum('quantity_produced');
+            $sentOut = $rows->sum('quantity_sent_out');
+
             return [
-                'date' => optional($row->produce_date)->format('Y-m-d') ?? '-',
-                'product' => $row->recipe?->product_name ?? 'Unknown',
-                'requested' => (float) ($row->requested_quantity ?? 0),
-                'produced' => (float) ($row->produced_quantity ?? 0),
-                'sent_out' => (float) ($row->sent_out_quantity ?? 0),
-                'variance' => (float) ($row->variance ?? 0),
+                'date' => $rows->first()->production_time->format('Y-m-d'),
+                'product' => $recipe->product_name ?? 'Unknown',
+                'requested' => (float) $planned,
+                'produced' => (float) $produced,
+                'sent_out' => (float) $sentOut,
+                'variance' => (float) ($produced - $planned),
+                'is_wip' => (bool) ($recipe->is_wip ?? false),
             ];
-        })->values()->toArray();
+        })->values();
+
+        $finishedGoodsSummary = $dailySummary->where('is_wip', false)->values()->toArray();
+        $wipGoodsSummary = $dailySummary->where('is_wip', true)->values()->toArray();
 
         $summary = [
             'total_produced' => $totalProduced,
@@ -251,9 +266,10 @@ class Index extends Component
         return [
             'report_data' => [
                 'summary' => $summary,
-                'production_records' => $recordsData,
+                'production_records' => $recordsPreview,
                 'production_requests' => $requestsData,
-                'daily_produces' => $dailySummary,
+                'finished_goods_summary' => $finishedGoodsSummary,
+                'wip_goods_summary' => $wipGoodsSummary,
             ],
             'summary_metrics' => $summary,
             'tables' => [
@@ -266,7 +282,7 @@ class Index extends Component
                             $row['produced'] ?? 0,
                             $row['sent_out'] ?? 0,
                         ];
-                    }, $recordsData),
+                    }, $recordsPreview),
                 ],
                 'production_requests' => [
                     'headers' => ['Request', 'Product', 'Planned', 'Status'],
@@ -279,8 +295,8 @@ class Index extends Component
                         ];
                     }, $requestsData),
                 ],
-                'daily_produce_summary' => [
-                    'headers' => ['Date', 'Product', 'Requested', 'Produced', 'Sent Out', 'Variance'],
+                'finished_goods_summary' => [
+                    'headers' => ['Date', 'Produce Finished Good', 'Requested', 'Produced', 'Sent Out', 'Variance'],
                     'rows' => array_map(function ($row) {
                         return [
                             $row['date'] ?? '-',
@@ -290,7 +306,20 @@ class Index extends Component
                             $row['sent_out'] ?? 0,
                             $row['variance'] ?? 0,
                         ];
-                    }, $dailySummary),
+                    }, $finishedGoodsSummary),
+                ],
+                'wip_goods_summary' => [
+                    'headers' => ['Date', 'WIP Produce', 'Requested', 'Produced', 'Sent Out', 'Variance'],
+                    'rows' => array_map(function ($row) {
+                        return [
+                            $row['date'] ?? '-',
+                            $row['product'] ?? 'Unknown',
+                            $row['requested'] ?? 0,
+                            $row['produced'] ?? 0,
+                            $row['sent_out'] ?? 0,
+                            $row['variance'] ?? 0,
+                        ];
+                    }, $wipGoodsSummary),
                 ],
             ],
             'period' => [
@@ -299,6 +328,7 @@ class Index extends Component
             ],
         ];
     }
+
 
     public function generateReport(): void
     {
@@ -384,7 +414,8 @@ class Index extends Component
             'summary' => $this->reportData['summary'] ?? [],
             'productionRecords' => $this->reportData['production_records'] ?? [],
             'productionRequests' => $this->reportData['production_requests'] ?? [],
-            'dailyProduces' => $this->reportData['daily_produces'] ?? [],
+            'finishedGoodsSummary' => $this->reportData['finished_goods_summary'] ?? [],
+            'wipGoodsSummary' => $this->reportData['wip_goods_summary'] ?? [],
         ]);
     }
 }

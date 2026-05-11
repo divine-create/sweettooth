@@ -11,7 +11,7 @@ class DailyProduceReportService extends ReportService
 
     protected function getReportName(): string
     {
-        return 'Daily Produce Report';
+        return 'Produce Finished Good vs WIP Produce Report';
     }
 
     protected function generateReportData(): array

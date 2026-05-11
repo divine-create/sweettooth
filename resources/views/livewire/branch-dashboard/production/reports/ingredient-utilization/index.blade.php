@@ -72,43 +72,87 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Ingredient Utilization Table</h3>
+    <div class="bg-white dark:bg-zinc-800 rounded-lg shadow">
+        <div class="px-5 py-4 border-b border-zinc-200 dark:border-zinc-700">
+            <h3 class="text-base font-semibold text-zinc-900 dark:text-white">Produce Finished Good Utilization</h3>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
-                <thead class="bg-gray-50 dark:bg-gray-900">
+            <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
+                <thead class="bg-zinc-50 dark:bg-zinc-900">
                     <tr>
-                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Product</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Ingredient</th>
-                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Required</th>
-                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Used</th>
-                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Variance</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Variance Type</th>
-                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Units Produced</th>
-                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Cost Impact</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Product</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Ingredient</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Required</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Used</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Variance</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Variance Type</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Units Produced</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Cost Impact</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @forelse($rows as $row)
+                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                    @forelse($reportData['finished_rows'] ?? [] as $row)
                         <tr>
-                            <td class="px-4 py-2 text-gray-900 dark:text-white">{{ $row['recipe'] }}</td>
-                            <td class="px-4 py-2 text-gray-900 dark:text-white">{{ $row['item'] }}</td>
-                            <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">{{ number_format($row['required'], 4) }}</td>
-                            <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">{{ number_format($row['used'], 4) }}</td>
+                            <td class="px-4 py-2 text-zinc-900 dark:text-white">{{ $row['recipe'] }}</td>
+                            <td class="px-4 py-2 text-zinc-900 dark:text-white">{{ $row['item'] }}</td>
+                            <td class="px-4 py-2 text-right text-zinc-600 dark:text-zinc-300">{{ number_format($row['required'], 4) }}</td>
+                            <td class="px-4 py-2 text-right text-zinc-600 dark:text-zinc-300">{{ number_format($row['used'], 4) }}</td>
                             <td class="px-4 py-2 text-right">
                                 <span class="{{ $row['variance'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                     {{ $row['variance'] >= 0 ? '+' : '' }}{{ number_format($row['variance'], 4) }}
                                 </span>
                             </td>
-                            <td class="px-4 py-2 text-gray-600 dark:text-gray-300">{{ $row['variance_type'] }}</td>
-                            <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">{{ number_format($row['units_produced'], 2) }}</td>
-                            <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">{{ number_format($row['cost_impact'], 2) }}</td>
+                            <td class="px-4 py-2 text-zinc-600 dark:text-zinc-300">{{ $row['variance_type'] }}</td>
+                            <td class="px-4 py-2 text-right text-zinc-600 dark:text-zinc-300">{{ number_format($row['units_produced'], 2) }}</td>
+                            <td class="px-4 py-2 text-right text-zinc-600 dark:text-zinc-300">{{ number_format($row['cost_impact'], 2) }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td class="px-4 py-6 text-center text-gray-500" colspan="8">No ingredient utilization data for this period.</td>
+                            <td class="px-4 py-6 text-center text-zinc-500" colspan="8">No finished good utilization data.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-zinc-800 rounded-lg shadow">
+        <div class="px-5 py-4 border-b border-zinc-200 dark:border-zinc-700">
+            <h3 class="text-base font-semibold text-zinc-900 dark:text-white">WIP Produce Utilization</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
+                <thead class="bg-zinc-50 dark:bg-zinc-900">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Product</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Ingredient</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Required</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Used</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Variance</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Variance Type</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Units Produced</th>
+                        <th class="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Cost Impact</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                    @forelse($reportData['wip_rows'] ?? [] as $row)
+                        <tr>
+                            <td class="px-4 py-2 text-zinc-900 dark:text-white">{{ $row['recipe'] }}</td>
+                            <td class="px-4 py-2 text-zinc-900 dark:text-white">{{ $row['item'] }}</td>
+                            <td class="px-4 py-2 text-right text-zinc-600 dark:text-zinc-300">{{ number_format($row['required'], 4) }}</td>
+                            <td class="px-4 py-2 text-right text-zinc-600 dark:text-zinc-300">{{ number_format($row['used'], 4) }}</td>
+                            <td class="px-4 py-2 text-right">
+                                <span class="{{ $row['variance'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                    {{ $row['variance'] >= 0 ? '+' : '' }}{{ number_format($row['variance'], 4) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-2 text-zinc-600 dark:text-zinc-300">{{ $row['variance_type'] }}</td>
+                            <td class="px-4 py-2 text-right text-zinc-600 dark:text-zinc-300">{{ number_format($row['units_produced'], 2) }}</td>
+                            <td class="px-4 py-2 text-right text-zinc-600 dark:text-zinc-300">{{ number_format($row['cost_impact'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td class="px-4 py-6 text-center text-zinc-500" colspan="8">No WIP produce utilization data.</td>
                         </tr>
                     @endforelse
                 </tbody>

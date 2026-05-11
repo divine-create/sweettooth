@@ -47,7 +47,7 @@ class Create extends BaseComponent
     ];
 
     /**
-     * Computed property to get the selected dispatch.
+     * Computed property to get the selected stock record.
      */
     public function getSelectedDispatchProperty()
     {
@@ -55,7 +55,7 @@ class Create extends BaseComponent
             return null;
         }
 
-        return ItemDispatch::with('item')->find($this->selectedDispatchId);
+        return \App\Models\ProductionStoreStock::with('item')->find($this->selectedDispatchId);
     }
 
     protected function getModelClass(): string
@@ -142,7 +142,12 @@ class Create extends BaseComponent
         $query = \App\Models\ProductionStoreStock::with(['item', 'item.unitOfMeasure'])
             ->select('production_store_stocks.*')
             ->where('store_id', $store->id)
-            ->whereHas('item') // Only include raw materials (Items), exclude WIPs (Products)
+            ->whereHas('item', function($q) {
+                // Only include raw materials (Items), exclude WIPs (Items in WIP category)
+                $q->whereDoesntHave('category', function($cq) {
+                    $cq->where('name', 'like', 'wip%');
+                });
+            })
             ->whereRaw('(quantity_available - COALESCE((
                 SELECT SUM(quantity) 
                 FROM production_material_returns 

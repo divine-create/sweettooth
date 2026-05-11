@@ -155,10 +155,10 @@
             </div>
         </div>
 
-        {{-- Waste by Product --}}
+        {{-- Produce Finished Good Waste --}}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Waste by Product</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Produce Finished Good Waste</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -172,7 +172,7 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        @forelse($reportData['waste_by_product'] ?? [] as $product)
+                        @forelse($reportData['finished_goods_waste'] ?? [] as $product)
                             <tr>
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
                                     {{ $product['product'] }}
@@ -193,7 +193,54 @@
                         @empty
                             <tr>
                                 <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                                    No waste data available for this period
+                                    No finished good waste data available
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- WIP Produce Waste --}}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">WIP Produce Waste</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-900">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Production Waste</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Callback Waste</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Waste</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Incidents</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        @forelse($reportData['wip_goods_waste'] ?? [] as $product)
+                            <tr>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                                    {{ $product['product'] }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-orange-600 text-right">
+                                    {{ number_format($product['production_waste'], 2) }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-yellow-600 text-right">
+                                    {{ number_format($product['callback_waste'], 2) }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-red-600 font-semibold text-right">
+                                    {{ number_format($product['total_waste'], 2) }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500 text-right">
+                                    {{ number_format($product['incidents']) }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                    No WIP produce waste data available
                                 </td>
                             </tr>
                         @endforelse

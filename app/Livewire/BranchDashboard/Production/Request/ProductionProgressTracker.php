@@ -268,40 +268,45 @@ class ProductionProgressTracker extends Component
     private function allowedDispatchSalesDepartmentIds(): array
     {
         $product = $this->resolveDispatchProduct();
-        if (! $product || ! $product->sales_department_id) {
+        if (! $product) {
             return [];
         }
 
-        $ownerDept = Department::query()
-            ->select('id', 'slug')
-            ->find((int) $product->sales_department_id);
+        $ids = [];
 
-        if (! $ownerDept) {
-            return [(int) $product->sales_department_id];
-        }
+        // 1. Include the primary sales department and its branch-specific equivalents (via slug)
+        if ($product->sales_department_id) {
+            $ownerDept = Department::query()
+                ->select('id', 'slug')
+                ->find((int) $product->sales_department_id);
 
-        $branchId = request()->query('b_id') ?: current_branch_id();
+            if ($ownerDept) {
+                $branchId = request()->query('b_id') ?: current_branch_id();
 
-        $ids = Department::query()
-            ->whereHas('category', function ($query) {
-                $query->whereRaw('LOWER(name) = ?', ['sales']);
-            })
-            ->where('slug', $ownerDept->slug)
-            ->when($branchId, function ($query) use ($branchId) {
-                $query->where(function ($scopeQuery) use ($branchId) {
-                    $scopeQuery->where('branch_id', $branchId)
-                        ->orWhereNull('branch_id');
-                });
-            })
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
+                $slugMatchedIds = Department::query()
+                    ->whereHas('category', function ($query) {
+                        $query->whereRaw('LOWER(name) = ?', ['sales']);
+                    })
+                    ->where('slug', $ownerDept->slug)
+                    ->when($branchId, function ($query) use ($branchId) {
+                        $query->where(function ($scopeQuery) use ($branchId) {
+                            $scopeQuery->where('branch_id', $branchId)
+                                ->orWhereNull('branch_id');
+                        });
+                    })
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->toArray();
 
-        if (! in_array((int) $product->sales_department_id, $ids, true)) {
+                $ids = array_merge($ids, $slugMatchedIds);
+            }
+            
             $ids[] = (int) $product->sales_department_id;
         }
+
+        // 2. Include all departments assigned via the department_product relationship
+        $assignedIds = $product->departments()->pluck('departments.id')->map(fn($id) => (int) $id)->toArray();
+        $ids = array_merge($ids, $assignedIds);
 
         return array_values(array_unique($ids));
     }

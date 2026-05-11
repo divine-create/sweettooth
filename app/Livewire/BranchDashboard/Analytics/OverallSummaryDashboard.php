@@ -3,8 +3,8 @@
 namespace App\Livewire\BranchDashboard\Analytics;
 
 use App\Models\Item;
-use App\Models\ItemRequest;
-use App\Models\ItemRequestDetail;
+use App\Models\MaterialRequest;
+use App\Models\MaterialRequestDetail;
 use App\Models\Purchase;
 use App\Models\Stock;
 use App\Models\StockMovement;
@@ -140,12 +140,12 @@ class OverallSummaryDashboard extends Component
             ")
             ->first();
 
-        $requestAgg = ItemRequest::where('branch_id', $branchId)
+        $requestAgg = MaterialRequest::where('branch_id', $branchId)
             ->whereBetween('request_date', [$dateFrom->toDateString(), $dateTo->toDateString()])
             ->selectRaw("
                 COUNT(*) as total_requests,
                 COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending_requests,
-                COALESCE(SUM(CASE WHEN status IN ('approved','dispatched','completed') THEN 1 ELSE 0 END), 0) as completed_requests
+                COALESCE(SUM(CASE WHEN status IN ('approved','completed') THEN 1 ELSE 0 END), 0) as completed_requests
             ")
             ->first();
 
@@ -451,8 +451,8 @@ class OverallSummaryDashboard extends Component
             ->get()
             ->groupBy('stock_id');
 
-        $requestDetails = ItemRequestDetail::whereIn('item_id', $itemIds)
-            ->whereHas('itemRequest', function ($query) use ($branchId, $dateFrom, $dateTo) {
+        $requestDetails = MaterialRequestDetail::whereIn('item_id', $itemIds)
+            ->whereHas('request', function ($query) use ($branchId, $dateFrom, $dateTo) {
                 $query->where('branch_id', $branchId)
                     ->whereBetween('request_date', [$dateFrom->toDateString(), $dateTo->toDateString()]);
             })
@@ -534,7 +534,7 @@ class OverallSummaryDashboard extends Component
             ->first();
 
         // Most requested item
-        $mostRequested = ItemRequestDetail::whereHas('itemRequest', function ($query) use ($branchId, $dateFrom, $dateTo) {
+        $mostRequested = MaterialRequestDetail::whereHas('request', function ($query) use ($branchId, $dateFrom, $dateTo) {
             $query->where('branch_id', $branchId)
                 ->whereBetween('request_date', [$dateFrom->toDateString(), $dateTo->toDateString()]);
         })

@@ -96,10 +96,10 @@
             </div>
         </div>
 
-        {{-- Product Quality Table --}}
+        {{-- Produce Finished Good Quality Table --}}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Product Quality Analysis</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Produce Finished Good Quality Analysis</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -113,7 +113,7 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        @forelse($reportData['product_quality'] ?? [] as $product)
+                        @forelse($reportData['finished_quality'] ?? [] as $product)
                             <tr>
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
                                     {{ $product['product_name'] }}
@@ -137,7 +137,57 @@
                         @empty
                             <tr>
                                 <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                                    No quality data available for this period
+                                    No finished good quality data available
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- WIP Produce Quality Table --}}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">WIP Produce Quality Analysis</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-900">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Batches</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Approved</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Rejected</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Approval Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        @forelse($reportData['wip_quality'] ?? [] as $product)
+                            <tr>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                                    {{ $product['product_name'] }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500 text-right">
+                                    {{ number_format($product['total_batches']) }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-green-600 text-right">
+                                    {{ number_format($product['total_approved']) }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-red-600 text-right">
+                                    {{ number_format($product['total_rejected']) }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-right">
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                        {{ $product['approval_rate'] >= 95 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                        {{ number_format($product['approval_rate'], 1) }}%
+                                    </span>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                    No WIP produce quality data available
                                 </td>
                             </tr>
                         @endforelse

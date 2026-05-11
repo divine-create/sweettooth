@@ -24,6 +24,13 @@ class PaymentObserver
         if ($payment->status === 'completed' && $payment->gl_posting_status === 'pending') {
             $this->postToGL($payment);
         }
+
+        // Fix: If this payment is for a completed sale that hasn't posted yet, trigger it
+        if ($payment->sale && 
+            $payment->sale->status === 'completed' && 
+            $payment->sale->gl_posting_status === 'pending') {
+            $this->postSaleToGL($payment->sale);
+        }
     }
 
     /**
@@ -37,6 +44,13 @@ class PaymentObserver
             $payment->status === 'completed' && 
             $payment->gl_posting_status === 'pending') {
             $this->postToGL($payment);
+        }
+
+        // Fix: If this payment completion makes a sale postable
+        if ($payment->sale && 
+            $payment->sale->status === 'completed' && 
+            $payment->sale->gl_posting_status === 'pending') {
+            $this->postSaleToGL($payment->sale);
         }
     }
 
@@ -78,6 +92,28 @@ class PaymentObserver
                 'payment_id' => $payment->id,
                 'sale_id' => $payment->sale_id,
                 'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Post parent sale to GL
+     */
+    private function postSaleToGL(\App\Models\Sale $sale): void
+    {
+        try {
+            // Use the service to post
+            $this->glPostingService->postSaleTransaction($sale);
+
+            $sale->update([
+                'gl_posting_status' => 'posted',
+                'gl_posted_at' => now(),
+                'gl_posting_error' => null,
+            ]);
+        } catch (Exception $e) {
+            $sale->update([
+                'gl_posting_status' => 'failed',
+                'gl_posting_error' => $e->getMessage(),
             ]);
         }
     }

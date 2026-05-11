@@ -38,13 +38,6 @@
            </svg>
            Export CSV
        </button>
-       <button wire:click="exportCSV" 
-           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200 flex items-center shadow-sm">
-           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-           </svg>
-           Export CSV
-       </button>
     </div>
 
     <!-- Filters Section -->
@@ -131,11 +124,10 @@
             ['index' => 'item_name', 'label' => 'Item Name'],
             ['index' => 'sku', 'label' => 'SKU'],
             ['index' => 'category', 'label' => 'Category'],
-            ['index' => 'available_quantity', 'label' => 'Available'],
+            ['index' => 'available_quantity', 'label' => 'Qty Available'],
             ['index' => 'reserved_quantity', 'label' => 'Reserved'],
             ['index' => 'total_quantity', 'label' => 'Total'],
             ['index' => 'uom', 'label' => 'UOM'],
-            ['index' => 'average_cost', 'label' => 'Avg Cost'],
             ['index' => 'last_stock_date', 'label' => 'Last Stock Date'],
             ['index' => 'action', 'label' => 'Actions'],
         ]"
@@ -196,12 +188,6 @@
         @interact('column_uom', $row)
             <span class="text-zinc-600 dark:text-zinc-400 uppercase">
                 {{ $row->item->uom ?? 'N/A' }}
-            </span>
-        @endinteract
-
-        @interact('column_average_cost', $row)
-            <span class="text-zinc-900 dark:text-zinc-100">
-                {{ \App\Helpers\LocalizationHelper::formatCurrency($row->average_cost ?? 0) }}
             </span>
         @endinteract
 

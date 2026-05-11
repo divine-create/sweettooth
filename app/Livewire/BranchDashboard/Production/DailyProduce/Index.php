@@ -1998,6 +1998,7 @@ class Index extends Component
 
     /**
      * Resolve sales departments that can receive a product dispatch.
+     * Includes the primary sales_department_id and any departments assigned via the department_product relationship.
      *
      * @return array<int>
      */
@@ -2014,29 +2015,51 @@ class Index extends Component
 
         $product = Product::query()
             ->select('id', 'sales_department_id')
+            ->with(['departments:id'])
             ->find($productId);
 
-        if (! $product || ! $product->sales_department_id) {
+        if (! $product) {
             return $this->productSalesDepartmentIdsCache[$cacheKey] = [];
         }
 
-        $salesDepartmentId = (int) $product->sales_department_id;
-        $ownerDeptExists = Department::query()->whereKey($salesDepartmentId)->exists();
+        $allowedIds = [];
 
-        // Self-heal stale linkage (legacy DBs without FK or after manual deletes).
-        if (! $ownerDeptExists) {
+        // 1. Include the primary sales department from direct column linkage
+        if ($product->sales_department_id) {
+            $allowedIds[] = (int) $product->sales_department_id;
+        }
+
+        // 2. Include all departments assigned via the department_product relationship
+        if ($product->departments->isNotEmpty()) {
+            foreach ($product->departments as $dept) {
+                $allowedIds[] = (int) $dept->id;
+            }
+        }
+
+        $allowedIds = array_values(array_unique($allowedIds));
+
+        if (empty($allowedIds)) {
+            return $this->productSalesDepartmentIdsCache[$cacheKey] = [];
+        }
+
+        // Validate that these departments actually exist
+        $validIds = Department::query()
+            ->whereIn('id', $allowedIds)
+            ->pluck('id')
+            ->map(static fn ($id): int => (int) $id)
+            ->toArray();
+
+        // Self-heal primary linkage if it's invalid but present
+        if ($product->sales_department_id && ! in_array((int) $product->sales_department_id, $validIds, true)) {
             try {
                 $product->sales_department_id = null;
                 $product->saveQuietly();
             } catch (\Throwable $e) {
                 // Non-fatal: keep runtime behavior even if persistence fails.
             }
-
-            return $this->productSalesDepartmentIdsCache[$cacheKey] = [];
         }
 
-        // Strict ID-based ownership: product can dispatch only to its primary sales_department_id.
-        return $this->productSalesDepartmentIdsCache[$cacheKey] = [$salesDepartmentId];
+        return $this->productSalesDepartmentIdsCache[$cacheKey] = $validIds;
     }
 
     /**
