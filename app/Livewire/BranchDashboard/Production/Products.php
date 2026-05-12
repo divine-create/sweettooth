@@ -215,6 +215,7 @@ class Products extends BaseComponent
         }
         $this->product_type_id = null;
         $this->productTypes = ProductType::where('department_id', $this->selectedDepartmentId)
+            ->whereIn('code', ['WIP', 'FG'])
             ->orderBy('sort_order')
             ->select('id', 'name', 'code', 'department_id')
             ->get();
@@ -303,6 +304,7 @@ class Products extends BaseComponent
         
         $productTypes = ProductType::with('department:id,name')
             ->where('department_id', $this->department->id)
+            ->whereIn('code', ['WIP', 'FG'])
             ->active()
             ->ordered()
             ->select('id', 'name', 'code', 'department_id')
@@ -427,6 +429,12 @@ class Products extends BaseComponent
         }
 
         $this->validate($rules);
+
+        $selectedType = \App\Models\ProductType::find($this->product_type_id);
+        if ($selectedType && ! in_array($selectedType->code, ['WIP', 'FG'])) {
+            $this->addError('product_type_id', 'Product type must be Finished Good or Work in Progress.');
+            return;
+        }
 
         if ($this->sales_department_id && ! $this->isValidSalesDepartment($this->sales_department_id)) {
             $this->addError('sales_department_id', 'Please select a valid sales department for this branch.');
