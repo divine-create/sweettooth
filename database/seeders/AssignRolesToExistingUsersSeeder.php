@@ -34,8 +34,10 @@ class AssignRolesToExistingUsersSeeder extends Seeder
             return;
         }
 
-        // Assign Super Admin role to user with is_superadmin = 1
-        $superAdmins = Employee::where('is_superadmin', 1)->get();
+        // Assign Super Admin role to user with is_superadmin = 1 (column may not exist)
+        $superAdmins = \Illuminate\Support\Facades\Schema::hasColumn('users', 'is_superadmin')
+            ? Employee::where('is_superadmin', 1)->get()
+            : collect();
         foreach ($superAdmins as $user) {
             if (!$user->hasRole('Super Admin')) {
                 $user->assignRole($superAdminRole);

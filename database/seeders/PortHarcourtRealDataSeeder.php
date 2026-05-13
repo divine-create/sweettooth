@@ -1020,6 +1020,7 @@ class PortHarcourtRealDataSeeder extends Seeder
             [
                 'name' => 'Super Admin',
                 'password' => Hash::make('password'),
+                'employee_number' => 'ADMIN-001',
                 'is_active' => true,
                 'branch_id' => $branch->id,
                 'last_accessed_branch_id' => $branch->id,
