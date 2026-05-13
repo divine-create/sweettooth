@@ -9,14 +9,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('product_stocks', function (Blueprint $table) {
-            $table->unsignedBigInteger('shift_id')->nullable()->after('sales_shift_id');
-            $table->foreign('shift_id')->references('id')->on('shifts')->onDelete('set null');
-            $table->index(['shift_id', 'product_id', 'stock_date'], 'product_stocks_shift_product_date_idx');
-            // The original unique_product_stock index is on (sales_shift_id, product_id, stock_date, shift_type).
-            // sales_shift_id has been NULL on all modern rows, so the constraint never fires.
-            // Drop it now that shift_id provides proper per-employee isolation.
+            if (! Schema::hasColumn('product_stocks', 'shift_id')) {
+                $table->unsignedBigInteger('shift_id')->nullable()->after('sales_shift_id');
+                $table->foreign('shift_id')->references('id')->on('shifts')->onDelete('set null');
+            }
+            // Add a plain index on sales_shift_id before dropping the unique index that
+            // also covers it, so the FK constraint still has an index to use.
+            $table->index('sales_shift_id', 'product_stocks_sales_shift_id_idx');
             $table->dropUnique('unique_product_stock');
         });
+
+        if (! Schema::hasIndex('product_stocks', 'product_stocks_shift_product_date_idx')) {
+            Schema::table('product_stocks', function (Blueprint $table) {
+                $table->index(['shift_id', 'product_id', 'stock_date'], 'product_stocks_shift_product_date_idx');
+            });
+        }
 
         Schema::table('sales', function (Blueprint $table) {
             $table->unsignedBigInteger('shift_id')->nullable()->after('sales_shift_id');

@@ -13,8 +13,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Modify the enum to include 'approved'
-        DB::statement("ALTER TABLE production_requests MODIFY COLUMN status ENUM('pending', 'approved', 'in_progress', 'quality_check', 'completed', 'dispatched', 'accepted', 'rejected', 'cancelled') DEFAULT 'pending'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE production_requests MODIFY COLUMN status ENUM('pending', 'approved', 'in_progress', 'quality_check', 'completed', 'dispatched', 'accepted', 'rejected', 'cancelled') DEFAULT 'pending'");
+        }
     }
 
     /**
@@ -27,7 +28,8 @@ return new class extends Migration
             ->where('status', 'approved')
             ->update(['status' => 'pending']);
 
-        // Remove 'approved' from enum
-        DB::statement("ALTER TABLE production_requests MODIFY COLUMN status ENUM('pending', 'in_progress', 'quality_check', 'completed', 'dispatched', 'accepted', 'rejected', 'cancelled') DEFAULT 'pending'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE production_requests MODIFY COLUMN status ENUM('pending', 'in_progress', 'quality_check', 'completed', 'dispatched', 'accepted', 'rejected', 'cancelled') DEFAULT 'pending'");
+        }
     }
 };

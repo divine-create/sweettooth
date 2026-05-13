@@ -10,8 +10,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Update the status enum to include pending_verification and accepted
-        DB::statement("ALTER TABLE product_dispatches MODIFY COLUMN status ENUM('pending_verification', 'accepted', 'received', 'rejected') DEFAULT 'pending_verification'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE product_dispatches MODIFY COLUMN status ENUM('pending_verification', 'accepted', 'received', 'rejected') DEFAULT 'pending_verification'");
+        }
     }
 
     /**
@@ -19,7 +20,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Revert to the original enum values
-        DB::statement("ALTER TABLE product_dispatches MODIFY COLUMN status ENUM('dispatched', 'received', 'rejected') DEFAULT 'dispatched'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE product_dispatches MODIFY COLUMN status ENUM('dispatched', 'received', 'rejected') DEFAULT 'dispatched'");
+        }
     }
 };
