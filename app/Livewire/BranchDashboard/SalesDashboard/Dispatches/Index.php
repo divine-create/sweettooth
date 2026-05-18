@@ -168,7 +168,7 @@ class Index extends BaseComponent
                 });
             })
             ->with([
-                'product',
+                'product' => fn ($q) => $q->withTrashed(),
                 'product.unitOfMeasure:id,symbol',
                 'product.salesUom:id,symbol',
                 'dispatchedBy',
@@ -365,7 +365,7 @@ class Index extends BaseComponent
             // Use receive day for POS availability; production date remains tracked separately.
             $stockDate = Carbon::today();
             $shiftType = (string) ($currentShift?->shift_type ?: $dispatch->shift_type ?: 'morning');
-            if (! in_array($shiftType, ['morning', 'afternoon'], true)) {
+            if (! in_array($shiftType, ['morning', 'afternoon', 'night'], true)) {
                 $shiftType = 'morning';
             }
             $hasDepartmentColumn = Schema::hasColumn('product_stocks', 'department_id');
@@ -421,6 +421,19 @@ class Index extends BaseComponent
                 }
 
                 ProductStock::create($payload);
+            }
+
+            // Ensure the product is linked to the receiving sales department so it
+            // appears in the POS product list (which checks the department_product pivot).
+            if ($dispatch->product && $salesDepartmentId > 0) {
+                $dispatch->product->departments()->syncWithoutDetaching([
+                    $salesDepartmentId => ['is_available' => true],
+                ]);
+
+                // Also update sales_department_id if the product has no sales department set
+                if (! $dispatch->product->sales_department_id) {
+                    $dispatch->product->update(['sales_department_id' => $salesDepartmentId]);
+                }
             }
 
             DB::commit();

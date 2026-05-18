@@ -273,6 +273,20 @@
             <div class="flex items-center gap-3">
                 <input type="text" wire:model.live="search" placeholder="Search product..." class="flex-1 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                 <div class="flex items-center gap-1 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-1">
+                    <button type="button" wire:click="$set('stockFilter', 'all')"
+                        class="px-2 py-1 text-xs rounded {{ $stockFilter === 'all' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700' }}">
+                        All
+                    </button>
+                    <button type="button" wire:click="$set('stockFilter', 'in_stock')"
+                        class="px-2 py-1 text-xs rounded {{ $stockFilter === 'in_stock' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700' }}">
+                        In Stock
+                    </button>
+                    <button type="button" wire:click="$set('stockFilter', 'out_of_stock')"
+                        class="px-2 py-1 text-xs rounded {{ $stockFilter === 'out_of_stock' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-semibold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700' }}">
+                        Out of Stock
+                    </button>
+                </div>
+                <div class="flex items-center gap-1 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-1">
                     <button type="button" @click="productView = 'grid'" :class="productView === 'grid' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'text-zinc-600 dark:text-zinc-400'" class="inline-flex items-center justify-center w-8 h-8 rounded">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M3 6a3 3 0 0 1 3-3h2.25a3 3 0 0 1 3 3v2.25a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6Zm9.75 0a3 3 0 0 1 3-3H18a3 3 0 0 1 3 3v2.25a3 3 0 0 1-3 3h-2.25a3 3 0 0 1-3-3V6ZM3 15.75a3 3 0 0 1 3-3h2.25a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-2.25Zm9.75 0a3 3 0 0 1 3-3H18a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3h-2.25a3 3 0 0 1-3-3v-2.25Z" clip-rule="evenodd"/></svg>
                     </button>

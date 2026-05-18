@@ -73,18 +73,19 @@ class Index extends BaseComponent
             ->pluck('id')
             ->toArray();
 
-        // Get products with closing_quantity > 0 from previous shift records chronologically
-        $query = ProductStock::whereIn('department_id', $salesDepartmentIds)
+        // Get the latest historical record per product (excluding today's records),
+        // then return only those whose most recent closing_quantity > 0.
+        // Using MAX(id) as a proxy for "most recent" avoids including products
+        // that were sold to zero in a later shift but still have an older row with > 0.
+        $latestIds = ProductStock::whereIn('department_id', $salesDepartmentIds)
             ->whereNotNull('closing_quantity')
+            ->when(! empty($todayStockIds), fn ($q) => $q->where('id', '<', min($todayStockIds)))
+            ->groupBy('product_id')
+            ->selectRaw('MAX(id) as id')
+            ->pluck('id');
+
+        return ProductStock::whereIn('id', $latestIds)
             ->where('closing_quantity', '>', 0)
-            ->orderByDesc('id');
-
-        if (! empty($todayStockIds)) {
-            $minId = min($todayStockIds);
-            $query->where('id', '<', $minId);
-        }
-
-        return $query->distinct()
             ->pluck('product_id')
             ->toArray();
     }
@@ -144,6 +145,43 @@ class Index extends BaseComponent
         session()->put('stock_opening_selected_products', $this->selectedProductIds);
     }
 
+    public function selectAllProducts(): void
+    {
+        $salesDepartmentIds = $this->resolveEquivalentSalesDepartmentIds();
+
+        if (empty($salesDepartmentIds)) {
+            return;
+        }
+
+        $search = trim((string) $this->search);
+
+        $wipTypeIds = \DB::table('product_types')->where('code', 'WIP')->pluck('id');
+
+        $ids = Product::query()
+            ->active()
+            ->available()
+            ->whereNotIn('product_type_id', $wipTypeIds)
+            ->where(function ($q) use ($salesDepartmentIds) {
+                $q->whereIn('sales_department_id', $salesDepartmentIds)
+                    ->orWhereHas('departments', function ($dq) use ($salesDepartmentIds) {
+                        $dq->whereIn('department_id', $salesDepartmentIds);
+                    });
+            })
+            ->when($this->filterProductType, fn ($q) => $q->where('product_type_id', $this->filterProductType))
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('sku', 'like', '%'.$search.'%');
+                });
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->toArray();
+
+        $this->selectedProductIds = array_values(array_unique(array_merge($this->selectedProductIds, $ids)));
+        session()->put('stock_opening_selected_products', $this->selectedProductIds);
+    }
+
     public function selectAllCurrentPage()
     {
         $products = $this->getProductsPaginator()->getCollection();
@@ -196,9 +234,12 @@ class Index extends BaseComponent
 
         $search = trim((string) $this->search);
 
+        $wipTypeIds = \DB::table('product_types')->where('code', 'WIP')->pluck('id');
+
         return Product::query()
             ->active()
             ->available()
+            ->whereNotIn('product_type_id', $wipTypeIds)
             ->where(function($q) use ($salesDepartmentIds) {
                 $q->whereIn('sales_department_id', $salesDepartmentIds)
                   ->orWhereHas('departments', function($dq) use ($salesDepartmentIds) {

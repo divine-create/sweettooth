@@ -37,6 +37,7 @@ class Index extends BaseComponent
     // are now provided by SalesDepartmentContext trait
 
     public string $search = '';
+    public string $stockFilter = 'all'; // 'all' | 'in_stock' | 'out_of_stock'
     public array $cart = [];
     public float $subtotal = 0.0;
     public $discount = 0.0;
@@ -219,6 +220,13 @@ class Index extends BaseComponent
     }
 
     public function updatedSearch(): void
+    {
+        $this->resetPage('products_cursor');
+        $this->productsForView = null;
+        $this->productAvailabilityForView = null;
+    }
+
+    public function updatedStockFilter(): void
     {
         $this->resetPage('products_cursor');
         $this->productsForView = null;
@@ -862,9 +870,12 @@ class Index extends BaseComponent
             );
         }
 
+        $wipTypeIds = \DB::table('product_types')->where('code', 'WIP')->pluck('id');
+
         $q = Product::query()
             ->active()
             ->available()
+            ->whereNotIn('product_type_id', $wipTypeIds)
             ->where(function($q) use ($departmentIds) {
                 $q->whereIn('sales_department_id', $departmentIds)
                   ->orWhereHas('departments', function($dq) use ($departmentIds) {
@@ -911,15 +922,20 @@ class Index extends BaseComponent
             $query->where('ps.branch_id', $this->branchId);
         })
         ->where(function ($query) use ($hasReservedColumn) {
-            $query->whereRaw(
-                $hasReservedColumn
-                    ? 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold - ps.quantity_reserved)) > 0'
-                    : 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold)) > 0'
-            );
+            $closingExpr = $hasReservedColumn
+                ? 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold - ps.quantity_reserved))'
+                : 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold))';
 
-            // Also include products that have been verified for TODAY, even if zero stock
-            if (Schema::hasColumn('product_stocks', 'stock_date')) {
-                $query->orWhereDate('ps.stock_date', Carbon::today());
+            if ($this->stockFilter === 'in_stock') {
+                $query->whereRaw("$closingExpr > 0");
+            } elseif ($this->stockFilter === 'out_of_stock') {
+                $query->whereRaw("$closingExpr <= 0");
+            } else {
+                // 'all': show everything with a stock record today (including zero stock)
+                $query->whereRaw("$closingExpr > 0");
+                if (Schema::hasColumn('product_stocks', 'stock_date')) {
+                    $query->orWhereDate('ps.stock_date', Carbon::today());
+                }
             }
         });
 

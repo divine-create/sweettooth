@@ -123,10 +123,13 @@ class Index extends BaseComponent
         }
 
         // Get products
+        $wipTypeIds = \DB::table('product_types')->where('code', 'WIP')->pluck('id');
+
         $products = Product::query()
             ->whereIn('id', $selectedProductIds)
             ->active()
             ->available()
+            ->whereNotIn('product_type_id', $wipTypeIds)
             ->whereIn('sales_department_id', $salesDepartmentIds)
             ->select(['id', 'name', 'sku', 'uom_id', 'product_type_id', 'shelf_life_days'])
             ->with(['unitOfMeasure:id,symbol'])
