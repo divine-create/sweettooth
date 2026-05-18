@@ -57,9 +57,10 @@ class HealthCheck extends Model
     public function checker(): MorphTo
     {
         return $this->morphTo(
-            'checked_by',
+            'checker',
             'checked_by_type',
-            'checked_by_id', );
+            'checked_by_id'
+        );
     }
 
     /**

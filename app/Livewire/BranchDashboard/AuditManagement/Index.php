@@ -280,8 +280,7 @@ class Index extends Component
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            \App\Helpers\CleanError::show("Failed to execute action '{$request->action}': " . $e->getMessage(), $e);
-            return null;
+            throw new \Exception("Failed to execute action '{$request->action}': " . $e->getMessage(), 0, $e);
         }
     }
 

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Notifications\ApprovalRequestNotification;
+use App\Notifications\ApprovalStatusChangedNotification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Notification;
 
@@ -23,6 +25,18 @@ class ApprovalAuditRequest extends Model
         'rejection_comment',
     ];
     protected $casts = ['payload' => 'array'];
+
+    protected static function booted(): void
+    {
+        static::updated(function (ApprovalAuditRequest $req) {
+            if ($req->wasChanged('status') && in_array($req->status, ['approved', 'denied'])) {
+                $requester = $req->requester;
+                if ($requester) {
+                    $requester->notify(new ApprovalStatusChangedNotification($req));
+                }
+            }
+        });
+    }
 
     // Polymorphic requester
     public function requester()
@@ -46,11 +60,10 @@ class ApprovalAuditRequest extends Model
             'status'         => 'pending',
         ]);
 
-        // Notify all superadmins + users with "approve.{action}" permission
-        $superadmins = User::role('superadmin')->get();
-        $approvers   = Employee::permission("approve.{$action}")->get();
-
-        // Notification::send($superadmins->merge($approvers), new ApprovalRequiredNotification($req));
+        $approvers = Employee::permission("approve.{$action}")->get();
+        if ($approvers->isNotEmpty()) {
+            Notification::send($approvers, new ApprovalRequestNotification($req));
+        }
 
         return $req;
     }

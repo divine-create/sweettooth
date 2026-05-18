@@ -136,6 +136,58 @@
             </div>
 
 
+            <!-- GL Account Mappings -->
+            <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 space-y-4">
+                <div>
+                    <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">GL Account Mappings</h3>
+                    <p class="text-xs text-zinc-500 mt-0.5">Optional. Used by the GL posting engine. Wrong account types will be rejected.</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Revenue Account <span class="text-xs text-zinc-400">(Revenue type only)</span></label>
+                    <select wire:model="revenue_account_id" class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm">
+                        <option value="">-- None --</option>
+                        @foreach($this->getGlAccountsByType()['revenue'] as $acct)
+                            <option value="{{ $acct->id }}">{{ $acct->account_number }} — {{ $acct->account_name }}</option>
+                        @endforeach
+                    </select>
+                    @error('revenue_account_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tax Account <span class="text-xs text-zinc-400">(Liability/Tax type only)</span></label>
+                    <select wire:model="tax_account_id" class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm">
+                        <option value="">-- None --</option>
+                        @foreach($this->getGlAccountsByType()['tax'] as $acct)
+                            <option value="{{ $acct->id }}">{{ $acct->account_number }} — {{ $acct->account_name }}</option>
+                        @endforeach
+                    </select>
+                    @error('tax_account_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Receivable Account <span class="text-xs text-zinc-400">(Asset type only)</span></label>
+                    <select wire:model="receivable_account_id" class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm">
+                        <option value="">-- None --</option>
+                        @foreach($this->getGlAccountsByType()['asset'] as $acct)
+                            <option value="{{ $acct->id }}">{{ $acct->account_number }} — {{ $acct->account_name }}</option>
+                        @endforeach
+                    </select>
+                    @error('receivable_account_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Cash Account <span class="text-xs text-zinc-400">(Asset type only)</span></label>
+                    <select wire:model="cash_account_id" class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm">
+                        <option value="">-- None --</option>
+                        @foreach($this->getGlAccountsByType()['asset'] as $acct)
+                            <option value="{{ $acct->id }}">{{ $acct->account_number }} — {{ $acct->account_name }}</option>
+                        @endforeach
+                    </select>
+                    @error('cash_account_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+            </div>
+
             <button type="button" wire:click="initiateSave"
                 class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
                 <span wire:loading.remove wire:target="initiateSave">

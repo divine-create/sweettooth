@@ -44,6 +44,7 @@ class Transactions extends Component
 
     public function render()
     {
+        $branchId = $this->getBranchId();
         $transactions = $this->getTransactions();
         $transactions->getCollection()->transform(function ($row) {
             $row->display_amount = $this->resolveAmount($row);
@@ -53,11 +54,25 @@ class Transactions extends Component
             return $row;
         });
 
+        $failedCount = match ($this->transactionType) {
+            'sales' => Sale::when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('gl_posting_status', 'failed')->count(),
+            'purchases' => Purchase::when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('gl_posting_status', 'failed')->count(),
+            'payments' => Payment::when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('gl_posting_status', 'failed')->count(),
+            'adjustments' => $this->adjustmentQuery()
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('gl_posting_status', 'failed')->count(),
+            default => 0,
+        };
+
         return view('livewire.branch-dashboard.accounting.simple.transactions', [
             'rows' => $transactions,
             'headers' => $this->headers,
             'transactionType' => $this->transactionType,
             'status' => $this->status,
+            'failedCount' => $failedCount,
         ]);
     }
 
@@ -200,6 +215,68 @@ class Transactions extends Component
             'adjustments' => optional($row->movement_date)->format('Y-m-d H:i'),
             default => null,
         };
+    }
+
+    public function retryAllFailed(): void
+    {
+        $branchId = $this->getBranchId();
+        $postingService = app(GlPostingService::class);
+
+        $models = match ($this->transactionType) {
+            'sales' => Sale::when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('gl_posting_status', 'failed')->get(),
+            'purchases' => Purchase::when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('gl_posting_status', 'failed')->get(),
+            'payments' => Payment::when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('gl_posting_status', 'failed')->get(),
+            'adjustments' => $this->adjustmentQuery()
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('gl_posting_status', 'failed')->get(),
+            default => collect(),
+        };
+
+        if ($models->isEmpty()) {
+            session()->flash('message', 'No failed transactions to retry.');
+            return;
+        }
+
+        $succeeded = 0;
+        $failed = 0;
+
+        foreach ($models as $model) {
+            if (AccountingPostingFailure::where('reference_type', get_class($model))
+                ->where('reference_id', $model->id)->count() >= 3) {
+                $failed++;
+                continue;
+            }
+
+            $model->update(['gl_posting_status' => 'pending', 'gl_posting_error' => null]);
+
+            try {
+                match ($this->transactionType) {
+                    'sales' => $postingService->postSaleTransaction($model),
+                    'purchases' => $postingService->postPurchaseTransaction($model),
+                    'payments' => $postingService->postPaymentTransaction($model),
+                    'adjustments' => $postingService->postInventoryAdjustment($model),
+                    default => null,
+                };
+                $model->update(['gl_posting_status' => 'posted', 'gl_posted_at' => now()]);
+                $succeeded++;
+            } catch (\Throwable $e) {
+                $model->update(['gl_posting_status' => 'failed', 'gl_posting_error' => $e->getMessage()]);
+                AccountingPostingFailure::create([
+                    'reference_type' => get_class($model),
+                    'reference_id' => $model->id,
+                    'entry_type' => $this->transactionType,
+                    'error_message' => $e->getMessage(),
+                    'context' => ['source' => 'bulk_retry'],
+                    'last_seen_at' => now(),
+                ]);
+                $failed++;
+            }
+        }
+
+        session()->flash('message', "Bulk retry complete: {$succeeded} succeeded, {$failed} failed.");
     }
 
     public function retryFailed(string $transactionType, int $transactionId)

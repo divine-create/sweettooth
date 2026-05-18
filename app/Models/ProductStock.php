@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Notifications\StockLowNotification;
 use App\Services\UomConversionService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Shift;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 
 class ProductStock extends Model
 {
@@ -216,6 +219,38 @@ class ProductStock extends Model
         static::saving(function (ProductStock $productStock) {
             $productStock->updateCalculatedFields();
         });
+
+        static::saved(function (ProductStock $productStock) {
+            $productStock->checkAndNotifyLowStock();
+        });
+    }
+
+    private function checkAndNotifyLowStock(): void
+    {
+        $product = $this->product;
+        $reorderLevel = $product?->reorder_level ?? null;
+
+        if (! $reorderLevel || (float) $this->closing_quantity >= (float) $reorderLevel) {
+            return;
+        }
+
+        $cacheKey = "stock_low_{$this->id}";
+        if (Cache::has($cacheKey)) {
+            return;
+        }
+
+        try {
+            $recipients = User::role('Inventory Manager')
+                ->where('branch_id', $this->branch_id)
+                ->get();
+
+            if ($recipients->isNotEmpty()) {
+                Notification::send($recipients, new StockLowNotification($this));
+                Cache::put($cacheKey, true, 86400);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Could not dispatch stock low notification', ['error' => $e->getMessage()]);
+        }
     }
 
     /**

@@ -75,9 +75,11 @@
                     <select wire:model.live="filterType"
                         class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-blue-500">
                         <option value="">All Types</option>
-                        <option value="full">Full</option>
-                        <option value="partial">Partial</option>
-                        <option value="cycle">Cycle</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="annual">Annual</option>
+                        <option value="ad_hoc">Ad Hoc</option>
                     </select>
                 </div>
 
@@ -139,9 +141,11 @@
         @interact('column_type', $row)
             @php
                 $typeColors = [
-                    'full' => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-                    'partial' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-                    'cycle' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                    'daily' => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+                    'weekly' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+                    'monthly' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                    'annual' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+                    'ad_hoc' => 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
                 ];
             @endphp
             <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $typeColors[$row->type] ?? '' }}">
@@ -181,12 +185,20 @@
         @endinteract
 
         @interact('column_action', $row)
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-1">
+                <button wire:click="viewStockTake({{ $row->id }})"
+                    class="p-1.5 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    title="View Details">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                </button>
                 @if($row->status === 'in_progress')
                 <button wire:click="completeStockTake({{ $row->id }})"
-                    class="p-2 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                    title="Complete">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="p-1.5 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                    title="Mark Complete">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                     </svg>
                 </button>
@@ -237,9 +249,11 @@
                             <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Type *</label>
                             <select wire:model="type"
                                 class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500">
-                                <option value="full">Full</option>
-                                <option value="partial">Partial</option>
-                                <option value="cycle">Cycle</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="annual">Annual</option>
+                                <option value="ad_hoc">Ad Hoc</option>
                             </select>
                             @error('type')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -299,6 +313,174 @@
                     Create Stock Take
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- View Details Modal -->
+    <div x-data="{ show: @entangle('showViewModal') }" x-show="show" x-cloak class="fixed inset-0 z-50 overflow-hidden"
+        @keydown.escape.window="show = false">
+        <div x-show="show" x-transition:enter="transition-opacity ease-linear duration-300"
+            x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0" class="fixed inset-0 bg-black bg-opacity-50"
+            @click="$wire.closeViewModal()">
+        </div>
+
+        <div x-show="show" x-transition:enter="transform transition ease-in-out duration-300"
+            x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+            x-transition:leave="transform transition ease-in-out duration-300"
+            x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+            class="fixed inset-y-0 right-0 w-full md:w-2/3 lg:w-1/2 bg-white dark:bg-zinc-900 shadow-xl flex flex-col">
+
+            @if($viewingStockTake)
+            <div class="px-6 py-4 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Stock Take Details</h2>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">{{ $viewingStockTake->stock_take_number }}</p>
+                </div>
+                <button wire:click="closeViewModal"
+                    class="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-6 py-4 scrollbar-thin space-y-5">
+                <!-- Meta info -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Date</p>
+                        <p class="text-sm text-zinc-900 dark:text-zinc-100">{{ $viewingStockTake->stock_take_date?->format('Y-m-d') ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Type</p>
+                        @php
+                            $typeColors = [
+                                'daily' => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+                                'weekly' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+                                'monthly' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                                'annual' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+                                'ad_hoc' => 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+                            ];
+                        @endphp
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $typeColors[$viewingStockTake->type] ?? '' }}">
+                            {{ ucfirst($viewingStockTake->type) }}
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Status</p>
+                        @php
+                            $statusColors = [
+                                'in_progress' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+                                'completed' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                                'verified' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+                            ];
+                        @endphp
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $statusColors[$viewingStockTake->status] ?? '' }}">
+                            {{ ucfirst(str_replace('_', ' ', $viewingStockTake->status)) }}
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Conducted By</p>
+                        <p class="text-sm text-zinc-900 dark:text-zinc-100">{{ $viewingStockTake->conductor?->name ?? 'N/A' }}</p>
+                    </div>
+                    @if($viewingStockTake->verifier)
+                    <div>
+                        <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Verified By</p>
+                        <p class="text-sm text-zinc-900 dark:text-zinc-100">{{ $viewingStockTake->verifier->name }}</p>
+                    </div>
+                    @endif
+                    @if($viewingStockTake->notes)
+                    <div class="col-span-2">
+                        <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Notes</p>
+                        <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ $viewingStockTake->notes }}</p>
+                    </div>
+                    @endif
+                </div>
+
+                <!-- Summary badges -->
+                @php
+                    $details = $viewingStockTake->stockTakeDetails;
+                    $matches = $details->where('variance_type', 'match')->count();
+                    $surpluses = $details->where('variance_type', 'surplus')->count();
+                    $shortages = $details->where('variance_type', 'shortage')->count();
+                @endphp
+                <div class="flex gap-3">
+                    <div class="flex-1 bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
+                        <p class="text-2xl font-bold text-green-700 dark:text-green-300">{{ $matches }}</p>
+                        <p class="text-xs text-green-600 dark:text-green-400 mt-0.5">Matches</p>
+                    </div>
+                    <div class="flex-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
+                        <p class="text-2xl font-bold text-blue-700 dark:text-blue-300">{{ $surpluses }}</p>
+                        <p class="text-xs text-blue-600 dark:text-blue-400 mt-0.5">Surpluses</p>
+                    </div>
+                    <div class="flex-1 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-center">
+                        <p class="text-2xl font-bold text-red-700 dark:text-red-300">{{ $shortages }}</p>
+                        <p class="text-xs text-red-600 dark:text-red-400 mt-0.5">Shortages</p>
+                    </div>
+                </div>
+
+                <!-- Items table -->
+                @if($details->count() > 0)
+                <div>
+                    <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-2">Item Details ({{ $details->count() }})</h3>
+                    <div class="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                        <table class="w-full text-sm">
+                            <thead class="bg-zinc-50 dark:bg-zinc-800">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-zinc-600 dark:text-zinc-400">Item</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-zinc-600 dark:text-zinc-400">System</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-zinc-600 dark:text-zinc-400">Physical</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-zinc-600 dark:text-zinc-400">Variance</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                                @foreach($details as $detail)
+                                @php
+                                    $varianceClass = match($detail->variance_type) {
+                                        'surplus' => 'text-blue-600 dark:text-blue-400',
+                                        'shortage' => 'text-red-600 dark:text-red-400',
+                                        default => 'text-green-600 dark:text-green-400',
+                                    };
+                                    $uom = $detail->stock?->item?->unitOfMeasure?->symbol ?? '';
+                                @endphp
+                                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                                    <td class="px-3 py-2 text-zinc-900 dark:text-zinc-100">
+                                        {{ $detail->stock?->item?->name ?? 'Unknown' }}
+                                    </td>
+                                    <td class="px-3 py-2 text-right text-zinc-600 dark:text-zinc-400">
+                                        {{ number_format($detail->system_quantity, 2) }} {{ $uom }}
+                                    </td>
+                                    <td class="px-3 py-2 text-right text-zinc-900 dark:text-zinc-100">
+                                        {{ number_format($detail->physical_quantity, 2) }} {{ $uom }}
+                                    </td>
+                                    <td class="px-3 py-2 text-right font-medium {{ $varianceClass }}">
+                                        {{ $detail->variance_quantity > 0 ? '+' : '' }}{{ number_format($detail->variance_quantity, 2) }} {{ $uom }}
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @else
+                <div class="text-center py-8 text-zinc-400 dark:text-zinc-500">
+                    <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <p class="text-sm">No items recorded for this stock take.</p>
+                </div>
+                @endif
+            </div>
+
+            <div class="px-6 py-4 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-end">
+                <button wire:click="closeViewModal"
+                    class="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-200 rounded-lg font-medium transition-colors">
+                    Close
+                </button>
+            </div>
+            @endif
         </div>
     </div>
 

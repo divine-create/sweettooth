@@ -30,7 +30,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Finish Good</label>
-                        <select wire:change="selectRecipe($event.target.value)" class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600">
+                        <select wire:model.live="selectedRecipeId" class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600">
                             <option value="">-- Select Finish Good --</option>
                             @foreach($this->getRecipes() as $recipe)
                                 <option value="{{ $recipe->id }}">{{ $recipe->product_name }} ({{ $recipe->yield_quantity }} {{ $recipe->uomSymbol }})</option>

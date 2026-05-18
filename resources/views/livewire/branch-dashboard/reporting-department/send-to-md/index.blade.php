@@ -44,13 +44,7 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                    @php
-                                        $compiledByName = $report->compiledBy?->name;
-                                        if (! $compiledByName && $report->compiled_by_type && $report->compiled_by_id) {
-                                            $compiledByName = class_basename($report->compiled_by_type) . ' #' . $report->compiled_by_id;
-                                        }
-                                    @endphp
-                                    {{ $compiledByName ?? 'System' }}
+                                    {{ $report->compiledBy?->name ?? \App\Models\User::find($report->compiled_by_id)?->name ?? 'System' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full

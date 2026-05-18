@@ -63,6 +63,44 @@
         </div>
     </div>
 
+    <!-- Operational KPIs (all branches) -->
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-3">Today's Operations — All Branches</p>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-4">
+                <p class="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Today's Sales</p>
+                <p class="text-2xl font-bold text-zinc-900 dark:text-white">{{ $ops['today_sales_count'] }}</p>
+                <p class="text-xs text-zinc-400 mt-0.5">transactions</p>
+            </div>
+            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-4">
+                <p class="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Today's Revenue</p>
+                <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ number_format($ops['today_revenue'], 0) }}</p>
+                <p class="text-xs text-zinc-400 mt-0.5">completed</p>
+            </div>
+            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-4">
+                <p class="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Active Shifts</p>
+                <p class="text-2xl font-bold {{ $ops['active_shifts'] > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-400' }}">{{ $ops['active_shifts'] }}</p>
+                <p class="text-xs text-zinc-400 mt-0.5">on duty</p>
+            </div>
+            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700 p-4">
+                <p class="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Pending Purchases</p>
+                <p class="text-2xl font-bold {{ $ops['pending_purchases'] > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-400' }}">{{ $ops['pending_purchases'] }}</p>
+                <p class="text-xs text-zinc-400 mt-0.5">awaiting approval</p>
+            </div>
+            <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border {{ $ops['gl_failures'] > 0 ? 'border-red-200 dark:border-red-800' : 'border-zinc-200 dark:border-zinc-700' }} p-4">
+                <p class="text-xs font-semibold {{ $ops['gl_failures'] > 0 ? 'text-red-500' : 'text-zinc-500 dark:text-zinc-400' }} uppercase tracking-wide mb-1">GL Failures</p>
+                <p class="text-2xl font-bold {{ $ops['gl_failures'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-zinc-400' }}">{{ $ops['gl_failures'] }}</p>
+                <p class="text-xs text-zinc-400 mt-0.5">
+                    @if($ops['gl_failures'] > 0)
+                        <a href="{{ branch_route('branch-dashboard.accounting.posting-status') }}" class="text-red-500 hover:underline">review →</a>
+                    @else
+                        posting ok
+                    @endif
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- Quick Actions -->
     <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>

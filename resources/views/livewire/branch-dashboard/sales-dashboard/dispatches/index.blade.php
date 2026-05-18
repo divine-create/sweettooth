@@ -121,10 +121,10 @@
                             <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-colors">
                                 <td class="px-4 py-3">
                                     <div class="font-medium text-zinc-900 dark:text-zinc-100">
-                                        {{ $dispatch->product->name }}
+                                        {{ $dispatch->product?->name ?? '—' }}
                                     </div>
                                     <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                        {{ $dispatch->product->sku }}
+                                        {{ $dispatch->product?->sku ?? '' }}
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-center">

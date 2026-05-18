@@ -20,16 +20,21 @@ use App\Models\PurchasePayment;
 use App\Models\TaxPayment;
 use App\Models\FixedAsset;
 use App\Models\AssetDepreciation;
+use App\Models\User;
+use App\Notifications\GlPostingFailedNotification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Exception;
 
 class GlPostingService
 {
     protected ?AccountingPeriod $currentPeriod = null;
     protected array $accountCache = [];
+    protected ?string $branchId = null;
 
     /**
-     * Get current accounting period
+     * Get current accounting period, scoped to the active branch.
      */
     public function getCurrentPeriod(): ?AccountingPeriod
     {
@@ -37,7 +42,19 @@ class GlPostingService
             return $this->currentPeriod;
         }
 
-        return AccountingPeriod::current()->first();
+        $query = AccountingPeriod::current();
+        if ($this->branchId) {
+            $query->where('branch_id', $this->branchId);
+        }
+        return $query->first();
+    }
+
+    /**
+     * Create a GL entry with branch_id automatically injected.
+     */
+    protected function createEntry(array $attrs): GlEntry
+    {
+        return GlEntry::create(array_merge(['branch_id' => $this->branchId], $attrs));
     }
 
     /**
@@ -73,6 +90,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $sale->branch_id;
 
             if ($this->alreadyPosted(Sale::class, (int) $sale->id, ['sale', 'sale_cogs', 'sale_tax'])) {
                 DB::commit();
@@ -91,7 +109,7 @@ class GlPostingService
             $revenueAccount = $this->getRevenueAccountForDepartment($department);
             $receivableAccount = $this->getReceivableAccountForDepartment($department);
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $receivableAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'sale',
@@ -107,7 +125,7 @@ class GlPostingService
             ])->post(auth()->id());
 
             // Credit to Revenue
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $revenueAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'sale',
@@ -140,7 +158,7 @@ class GlPostingService
             });
 
             if ($totalCogs > 0) {
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $cogsAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'sale_cogs',
@@ -155,7 +173,7 @@ class GlPostingService
                     'entered_by_id' => auth()->id(),
                 ])->post(auth()->id());
 
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $inventoryAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'sale_cogs',
@@ -175,7 +193,7 @@ class GlPostingService
             if ($sale->tax > 0) {
                 $taxAccount = $this->getTaxAccountForDepartment($department);
 
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $receivableAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'sale_tax',
@@ -190,7 +208,7 @@ class GlPostingService
                     'entered_by_id' => auth()->id(),
                 ])->post(auth()->id());
 
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $taxAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'sale_tax',
@@ -214,6 +232,7 @@ class GlPostingService
                 'sale_id' => $sale->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('sale', (string) $sale->id, $e->getMessage());
             throw $e;
         }
     }
@@ -226,6 +245,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $purchase->branch_id;
 
             if ($this->alreadyPosted(Purchase::class, (int) $purchase->id, ['purchase'])) {
                 DB::commit();
@@ -243,7 +263,7 @@ class GlPostingService
             $landingCost = $purchase->total_fob_ngn + ($purchase->other_costs ?? 0);
 
             // Debit: Inventory
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $inventoryAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'purchase',
@@ -259,7 +279,7 @@ class GlPostingService
             ])->post(auth()->id());
 
             // Credit: Accounts Payable
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $apAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'purchase',
@@ -282,6 +302,7 @@ class GlPostingService
                 'purchase_id' => $purchase->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('purchase', (string) $purchase->id, $e->getMessage());
             throw $e;
         }
     }
@@ -294,6 +315,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $payment->branch_id;
 
             if ($this->alreadyPosted(Payment::class, (int) $payment->id, ['payment'])) {
                 DB::commit();
@@ -317,7 +339,7 @@ class GlPostingService
             }
 
             // Debit: Cash/Bank
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $cashAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'payment',
@@ -333,7 +355,7 @@ class GlPostingService
             ])->post(auth()->id());
 
             // Credit: Accounts Receivable
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $receivableAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'payment',
@@ -356,6 +378,7 @@ class GlPostingService
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('payment', (string) $payment->id, $e->getMessage());
             throw $e;
         }
     }
@@ -367,6 +390,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $movement->branch_id;
 
             if ($this->alreadyPosted(StockMovement::class, (int) $movement->id, ['adjustment'])) {
                 DB::commit();
@@ -401,7 +425,7 @@ class GlPostingService
 
             if ($isIncrease && $movement->type === 'adjustment') {
                 // Debit Inventory, Credit Adjustment (inventory gain)
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $inventoryAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
@@ -416,7 +440,7 @@ class GlPostingService
                     'entered_by_id' => auth()->id(),
                 ])->post(auth()->id());
 
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $adjustmentAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
@@ -432,7 +456,7 @@ class GlPostingService
                 ])->post(auth()->id());
             } else {
                 // Debit Loss/Adjustment, Credit Inventory
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $adjustmentAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
@@ -447,7 +471,7 @@ class GlPostingService
                     'entered_by_id' => auth()->id(),
                 ])->post(auth()->id());
 
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $inventoryAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
@@ -471,6 +495,7 @@ class GlPostingService
                 'movement_id' => $movement->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('inventory_adjustment', (string) $movement->id, $e->getMessage());
             throw $e;
         }
     }
@@ -508,6 +533,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $transfer->branch_id;
 
             if ($this->alreadyPosted(AccountTransfer::class, (int) $transfer->id, ['transfer'])) {
                 DB::commit();
@@ -530,7 +556,7 @@ class GlPostingService
             $toGlAccount = $toAccount->glAccount ?? $this->getGlAccount('1050');
 
             // Debit: To Bank Account
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $toGlAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'transfer',
@@ -546,7 +572,7 @@ class GlPostingService
             ])->post(auth()->id());
 
             // Credit: From Bank Account
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $fromGlAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'transfer',
@@ -569,6 +595,7 @@ class GlPostingService
                 'transfer_id' => $transfer->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('account_transfer', (string) $transfer->id, $e->getMessage());
             throw $e;
         }
     }
@@ -581,6 +608,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $claim->branch_id;
 
             if ($this->alreadyPosted(ExpenseClaim::class, (int) $claim->id, ['expense_claim'])) {
                 DB::commit();
@@ -601,7 +629,7 @@ class GlPostingService
                 $expenseAccount = $item->glAccount ?? $this->getExpenseAccountForCategory($item->category);
 
                 // Debit: Expense Account
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $expenseAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'expense_claim',
@@ -618,7 +646,7 @@ class GlPostingService
             }
 
             // Credit: Cash/Bank for total
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $cashAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'expense_claim',
@@ -641,6 +669,7 @@ class GlPostingService
                 'claim_id' => $claim->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('expense_claim', (string) $claim->id, $e->getMessage());
             throw $e;
         }
     }
@@ -654,6 +683,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $creditNote->branch_id;
 
             if ($this->alreadyPosted(CreditNote::class, (int) $creditNote->id, ['credit_note', 'credit_note_cogs'])) {
                 DB::commit();
@@ -665,13 +695,13 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $revenueAccount = $this->getGlAccount('4010');
+            $revenueAccount = $this->getGlAccount('4000');
             $receivableAccount = $this->getGlAccount('1100'); // Accounts Receivable
             $inventoryAccount = $this->getGlAccount('1220');
             $cogsAccount = $this->getGlAccount('5010');
 
             // Debit: Sales Revenue (reducing revenue)
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $revenueAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'credit_note',
@@ -687,7 +717,7 @@ class GlPostingService
             ])->post(auth()->id());
 
             // Credit: Accounts Receivable (reducing what customer owes)
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $receivableAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'credit_note',
@@ -709,7 +739,7 @@ class GlPostingService
 
             if ($totalCogs > 0) {
                 // Debit: Inventory (adding back)
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $inventoryAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'credit_note_cogs',
@@ -725,7 +755,7 @@ class GlPostingService
                 ])->post(auth()->id());
 
                 // Credit: COGS (reducing cost)
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $cogsAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'credit_note_cogs',
@@ -749,6 +779,7 @@ class GlPostingService
                 'credit_note_id' => $creditNote->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('credit_note', (string) $creditNote->id, $e->getMessage());
             throw $e;
         }
     }
@@ -761,6 +792,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $debitNote->branch_id;
 
             if ($this->alreadyPosted(DebitNote::class, (int) $debitNote->id, ['debit_note'])) {
                 DB::commit();
@@ -776,7 +808,7 @@ class GlPostingService
             $inventoryAccount = $this->getGlAccount('1200');
 
             // Debit: Accounts Payable (reducing what we owe)
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $apAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'debit_note',
@@ -792,7 +824,7 @@ class GlPostingService
             ])->post(auth()->id());
 
             // Credit: Inventory (reducing inventory)
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $inventoryAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'debit_note',
@@ -815,6 +847,7 @@ class GlPostingService
                 'debit_note_id' => $debitNote->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('debit_note', (string) $debitNote->id, $e->getMessage());
             throw $e;
         }
     }
@@ -827,6 +860,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $order->branch_id;
 
             if ($this->alreadyPosted(ProductionOrder::class, (int) $order->id, ['production'])) {
                 DB::commit();
@@ -845,7 +879,7 @@ class GlPostingService
             $overheadAccount = $this->getGlAccount('6200'); // Manufacturing Overhead (if exists)
 
             // Debit: Finished Goods Inventory
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $finishedGoodsAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'production',
@@ -862,7 +896,7 @@ class GlPostingService
 
             // Credit: Raw Materials (material cost)
             if ($order->total_material_cost > 0) {
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $rawMaterialsAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'production',
@@ -881,7 +915,7 @@ class GlPostingService
             // Credit: Labor (if applicable)
             if ($order->total_labor_cost > 0) {
                 try {
-                    GlEntry::create([
+                    $this->createEntry([
                         'gl_account_id' => $laborAccount->id,
                         'accounting_period_id' => $period->id,
                         'entry_type' => 'production',
@@ -904,7 +938,7 @@ class GlPostingService
             // Credit: Overhead (if applicable)
             if ($order->total_overhead_cost > 0) {
                 try {
-                    GlEntry::create([
+                    $this->createEntry([
                         'gl_account_id' => $overheadAccount->id,
                         'accounting_period_id' => $period->id,
                         'entry_type' => 'production',
@@ -931,6 +965,7 @@ class GlPostingService
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('production_order', (string) $order->id, $e->getMessage());
             throw $e;
         }
     }
@@ -942,6 +977,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $adjustment->branch_id;
 
             if ($this->alreadyPosted(InventoryAdjustment::class, (int) $adjustment->id, ['adjustment'])) {
                 DB::commit();
@@ -960,7 +996,7 @@ class GlPostingService
 
             if ($adjustment->isDecrease()) {
                 // Inventory decreased: Debit Adjustment Account, Credit Inventory
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $adjustmentAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
@@ -975,7 +1011,7 @@ class GlPostingService
                     'entered_by_id' => auth()->id(),
                 ])->post(auth()->id());
 
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $inventoryAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
@@ -991,7 +1027,7 @@ class GlPostingService
                 ])->post(auth()->id());
             } else {
                 // Inventory increased: Debit Inventory, Credit Adjustment Account
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $inventoryAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
@@ -1006,7 +1042,7 @@ class GlPostingService
                     'entered_by_id' => auth()->id(),
                 ])->post(auth()->id());
 
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $adjustmentAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
@@ -1030,6 +1066,7 @@ class GlPostingService
                 'adjustment_id' => $adjustment->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('inventory_adjustment', (string) $adjustment->id, $e->getMessage());
             throw $e;
         }
     }
@@ -1109,6 +1146,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $payroll->branch_id;
 
             if ($this->alreadyPosted(Payroll::class, (int) $payroll->id, ['payroll_accrual'])) {
                 DB::commit();
@@ -1130,7 +1168,7 @@ class GlPostingService
             $tax = (float) $payroll->tax_deductions;
             $other = (float) $payroll->other_deductions;
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $expenseAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'payroll_accrual',
@@ -1145,7 +1183,7 @@ class GlPostingService
                 'entered_by_id' => auth()->id(),
             ])->post(auth()->id());
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $payableAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'payroll_accrual',
@@ -1161,7 +1199,7 @@ class GlPostingService
             ])->post(auth()->id());
 
             if ($tax > 0) {
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $taxPayableAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'payroll_accrual',
@@ -1178,7 +1216,7 @@ class GlPostingService
             }
 
             if ($other > 0) {
-                GlEntry::create([
+                $this->createEntry([
                     'gl_account_id' => $deductionPayableAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'payroll_accrual',
@@ -1202,6 +1240,7 @@ class GlPostingService
                 'payroll_id' => $payroll->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('payroll', (string) $payroll->id, $e->getMessage());
             throw $e;
         }
     }
@@ -1214,6 +1253,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $payroll->branch_id;
 
             if ($this->alreadyPosted(Payroll::class, (int) $payroll->id, ['payroll_payment'])) {
                 DB::commit();
@@ -1230,7 +1270,7 @@ class GlPostingService
 
             $amount = (float) $payroll->net_salary;
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $payableAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'payroll_payment',
@@ -1245,7 +1285,7 @@ class GlPostingService
                 'entered_by_id' => auth()->id(),
             ])->post(auth()->id());
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $cashAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'payroll_payment',
@@ -1268,6 +1308,7 @@ class GlPostingService
                 'payroll_id' => $payroll->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('payroll', (string) $payroll->id, $e->getMessage());
             throw $e;
         }
     }
@@ -1280,6 +1321,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $payment->branch_id;
 
             if ($this->alreadyPosted(PurchasePayment::class, (int) $payment->id, ['purchase_payment'])) {
                 DB::commit();
@@ -1294,7 +1336,7 @@ class GlPostingService
             $apAccount = $this->getGlAccount('2010');
             $cashAccount = $payment->bankAccount?->glAccount ?? $this->getGlAccount('1050');
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $apAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'purchase_payment',
@@ -1309,7 +1351,7 @@ class GlPostingService
                 'entered_by_id' => auth()->id(),
             ])->post(auth()->id());
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $cashAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'purchase_payment',
@@ -1332,6 +1374,7 @@ class GlPostingService
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('purchase_payment', (string) $payment->id, $e->getMessage());
             throw $e;
         }
     }
@@ -1344,6 +1387,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $payment->branch_id;
 
             if ($this->alreadyPosted(TaxPayment::class, (int) $payment->id, ['tax_payment'])) {
                 DB::commit();
@@ -1358,7 +1402,7 @@ class GlPostingService
             $taxAccount = $this->getGlAccount('2100');
             $cashAccount = $payment->bankAccount?->glAccount ?? $this->getGlAccount('1050');
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $taxAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'tax_payment',
@@ -1373,7 +1417,7 @@ class GlPostingService
                 'entered_by_id' => auth()->id(),
             ])->post(auth()->id());
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $cashAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'tax_payment',
@@ -1396,6 +1440,7 @@ class GlPostingService
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('tax_payment', (string) $payment->id, $e->getMessage());
             throw $e;
         }
     }
@@ -1408,6 +1453,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $asset->branch_id;
 
             if ($this->alreadyPosted(FixedAsset::class, (int) $asset->id, ['asset_acquisition'])) {
                 DB::commit();
@@ -1424,7 +1470,7 @@ class GlPostingService
                 ? $this->getGlAccount('2010')
                 : ($asset->bankAccount?->glAccount ?? $this->getGlAccount('1050'));
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $assetAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'asset_acquisition',
@@ -1439,7 +1485,7 @@ class GlPostingService
                 'entered_by_id' => auth()->id(),
             ])->post(auth()->id());
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $creditAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'asset_acquisition',
@@ -1462,6 +1508,7 @@ class GlPostingService
                 'asset_id' => $asset->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('fixed_asset', (string) $asset->id, $e->getMessage());
             throw $e;
         }
     }
@@ -1474,6 +1521,7 @@ class GlPostingService
     {
         try {
             DB::beginTransaction();
+            $this->branchId = $depreciation->asset?->branch_id;
 
             if ($this->alreadyPosted(AssetDepreciation::class, (int) $depreciation->id, ['asset_depreciation'])) {
                 DB::commit();
@@ -1488,7 +1536,7 @@ class GlPostingService
             $expenseAccount = $this->getGlAccount('6200'); // Depreciation Expense
             $accumAccount = $this->getGlAccount('1510');  // Accumulated Depreciation
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $expenseAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'asset_depreciation',
@@ -1503,7 +1551,7 @@ class GlPostingService
                 'entered_by_id' => auth()->id(),
             ])->post(auth()->id());
 
-            GlEntry::create([
+            $this->createEntry([
                 'gl_account_id' => $accumAccount->id,
                 'accounting_period_id' => $period->id,
                 'entry_type' => 'asset_depreciation',
@@ -1526,6 +1574,7 @@ class GlPostingService
                 'depreciation_id' => $depreciation->id,
                 'error' => $e->getMessage(),
             ]);
+            $this->dispatchGlFailureNotification('fixed_asset', (string) $depreciation->id, $e->getMessage());
             throw $e;
         }
     }
@@ -1551,7 +1600,7 @@ class GlPostingService
             return $department->revenueAccount;
         }
 
-        return $this->getGlAccount('4010');
+        return $this->getGlAccount('4000');
     }
 
     /**
@@ -1594,5 +1643,26 @@ class GlPostingService
 
         $cashAccountNumber = $this->getCashAccountNumberForPaymentMethod($paymentMethod);
         return $this->getGlAccount((string) $cashAccountNumber);
+    }
+
+    private function dispatchGlFailureNotification(string $entityType, string $entityId, string $error): void
+    {
+        $cacheKey = "gl_fail_notif_{$entityType}_{$entityId}";
+        if (Cache::has($cacheKey)) {
+            return;
+        }
+
+        try {
+            $recipients = User::role(['Accountant', 'Accounting Manager'])
+                ->when($this->branchId, fn ($q) => $q->where('branch_id', $this->branchId))
+                ->get();
+
+            if ($recipients->isNotEmpty()) {
+                Notification::send($recipients, new GlPostingFailedNotification($entityType, $entityId, $error));
+                Cache::put($cacheKey, true, 3600);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Could not dispatch GL failure notification', ['error' => $e->getMessage()]);
+        }
     }
 }

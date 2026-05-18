@@ -311,21 +311,25 @@ class Index extends BaseComponent
                 ProductStock::create($createData);
             }
 
-            // Create variance record if actual differs from expected
+            // Create or update variance record if actual differs from expected
             $variance = (float)($entry['actual_opening'] ?? 0) - (float)($entry['expected_opening'] ?? 0);
             if (abs($variance) > 0.001) {
-                StockVariance::create([
-                    'branch_id'         => $this->b_id,
-                    'department_id'     => $primaryDeptId,
-                    'product_id'        => $entry['product_id'],
-                    'quantity'          => abs($variance),
-                    'expected_quantity' => $entry['expected_opening'] ?? 0,
-                    'reason'            => $variance < 0 ? 'shortage' : 'excess',
-                    'variance_date'     => $stockDate,
-                    'shift_type'        => $this->shiftType,
-                    'notes'             => 'Stock opening variance recorded during shift start.',
-                    'status'            => 'pending',
-                ]);
+                StockVariance::updateOrCreate(
+                    [
+                        'branch_id'      => $this->b_id,
+                        'department_id'  => $primaryDeptId,
+                        'product_id'     => $entry['product_id'],
+                        'variance_date'  => $stockDate,
+                        'shift_type'     => $this->shiftType,
+                    ],
+                    [
+                        'quantity'          => abs($variance),
+                        'expected_quantity' => $entry['expected_opening'] ?? 0,
+                        'reason'            => $variance < 0 ? 'shortage' : 'excess',
+                        'notes'             => 'Stock opening variance recorded during shift start.',
+                        'status'            => 'pending',
+                    ]
+                );
             }
 
             // Mark as saved in local state

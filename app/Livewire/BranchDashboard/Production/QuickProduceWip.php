@@ -48,6 +48,11 @@ class QuickProduceWip extends Component
             ->get();
     }
 
+    public function updatedSelectedProductId(): void
+    {
+        $this->selectProduct($this->selectedProductId);
+    }
+
     public function selectProduct($productId)
     {
         $this->selectedProductId = $productId;

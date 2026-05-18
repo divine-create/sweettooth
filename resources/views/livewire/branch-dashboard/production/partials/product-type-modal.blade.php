@@ -40,7 +40,7 @@
                         class="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700
                                    rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500
                                    focus:border-indigo-500 text-zinc-900 dark:text-zinc-100 transition duration-150 ease-in-out"
-                        :disabled="$isEditing">
+                        :disabled="$wire.isEditing">
                         @if(is_super_admin())
                             <option value="">Select Department</option>
                             @foreach($productionDepartments as $dept)

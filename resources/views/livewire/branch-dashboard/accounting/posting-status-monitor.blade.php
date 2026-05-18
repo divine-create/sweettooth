@@ -5,6 +5,18 @@
         <p class="text-zinc-600 dark:text-zinc-400">Monitor and manage GL posting status for transactions</p>
     </div>
 
+    <!-- Flash Messages -->
+    @if(session('message'))
+        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-300 text-sm font-medium">
+            {{ session('message') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-red-700 dark:text-red-300 text-sm font-medium">
+            {{ session('error') }}
+        </div>
+    @endif
+
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-md p-6 border-l-4 border-blue-500">
@@ -56,6 +68,23 @@
             </div>
         </div>
     </div>
+
+    <!-- Bulk Actions -->
+    @if(($stats['failed'] ?? 0) > 0)
+        <div class="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+            <span class="text-sm text-red-700 dark:text-red-300 font-medium">
+                {{ $stats['failed'] }} failed transaction(s) need attention
+            </span>
+            <button wire:click="retryAllFailed"
+                    wire:confirm="Retry all {{ $stats['failed'] }} failed {{ $transactionType }} transactions?"
+                    class="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Retry All Failed ({{ $stats['failed'] }})
+            </button>
+        </div>
+    @endif
 
     <!-- Transactions Table -->
     <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-md overflow-hidden">

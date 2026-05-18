@@ -10,6 +10,7 @@ use App\Services\CheckExpiredProducts;
 use App\Services\ShiftTimingValidator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -63,6 +64,17 @@ class Shift extends Component
             ->update([
                 'status' => 'closed',
                 'workflow_state' => 'completed',
+            ]);
+
+        // Auto-heal past-date shifts that were never clocked out (abandoned open shifts).
+        ShiftModel::where('employee_id', $user_id)
+            ->where('status', 'active')
+            ->where('shift_date', '<', Carbon::today())
+            ->whereNull('clock_out')
+            ->update([
+                'status' => 'closed',
+                'workflow_state' => 'completed',
+                'notes' => DB::raw("CONCAT(COALESCE(notes, ''), ' | Auto-closed stale shift.')"),
             ]);
 
         // Get today's active shift for this user
@@ -526,8 +538,9 @@ class Shift extends Component
             return collect([]);
         }
 
-        $query = ShiftConfiguration::where('branch_id', $this->b_id)
-            ->orWhereNull('branch_id') // Include global configurations
+        $query = ShiftConfiguration::where(function ($q) {
+                $q->where('branch_id', $this->b_id)->orWhereNull('branch_id');
+            })
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -587,7 +600,8 @@ class Shift extends Component
         }
 
         $assignedShifts = ShiftModel::where('employee_id', $user->id)
-            ->whereIn('status', ['scheduled', 'active'])
+            ->where('status', 'scheduled')
+            ->where('shift_date', Carbon::today())
             ->get();
 
         if ($assignedShifts->isEmpty()) {

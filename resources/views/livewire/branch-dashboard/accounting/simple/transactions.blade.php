@@ -45,6 +45,22 @@
                 wire:click="changeTransactionType('adjustments')">Adjustments</button>
     </div>
 
+    @if($failedCount > 0)
+    <div class="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 dark:border-rose-900/60 dark:bg-rose-900/20">
+        <span class="text-sm font-medium text-rose-700 dark:text-rose-300">
+            {{ $failedCount }} failed {{ $transactionType }} transaction(s) need attention
+        </span>
+        <button wire:click="retryAllFailed"
+                wire:confirm="Retry all {{ $failedCount }} failed {{ $transactionType }} transactions? This may take a moment."
+                class="flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-rose-700">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Retry All Failed ({{ $failedCount }})
+        </button>
+    </div>
+    @endif
+
     <div class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <x-table
             :$headers
@@ -80,6 +96,7 @@
             @endinteract
 
             @interact('column_action', $row)
+                @php $currentTransactionType = $transactionType ?? 'sales'; @endphp
                 <div class="flex items-center gap-2">
                     <button class="rounded-full border border-zinc-200 px-3 py-1 text-xs font-semibold text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-800" type="button"
                             wire:click="viewTransaction({{ $row->id }})">
@@ -87,7 +104,7 @@
                     </button>
                     @if (($row->gl_posting_status ?? '') === 'failed')
                         <button class="rounded-full border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-700 hover:border-blue-300 hover:bg-blue-50 dark:border-blue-900/50 dark:text-blue-200 dark:hover:bg-blue-900/30" type="button"
-                                wire:click="retryFailed('{{ $transactionType }}', {{ $row->id }})">
+                                wire:click="retryFailed('{{ $currentTransactionType }}', {{ $row->id }})">
                             Retry
                         </button>
                     @endif

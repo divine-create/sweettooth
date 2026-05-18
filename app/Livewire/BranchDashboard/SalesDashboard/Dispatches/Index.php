@@ -7,6 +7,7 @@ use App\Models\ProductDispatch;
 use App\Models\ProductStock;
 use App\Models\Department;
 use App\Models\Branch;
+use App\Models\SalesShift;
 use App\Models\Shift;
 use App\Services\SalesProductionDispatchService;
 use App\Services\UomConversionService;
@@ -344,6 +345,18 @@ class Index extends BaseComponent
                 $dispatchService->markItemAsReceivedBySales($linkedSalesItem);
             }
 
+            // Link dispatch to the active SalesShift so it appears on the
+            // callback creation page (which filters by sales_shift_id).
+            $activeSalesShift = SalesShift::where('branch_id', $this->branchId)
+                ->where('shift_date', Carbon::today())
+                ->where('status', 'active')
+                ->where('department_id', (int) ($this->departmentId ?: $dispatch->sales_department_id))
+                ->first();
+
+            if ($activeSalesShift) {
+                $dispatch->update(['sales_shift_id' => $activeSalesShift->id]);
+            }
+
             // Get current active shift in the generic shifts table.
             // IMPORTANT: product_stocks.sales_shift_id references sales_shifts.id,
             // so we must not store this generic shift ID in sales_shift_id.
@@ -396,9 +409,7 @@ class Index extends BaseComponent
             } else {
                 // Create new stock record
                 $payload = [
-                    // Keep null because this flow uses generic shifts + department_id scoping.
-                    // Setting generic Shift::id here causes FK violation on sales_shifts.
-                    'sales_shift_id' => null,
+                    'sales_shift_id' => $activeSalesShift?->id ?? null,
                     'product_id' => $dispatch->product_id,
                     'stock_date' => $stockDate->format('Y-m-d'),
                     'shift_type' => $shiftType,

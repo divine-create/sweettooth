@@ -21,6 +21,8 @@ trait QuickProduceTrait
 
     public ?Recipe $selectedRecipe = null;
 
+    public ?string $selectedRecipeId = null;
+
     public $quantity = 1;
 
     public $yieldOutput = 0;
@@ -96,6 +98,11 @@ trait QuickProduceTrait
         return Shift::where('employee_id', $actor->id)
             ->where('status', 'active')
             ->first();
+    }
+
+    public function updatedSelectedRecipeId(): void
+    {
+        $this->selectRecipe($this->selectedRecipeId);
     }
 
     public function selectRecipe($recipeId)

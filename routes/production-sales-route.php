@@ -68,6 +68,9 @@ Route::prefix('production')->name('production.')->middleware(['department.scope'
         // Material Returns to Inventory
         Route::get('/material-returns/create/{deptSlug?}', \App\Livewire\BranchDashboard\Production\MaterialReturns\Create::class)->name('material-returns.create');
         Route::get('/material-returns/list/{deptSlug?}', \App\Livewire\BranchDashboard\Production\MaterialReturns\Index::class)->name('material-returns.history');
+
+        // Sales Return Callbacks — production side approval/receipt workflow
+        Route::get('/callbacks/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Callbacks\ApproveCallbacks::class)->name('callbacks.approve');
     };
 
     $registerProductionDepartmentRoutes();

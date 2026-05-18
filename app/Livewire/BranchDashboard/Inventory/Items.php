@@ -497,11 +497,9 @@ class Items extends BaseComponent
         $relatedSummary = $this->buildDeletionSummary();
 
         $this->dialog()
-            ->confirm(
-                'Delete Item: '.$item->name,
-                'This will also delete the following related data:'.PHP_EOL.$relatedSummary,
-                'confirmedDelete'
-            )
+            ->question('Delete Item: '.$item->name, 'This will also delete the following related data:'.$relatedSummary)
+            ->confirm('Confirm', 'confirmedDelete')
+            ->cancel('Cancel')
             ->send();
     }
 
@@ -664,6 +662,16 @@ class Items extends BaseComponent
     {
         $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
 
+        $branchId = $this->getBranchId();
+        $lowStockAlerts = Item::query()
+            ->with(['unitOfMeasure', 'stocks' => fn ($q) => $q->where('branch_id', $branchId)])
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereNotNull('reorder_level')
+            ->where('reorder_level', '>', 0)
+            ->get()
+            ->filter(fn ($item) => $item->isBelowReorderLevel($branchId))
+            ->values();
+
         return view('livewire.branch-dashboard.inventory.items', [
             'headers' => [
                 ['index' => 'id', 'label' => '#'],
@@ -678,6 +686,7 @@ class Items extends BaseComponent
                 ['index' => 'action', 'label' => 'Actions', 'display' => true],
             ],
             'rows' => $rows,
+            'lowStockAlerts' => $lowStockAlerts,
         ]);
     }
 

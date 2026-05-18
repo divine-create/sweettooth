@@ -21,6 +21,7 @@ use App\Models\PurchasePayment;
 use App\Models\TaxPayment;
 use App\Models\FixedAsset;
 use App\Models\AssetDepreciation;
+use App\Models\GlEntry;
 use App\Observers\DepartmentObserver;
 use App\Observers\SalesPageObserver;
 use App\Observers\RoleObserver;
@@ -40,6 +41,7 @@ use App\Observers\PurchasePaymentObserver;
 use App\Observers\TaxPaymentObserver;
 use App\Observers\FixedAssetObserver;
 use App\Observers\AssetDepreciationObserver;
+use App\Observers\GlEntryObserver;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -86,6 +88,7 @@ class AppServiceProvider extends ServiceProvider
         TaxPayment::observe(TaxPaymentObserver::class);
         FixedAsset::observe(FixedAssetObserver::class);
         AssetDepreciation::observe(AssetDepreciationObserver::class);
+        GlEntry::observe(GlEntryObserver::class);
 
         // Register morph aliases for polymorphic relationships
         Relation::morphMap([
@@ -93,7 +96,8 @@ class AppServiceProvider extends ServiceProvider
             'Employee' => Employee::class,
             'user' => User::class,
             'User' => User::class,
-            'App\Model\User' => User::class,
+            'App\Models\User' => User::class,
+            'App\Models\Employee' => Employee::class,
         ]);
 
         Auth::macro('employee', function () {

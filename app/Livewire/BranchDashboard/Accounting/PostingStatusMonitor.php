@@ -227,6 +227,66 @@ class PostingStatusMonitor extends Component
         }
     }
 
+    public function retryAllFailed(): void
+    {
+        $postingService = app(GlPostingService::class);
+
+        $models = match ($this->transactionType) {
+            'sales' => Sale::where('gl_posting_status', 'failed')->get(),
+            'purchases' => Purchase::where('gl_posting_status', 'failed')->get(),
+            'payments' => Payment::where('gl_posting_status', 'failed')->get(),
+            'purchase_payments' => PurchasePayment::where('gl_posting_status', 'failed')->get(),
+            'adjustments' => $this->adjustmentQuery()->where('gl_posting_status', 'failed')->get(),
+            default => collect(),
+        };
+
+        if ($models->isEmpty()) {
+            session()->flash('message', 'No failed transactions to retry.');
+            return;
+        }
+
+        $succeeded = 0;
+        $failed = 0;
+
+        foreach ($models as $model) {
+            $model->update(['gl_posting_status' => 'pending', 'gl_posting_error' => null]);
+
+            try {
+                match ($this->transactionType) {
+                    'sales' => $postingService->postSaleTransaction($model),
+                    'purchases' => $postingService->postPurchaseTransaction($model),
+                    'payments' => $postingService->postPaymentTransaction($model),
+                    'purchase_payments' => $postingService->postPurchasePayment($model),
+                    'adjustments' => $postingService->postInventoryAdjustment($model),
+                    default => null,
+                };
+
+                $model->update(['gl_posting_status' => 'posted', 'gl_posted_at' => now()]);
+                $succeeded++;
+            } catch (\Throwable $e) {
+                AccountingPostingFailure::create([
+                    'reference_type' => get_class($model),
+                    'reference_id' => $model->id,
+                    'entry_type' => $this->transactionType,
+                    'error_message' => $e->getMessage(),
+                    'context' => ['source' => 'posting_status_monitor_bulk'],
+                    'last_seen_at' => now(),
+                ]);
+                $model->update([
+                    'gl_posting_status' => 'failed',
+                    'gl_posting_error' => $e->getMessage(),
+                ]);
+                $failed++;
+            }
+        }
+
+        if ($failed === 0) {
+            session()->flash('message', "All {$succeeded} transaction(s) posted successfully.");
+        } else {
+            session()->flash('error', "{$succeeded} succeeded, {$failed} still failed. Check individual errors.");
+        }
+    }
+
     public function changeTransactionType(string $type)
     {
         $this->transactionType = $type;

@@ -77,7 +77,10 @@ class PeriodControl extends Component
             'status' => 'required|string|in:open,closed,locked',
         ]);
 
+        $branchId = session('selected_branch_id');
+
         $exists = AccountingPeriod::query()
+            ->where('branch_id', $branchId)
             ->where('year', $this->year)
             ->where('month', $this->month)
             ->exists();
@@ -88,6 +91,7 @@ class PeriodControl extends Component
         }
 
         AccountingPeriod::create([
+            'branch_id' => $branchId,
             'year' => $this->year,
             'month' => $this->month,
             'period_start' => $this->period_start,
@@ -148,9 +152,47 @@ class PeriodControl extends Component
         ]);
     }
 
+    public function createCurrentMonthPeriod(): void
+    {
+        $branchId = session('selected_branch_id');
+        $now = now();
+
+        $exists = AccountingPeriod::query()
+            ->where('branch_id', $branchId)
+            ->where('year', $now->year)
+            ->where('month', $now->month)
+            ->exists();
+
+        if ($exists) {
+            session()->flash('success', 'A period for ' . $now->format('F Y') . ' already exists.');
+            return;
+        }
+
+        AccountingPeriod::create([
+            'branch_id' => $branchId,
+            'year' => $now->year,
+            'month' => $now->month,
+            'period_start' => $now->copy()->startOfMonth()->toDateString(),
+            'period_end' => $now->copy()->endOfMonth()->toDateString(),
+            'status' => 'open',
+        ]);
+
+        session()->flash('success', 'Accounting period for ' . $now->format('F Y') . ' created successfully.');
+    }
+
     public function render()
     {
+        $branchId = session('selected_branch_id');
+        $now = now();
+        $currentMonthExists = AccountingPeriod::query()
+            ->where('branch_id', $branchId)
+            ->where('year', $now->year)
+            ->where('month', $now->month)
+            ->where('status', 'open')
+            ->exists();
+
         $periods = AccountingPeriod::query()
+            ->where('branch_id', $branchId)
             ->when($this->search, function ($query) {
                 $query->where(function ($subQuery) {
                     $subQuery->where('year', 'like', '%' . $this->search . '%')
@@ -164,6 +206,7 @@ class PeriodControl extends Component
         return view('livewire.branch-dashboard.accounting.simple.period-control', [
             'rows' => $periods,
             'headers' => $this->headers,
+            'currentMonthExists' => $currentMonthExists,
         ]);
     }
 }

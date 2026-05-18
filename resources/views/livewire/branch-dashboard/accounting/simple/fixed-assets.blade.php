@@ -73,7 +73,14 @@
 
     <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <x-table
-            :headers="['Asset', 'Tag', 'Cost', 'Life', 'Method', 'Status']"
+            :headers="[
+                ['index' => 'asset', 'label' => 'Asset'],
+                ['index' => 'tag', 'label' => 'Tag'],
+                ['index' => 'cost', 'label' => 'Cost'],
+                ['index' => 'life', 'label' => 'Life'],
+                ['index' => 'method', 'label' => 'Method'],
+                ['index' => 'status', 'label' => 'Status'],
+            ]"
             :rows="$rows"
             striped
             paginate

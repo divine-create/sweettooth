@@ -163,26 +163,36 @@ class Add extends Component
         // Parse the key to get index (e.g., "0.item_id" -> 0)
         $parts = explode('.', $key);
         if (count($parts) === 2 && $parts[1] === 'item_id' && $value) {
-            $index = $parts[0];
+            $index = (int) $parts[0];
             $itemId = $value;
+            $isWip = $this->ingredients[$index]['is_wip'] ?? false;
 
-            // Get item with stock details
-            $item = Item::where('branch_id', $this->getBranchId())
-                ->with(['stocks' => function ($q) {
-                    $q->where('branch_id', $this->getBranchId());
-                }])->find($itemId);
+            if ($isWip) {
+                // WIP ingredient: item_id refers to a Product, not an Item
+                $product = Product::with('unitOfMeasure')->find($itemId);
+                if ($product) {
+                    $this->ingredients[$index]['quantity'] = null;
+                    $this->ingredients[$index]['uom'] = $product->unitOfMeasure?->symbol ?? '';
+                    $this->ingredients[$index]['cost_per_unit'] = (float) ($product->cost ?? 0);
+                    $this->ingredients[$index]['waste_percentage'] = 0;
+                }
+            } else {
+                // Raw material: look up Item with stock
+                $item = Item::where('branch_id', $this->getBranchId())
+                    ->with(['stocks' => function ($q) {
+                        $q->where('branch_id', $this->getBranchId());
+                    }])->find($itemId);
 
-            if ($item) {
-                // Get stock for this branch
-                $stock = $item->stocks->first();
-                $itemUnitPrice = (float) ($item->unit_price ?? 0);
-                $stockAverageCost = (float) ($stock?->average_cost ?? 0);
-                
-                // Auto-populate ingredient fields from item
-                $this->ingredients[$index]['quantity'] = null; // User must enter this
-                $this->ingredients[$index]['uom'] = $item->uom ?? 'grams';
-                $this->ingredients[$index]['cost_per_unit'] = $itemUnitPrice > 0 ? $itemUnitPrice : $stockAverageCost;
-                $this->ingredients[$index]['waste_percentage'] = 0;
+                if ($item) {
+                    $stock = $item->stocks->first();
+                    $itemUnitPrice = (float) ($item->unit_price ?? 0);
+                    $stockAverageCost = (float) ($stock?->average_cost ?? 0);
+
+                    $this->ingredients[$index]['quantity'] = null;
+                    $this->ingredients[$index]['uom'] = $item->uom ?? 'grams';
+                    $this->ingredients[$index]['cost_per_unit'] = $itemUnitPrice > 0 ? $itemUnitPrice : $stockAverageCost;
+                    $this->ingredients[$index]['waste_percentage'] = 0;
+                }
             }
         }
     }

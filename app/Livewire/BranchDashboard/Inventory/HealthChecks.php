@@ -40,6 +40,8 @@ class HealthChecks extends Component
 
     public $showModal = false;
 
+    public $isEditing = false;
+
     public $healthCheckId;
 
     public $stock_id = '';
@@ -157,32 +159,99 @@ class HealthChecks extends Component
 
         $actor = current_actor();
 
-        $healthCheck = HealthCheck::create([
-            'stock_id' => $this->stock_id,
-            'checked_by_id' => $actor->id,
-            'checked_by_type' => get_class($actor),
-            'check_date' => $this->check_date,
-            'condition' => $this->condition,
-            'quantity_affected' => $this->quantity_affected,
-            'observations' => $this->observations,
-            'action_taken' => $this->action_taken,
-        ]);
+        if ($this->isEditing) {
+            $healthCheck = HealthCheck::findOrFail($this->healthCheckId);
+            $healthCheck->update([
+                'stock_id' => $this->stock_id,
+                'check_date' => $this->check_date,
+                'condition' => $this->condition,
+                'quantity_affected' => $this->quantity_affected,
+                'observations' => $this->observations,
+                'action_taken' => $this->action_taken,
+            ]);
 
-        // Log the health check
-        $stock = Stock::findOrFail($this->stock_id);
+            AuditService::log(
+                $actor,
+                'update',
+                $healthCheck,
+                "Updated health check for item '{$stock->item->name}'. ".
+                "Condition: {$this->condition}, Qty Affected: {$this->quantity_affected} {$stock->item->unitOfMeasure?->symbol}. ".
+                "Observations: {$this->observations}. Action: {$this->action_taken}",
+                'completed'
+            );
+
+            session()->flash('success', 'Health check updated successfully.');
+        } else {
+            $healthCheck = HealthCheck::create([
+                'stock_id' => $this->stock_id,
+                'checked_by_id' => $actor->id,
+                'checked_by_type' => get_class($actor),
+                'check_date' => $this->check_date,
+                'condition' => $this->condition,
+                'quantity_affected' => $this->quantity_affected,
+                'observations' => $this->observations,
+                'action_taken' => $this->action_taken,
+            ]);
+
+            AuditService::log(
+                $actor,
+                'create',
+                $healthCheck,
+                "Created health check for item '{$stock->item->name}'. ".
+                "Condition: {$this->condition}, Qty Affected: {$this->quantity_affected} {$stock->item->unitOfMeasure?->symbol}. ".
+                "Observations: {$this->observations}. Action: {$this->action_taken}",
+                'completed'
+            );
+
+            session()->flash('success', 'Health check recorded successfully.');
+        }
+
+        $this->closeModal();
+        $this->resetFields();
+    }
+
+    public function editHealthCheck($id)
+    {
+        $healthCheck = HealthCheck::with('stock')->findOrFail($id);
+
+        if ($healthCheck->stock?->branch_id !== $this->getBranchId()) {
+            session()->flash('error', 'Unauthorized action.');
+            return;
+        }
+
+        $this->healthCheckId = $healthCheck->id;
+        $this->stock_id = (string) $healthCheck->stock_id;
+        $this->check_date = $healthCheck->check_date->format('Y-m-d');
+        $this->condition = $healthCheck->condition;
+        $this->quantity_affected = $healthCheck->quantity_affected;
+        $this->observations = $healthCheck->observations;
+        $this->action_taken = $healthCheck->action_taken;
+        $this->isEditing = true;
+        $this->showModal = true;
+    }
+
+    public function deleteHealthCheck($id)
+    {
+        $healthCheck = HealthCheck::with('stock.item')->findOrFail($id);
+
+        if ($healthCheck->stock?->branch_id !== $this->getBranchId()) {
+            session()->flash('error', 'Unauthorized action.');
+            return;
+        }
+
+        $actor = current_actor();
+        $itemName = $healthCheck->stock?->item?->name ?? 'Unknown';
+
         AuditService::log(
             $actor,
-            'create',
+            'delete',
             $healthCheck,
-            "Created health check for item '{$stock->item->name}'. ".
-            "Condition: {$this->condition}, Qty Affected: {$this->quantity_affected} {$stock->item->unitOfMeasure?->symbol}. ".
-            "Observations: {$this->observations}. Action: {$this->action_taken}",
+            "Deleted health check for item '{$itemName}' on {$healthCheck->check_date}. Condition: {$healthCheck->condition}",
             'completed'
         );
 
-        session()->flash('success', 'Health check recorded successfully.');
-        $this->closeModal();
-        $this->resetFields();
+        $healthCheck->delete();
+        session()->flash('success', 'Health check deleted successfully.');
     }
 
     public function closeModal()
@@ -195,6 +264,7 @@ class HealthChecks extends Component
     public function resetFields()
     {
         $this->healthCheckId = null;
+        $this->isEditing = false;
         $this->stock_id = '';
         $this->check_date = now()->format('Y-m-d');
         $this->condition = '';

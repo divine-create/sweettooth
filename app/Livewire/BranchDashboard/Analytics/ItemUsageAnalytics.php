@@ -3,6 +3,7 @@
 namespace App\Livewire\BranchDashboard\Analytics;
 
 use App\Models\Department;
+use App\Models\ItemDispatch;
 use App\Models\MaterialRequestDispatch;
 use App\Models\StockMovement;
 use App\Services\Reports\AnalyticsSnapshotReportService;

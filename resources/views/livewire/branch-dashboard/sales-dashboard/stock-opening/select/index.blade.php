@@ -65,11 +65,19 @@
     <!-- Bulk Actions -->
     <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 flex items-center justify-between">
         <div class="flex items-center gap-2">
-            <button wire:click="selectAllCurrentPage" 
+            <button wire:click="selectAllProducts" wire:loading.attr="disabled"
+                class="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors flex items-center gap-1">
+                <svg wire:loading wire:target="selectAllProducts" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                Select All ({{ $products->total() }})
+            </button>
+            <button wire:click="selectAllCurrentPage"
                 class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
                 Select All This Page
             </button>
-            <button wire:click="deselectAllCurrentPage" 
+            <button wire:click="deselectAllCurrentPage"
                 class="px-3 py-1.5 text-sm bg-zinc-600 hover:bg-zinc-700 text-white rounded transition-colors">
                 Deselect All This Page
             </button>

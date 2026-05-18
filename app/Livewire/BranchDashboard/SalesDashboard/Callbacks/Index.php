@@ -7,6 +7,7 @@ use App\Models\ProductDispatchCallback;
 use App\Models\SalesShift;
 use App\Models\Department;
 use App\Traits\Exportable;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\WithPagination;
@@ -115,11 +116,12 @@ class Index extends BaseComponent
 
     public function getBranchId()
     {
-        return $this->b_id ?: request()->query('b_id');
+        return $this->b_id ?? current_branch_id();
     }
 
     public function mount()
     {
+        $this->b_id = $this->b_id ?? current_branch_id();
         $this->startDate = \Carbon\Carbon::today()->subDays(30)->format('Y-m-d');
         $this->endDate = \Carbon\Carbon::today()->format('Y-m-d');
         if (! $this->salesDeptSlug) {
@@ -273,7 +275,8 @@ class Index extends BaseComponent
         }
     }
 
-    public function getRowsProperty()
+    #[Computed]
+    public function rows()
     {
         $departmentFilterIds = $this->getDepartmentFilterIds();
         $query = ProductDispatchCallback::with(['product', 'salesShift', 'recordedBy', 'approvedBy', 'receivedBy'])

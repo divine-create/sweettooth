@@ -166,6 +166,18 @@ class Edit extends Component
         }
 
         $index = (int) $parts[0];
+        $isWip = $this->ingredients[$index]['is_wip'] ?? false;
+
+        if ($isWip) {
+            // WIP ingredient: item_id refers to a Product
+            $product = \App\Models\Product::with('unitOfMeasure')->find($value);
+            if ($product) {
+                $this->ingredients[$index]['uom'] = $product->unitOfMeasure?->symbol ?? '';
+                $this->ingredients[$index]['cost_per_unit'] = (float) ($product->cost ?? 0);
+            }
+            return;
+        }
+
         $item = Item::where('branch_id', $this->getBranchId())
             ->with(['stocks' => function ($query) {
                 $query->where('branch_id', $this->getBranchId());

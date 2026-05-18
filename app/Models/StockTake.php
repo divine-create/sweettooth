@@ -68,7 +68,7 @@ class StockTake extends Model
      */
     public function conductor(): MorphTo
     {
-        return $this->morphTo('conducted_by', 'conducted_by_type', 'conducted_by_id');
+        return $this->morphTo('conductor', 'conducted_by_type', 'conducted_by_id');
     }
 
     /**
@@ -76,7 +76,7 @@ class StockTake extends Model
      */
     public function verifier(): MorphTo
     {
-        return $this->morphTo('verified_by', 'verified_by_type', 'verified_by_id');
+        return $this->morphTo('verifier', 'verified_by_type', 'verified_by_id');
     }
 
     /**

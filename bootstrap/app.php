@@ -87,6 +87,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->runInBackground();
 
         // === END SHIFT SYSTEM AUTOMATION ===
+
+        // === GL POSTING AUTOMATION ===
+        $schedule->job(new \App\Jobs\RetryFailedGlPostingsJob)
+            ->everyFifteenMinutes()
+            ->withoutOverlapping(10);
+        // === END GL POSTING AUTOMATION ===
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

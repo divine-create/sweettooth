@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Department;
 use App\Models\ApprovalRequest;
 use App\Models\ApprovalAuditRequest;
+use App\Models\GlAccount;
 use App\Services\AuditService;
 use Livewire\Component;
 use App\Models\DepartmentCategory;
@@ -90,6 +91,12 @@ class CreateOrUpdate extends Component
      * @var int|null
      */
     public ?int $bank_account_id = null;
+
+    /** GL account IDs for department accounting mappings */
+    public ?int $revenue_account_id = null;
+    public ?int $tax_account_id = null;
+    public ?int $receivable_account_id = null;
+    public ?int $cash_account_id = null;
 
     /**
      * ID of department being edited (create mode = empty)
@@ -190,6 +197,37 @@ class CreateOrUpdate extends Component
             ->get();
     }
 
+    #[Computed(seconds: 300)]
+    public function getGlAccountsByType(): array
+    {
+        $accounts = GlAccount::where('is_active', true)
+            ->where('is_header', false)
+            ->orderBy('account_number')
+            ->get();
+
+        return [
+            'revenue' => $accounts->where('account_type', 'revenue')->values(),
+            'tax'     => $accounts->whereIn('account_type', ['liability', 'tax'])->values(),
+            'asset'   => $accounts->where('account_type', 'asset')->values(),
+        ];
+    }
+
+    private function validateGlAccountType(?int $accountId, array $allowedTypes, string $field): void
+    {
+        if (! $accountId) {
+            return;
+        }
+        $account = GlAccount::find($accountId);
+        if (! $account) {
+            $this->addError($field, 'Selected account does not exist.');
+            return;
+        }
+        if (! in_array($account->account_type, $allowedTypes)) {
+            $allowed = implode(' or ', array_map('ucfirst', $allowedTypes));
+            $this->addError($field, "Must be a {$allowed} account. Selected: {$account->account_type} ({$account->account_name}).");
+        }
+    }
+
     /**
      * Get all departments (currently unused)
      * 
@@ -232,6 +270,10 @@ class CreateOrUpdate extends Component
         $this->category_id = $department->category_id;
         $this->description = $department->description ?? '';
         $this->bank_account_id = $department->bank_account_id;
+        $this->revenue_account_id = $department->revenue_account_id;
+        $this->tax_account_id = $department->tax_account_id;
+        $this->receivable_account_id = $department->receivable_account_id;
+        $this->cash_account_id = $department->cash_account_id;
     }
 
     /**
@@ -252,6 +294,10 @@ class CreateOrUpdate extends Component
         $this->creationReason = '';
         $this->showReasonModal = false;
         $this->bank_account_id = null;
+        $this->revenue_account_id = null;
+        $this->tax_account_id = null;
+        $this->receivable_account_id = null;
+        $this->cash_account_id = null;
     }
 
     /**
@@ -274,6 +320,15 @@ class CreateOrUpdate extends Component
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->dispatch('notify', message: 'Please fix validation errors', type: 'error');
+            return;
+        }
+
+        $this->validateGlAccountType($this->revenue_account_id, ['revenue'], 'revenue_account_id');
+        $this->validateGlAccountType($this->tax_account_id, ['liability', 'tax'], 'tax_account_id');
+        $this->validateGlAccountType($this->receivable_account_id, ['asset'], 'receivable_account_id');
+        $this->validateGlAccountType($this->cash_account_id, ['asset'], 'cash_account_id');
+
+        if ($this->getErrorBag()->isNotEmpty()) {
             return;
         }
 
@@ -397,6 +452,10 @@ class CreateOrUpdate extends Component
             'category_id' => $this->category_id,
             'description' => $this->description,
             'bank_account_id' => $this->bank_account_id,
+            'revenue_account_id' => $this->revenue_account_id,
+            'tax_account_id' => $this->tax_account_id,
+            'receivable_account_id' => $this->receivable_account_id,
+            'cash_account_id' => $this->cash_account_id,
         ];
 
         if ($this->isEditing && $this->selectedDepartmentId) {

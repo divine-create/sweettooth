@@ -128,6 +128,7 @@
             ['index' => 'observations', 'label' => 'Observations'],
             ['index' => 'action_taken', 'label' => 'Action Taken'],
             ['index' => 'checker', 'label' => 'Checked By'],
+            ['index' => 'actions', 'label' => 'Actions', 'display' => true],
         ]"
         :rows="$healthChecks"
         striped
@@ -190,6 +191,26 @@
                 {{ $row->checker?->name ?? 'N/A' }}
             </span>
         @endinteract
+
+        @interact('column_actions', $row)
+            <div class="flex items-center space-x-1">
+                <button wire:click="editHealthCheck({{ $row->id }})"
+                    class="p-1.5 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    title="Edit">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                </button>
+                <button wire:click="deleteHealthCheck({{ $row->id }})"
+                    wire:confirm="Are you sure you want to delete this health check? This action cannot be undone."
+                    class="p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    title="Delete">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
+            </div>
+        @endinteract
     </x-table>
 
     <!-- Create Modal -->
@@ -209,7 +230,7 @@
             class="fixed inset-y-0 right-0 w-full md:w-1/2 lg:w-1/3 bg-white dark:bg-zinc-900 shadow-xl flex flex-col">
 
             <div class="px-6 py-4 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
-                <h2 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Record Health Check</h2>
+                <h2 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">{{ $isEditing ? 'Edit Health Check' : 'Record Health Check' }}</h2>
                 <button wire:click="closeModal"
                     class="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -310,7 +331,7 @@
                 </button>
                 <button wire:click="save"
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                    Save Health Check
+                    {{ $isEditing ? 'Update Health Check' : 'Save Health Check' }}
                 </button>
             </div>
         </div>

@@ -5,8 +5,11 @@ namespace App\Services;
 use App\Enums\SalesProductionRequestStatus;
 use App\Models\SalesProductionRequest;
 use App\Models\SalesProductionRequestItem;
+use App\Models\User;
+use App\Notifications\ProductionRequestStatusNotification;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class SalesProductionRequestWorkflowService
 {
@@ -30,8 +33,11 @@ class SalesProductionRequestWorkflowService
             $updates = array_merge($attributes, ['status' => $to->value]);
             $updates = $this->applyLifecycleTimestamps($locked, $to, $updates);
             $locked->fill($updates)->save();
+            $refreshed = $locked->refresh();
 
-            return $locked->refresh();
+            $this->dispatchStatusNotification($refreshed, $from, $to);
+
+            return $refreshed;
         });
     }
 
@@ -188,6 +194,54 @@ class SalesProductionRequestWorkflowService
         }
 
         return SalesProductionRequestStatus::from($status);
+    }
+
+    private function dispatchStatusNotification(
+        SalesProductionRequest $request,
+        SalesProductionRequestStatus $from,
+        SalesProductionRequestStatus $to
+    ): void {
+        try {
+            $recipients = $this->resolveNotificationRecipients($to, $request);
+            if ($recipients->isNotEmpty()) {
+                Notification::send($recipients, new ProductionRequestStatusNotification($request, $from, $to));
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Could not dispatch production request notification', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function resolveNotificationRecipients(
+        SalesProductionRequestStatus $status,
+        SalesProductionRequest $request
+    ): \Illuminate\Support\Collection {
+        $branchId = $request->branch_id;
+
+        $role = match ($status) {
+            SalesProductionRequestStatus::PENDING               => 'Production Manager',
+            SalesProductionRequestStatus::MATERIALS_REQUESTED   => 'Inventory Manager',
+            SalesProductionRequestStatus::MATERIALS_APPROVED    => 'Production Manager',
+            SalesProductionRequestStatus::PROCESSING            => 'Production Manager',
+            SalesProductionRequestStatus::COMPLETED             => 'Sales Manager',
+            SalesProductionRequestStatus::DISPATCHED            => 'Sales Manager',
+            default                                             => null,
+        };
+
+        if ($role) {
+            return User::role($role)->where('branch_id', $branchId)->get();
+        }
+
+        if (in_array($status, [
+            SalesProductionRequestStatus::APPROVED_BY_PRODUCTION,
+            SalesProductionRequestStatus::REJECTED,
+            SalesProductionRequestStatus::CANCELLED,
+            SalesProductionRequestStatus::RECEIVED_BY_SALES,
+        ])) {
+            $requester = $request->requestedBy;
+            return $requester ? collect([$requester]) : collect();
+        }
+
+        return collect();
     }
 
     private function appendReason(?string $currentNotes, string $prefix, string $reason): string

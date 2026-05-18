@@ -262,7 +262,7 @@ class Purchases extends Component
                 ->get()
                 ->keyBy('id');
 
-            foreach ($this->purchaseItems as $item) {
+            foreach ($this->purchaseItems as $index => $item) {
                 $itemId = (int) ($item['item_id'] ?? 0);
                 $quantity = (float) ($item['quantity'] ?? 0);
                 $unitPrice = (float) ($item['unit_price'] ?? 0);
@@ -279,7 +279,13 @@ class Purchases extends Component
                 $allocatedOtherCosts = ($this->other_costs ?? 0) * $costProportion;
                 $landingCostItem = $totalItemCost + $allocatedOtherCosts;
                 $costPerUnit = $quantity > 0 ? ($landingCostItem / $quantity) : 0;
-                $baseQuantity = $this->convertPurchaseQuantityToItemBase($itemModel, $quantity, $purchaseUom);
+                try {
+                    $baseQuantity = $this->convertPurchaseQuantityToItemBase($itemModel, $quantity, $purchaseUom);
+                } catch (\RuntimeException $e) {
+                    DB::rollBack();
+                    $this->addError("purchaseItems.{$index}.uom", $e->getMessage());
+                    return;
+                }
                 $baseCostPerUnit = $baseQuantity > 0 ? ($landingCostItem / $baseQuantity) : 0;
 
                 PurchaseItem::create([

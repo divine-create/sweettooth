@@ -7,6 +7,7 @@ use App\Enums\CallbackStatus;
 use App\Models\ProductDispatchCallback;
 use App\Models\ProductDispatch;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\WithPagination;
@@ -111,11 +112,12 @@ class ApproveCallbacks extends BaseComponent
 
     public function getBranchId()
     {
-        return $this->b_id ?: request()->query('b_id');
+        return $this->b_id ?? current_branch_id();
     }
 
     public function mount($deptSlug = null)
     {
+        $this->b_id = $this->b_id ?? current_branch_id();
         if ($deptSlug) {
             $this->deptSlug = $deptSlug;
         }
@@ -123,7 +125,8 @@ class ApproveCallbacks extends BaseComponent
         $this->endDate = \Carbon\Carbon::today()->format('Y-m-d');
     }
 
-    public function getRowsProperty()
+    #[Computed]
+    public function rows()
     {
         $branchId = $this->getBranchId();
 
@@ -210,13 +213,6 @@ class ApproveCallbacks extends BaseComponent
                 return;
             }
 
-            // Authorization check using policy
-            $user = auth()->user();
-            if ($user && !$user->can('approve', $callback)) {
-                $this->toast()->error('You are not authorized to approve this callback.')->send();
-                return;
-            }
-
             if (!$callback->canBeApproved()) {
                 $this->toast()->error('Callback cannot be approved. Current status: ' . $callback->formatted_status)->send();
                 return;
@@ -255,13 +251,6 @@ class ApproveCallbacks extends BaseComponent
                 return;
             }
 
-            // Authorization check using policy
-            $user = auth()->user();
-            if ($user && !$user->can('receive', $callback)) {
-                $this->toast()->error('You are not authorized to receive this callback.')->send();
-                return;
-            }
-
             if (!$callback->canBeReceived()) {
                 $this->toast()->error('Callback cannot be received. Current status: ' . $callback->formatted_status)->send();
                 return;
@@ -297,13 +286,6 @@ class ApproveCallbacks extends BaseComponent
 
             if (!$callback) {
                 $this->toast()->error('Callback not found.')->send();
-                return;
-            }
-
-            // Authorization check using policy
-            $user = auth()->user();
-            if ($user && !$user->can('complete', $callback)) {
-                $this->toast()->error('You are not authorized to complete this callback.')->send();
                 return;
             }
 
@@ -357,7 +339,7 @@ class ApproveCallbacks extends BaseComponent
             now()->addMinutes(5),
             function () {
                 $branchId = $this->getBranchId();
-                $baseQuery = ProductDispatchCallback::whereHas('productDispatch.salesShift', function ($q) use ($branchId) {
+                $baseQuery = ProductDispatchCallback::whereHas('salesShift', function ($q) use ($branchId) {
                     $q->where('branch_id', $branchId);
                 });
 

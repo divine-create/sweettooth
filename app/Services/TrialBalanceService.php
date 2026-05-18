@@ -28,29 +28,33 @@ class TrialBalanceService
      *
      * Uses a single aggregated query instead of N+1 queries
      */
-    public function getTrialBalance(?int $periodId = null): array
+    public function getTrialBalance(?int $periodId = null, ?string $branchId = null): array
     {
-        $cacheKey = "trial_balance_" . ($periodId ?? 'all');
+        $branchId = $branchId ?? current_branch_id();
+        $cacheKey = "trial_balance_{$branchId}_" . ($periodId ?? 'all');
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($periodId) {
-            return $this->calculateTrialBalance($periodId);
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($periodId, $branchId) {
+            return $this->calculateTrialBalance($periodId, $branchId);
         });
     }
 
     /**
      * Calculate trial balance using optimized single query
      */
-    protected function calculateTrialBalance(?int $periodId = null): array
+    protected function calculateTrialBalance(?int $periodId = null, ?string $branchId = null): array
     {
         // Use a single aggregated query to avoid N+1
         $query = DB::table('gl_accounts')
-            ->leftJoin('gl_entries', function ($join) use ($periodId) {
+            ->leftJoin('gl_entries', function ($join) use ($periodId, $branchId) {
                 $join->on('gl_accounts.id', '=', 'gl_entries.gl_account_id')
                     ->where('gl_entries.status', '=', 'posted')
                     ->whereNull('gl_entries.deleted_at');
 
                 if ($periodId) {
                     $join->where('gl_entries.accounting_period_id', '=', $periodId);
+                }
+                if ($branchId) {
+                    $join->where('gl_entries.branch_id', '=', $branchId);
                 }
             })
             ->select(
@@ -115,30 +119,28 @@ class TrialBalanceService
     /**
      * Clear trial balance cache
      */
-    public function clearCache(?int $periodId = null): void
+    public function clearCache(?int $periodId = null, ?string $branchId = null): void
     {
-        if ($periodId) {
-            Cache::forget("trial_balance_{$periodId}");
-        } else {
-            Cache::forget('trial_balance_all');
-        }
+        $branchId = $branchId ?? current_branch_id();
+        Cache::forget("trial_balance_{$branchId}_" . ($periodId ?? 'all'));
     }
 
     /**
      * Get trial balance without cache (for fresh data)
      */
-    public function getTrialBalanceFresh(?int $periodId = null): array
+    public function getTrialBalanceFresh(?int $periodId = null, ?string $branchId = null): array
     {
-        $this->clearCache($periodId);
-        return $this->getTrialBalance($periodId);
+        $this->clearCache($periodId, $branchId);
+        return $this->getTrialBalance($periodId, $branchId);
     }
 
     /**
      * Check if GL is balanced
      */
-    public function isBalanced(?int $periodId = null): bool
+    public function isBalanced(?int $periodId = null, ?string $branchId = null): bool
     {
-        $query = GlEntry::where('status', 'posted');
+        $branchId = $branchId ?? current_branch_id();
+        $query = GlEntry::where('status', 'posted')->where('branch_id', $branchId);
 
         if ($periodId) {
             $query->where('accounting_period_id', $periodId);
@@ -156,9 +158,10 @@ class TrialBalanceService
     public function getComparativeTrialBalance(
         ?int $periodId1 = null,
         ?int $periodId2 = null,
+        ?string $branchId = null,
     ): array {
-        $tb1 = $this->getTrialBalance($periodId1);
-        $tb2 = $this->getTrialBalance($periodId2);
+        $tb1 = $this->getTrialBalance($periodId1, $branchId);
+        $tb2 = $this->getTrialBalance($periodId2, $branchId);
 
         $accounts = [];
         $allAccounts = array_merge(
@@ -213,9 +216,10 @@ class TrialBalanceService
     /**
      * Get balancing report
      */
-    public function getBalancingReport(?int $periodId = null): array
+    public function getBalancingReport(?int $periodId = null, ?string $branchId = null): array
     {
-        $query = GlEntry::where('status', 'posted');
+        $branchId = $branchId ?? current_branch_id();
+        $query = GlEntry::where('status', 'posted')->where('branch_id', $branchId);
 
         if ($periodId) {
             $query->where('accounting_period_id', $periodId);
@@ -232,6 +236,7 @@ class TrialBalanceService
             'is_balanced' => $difference < 0.01,
             'entry_count' => $query->count(),
             'accounts_with_entries' => GlEntry::where('status', 'posted')
+                ->where('branch_id', $branchId)
                 ->when($periodId, fn($q) => $q->where('accounting_period_id', $periodId))
                 ->distinct('gl_account_id')
                 ->count(),
@@ -241,9 +246,9 @@ class TrialBalanceService
     /**
      * Export trial balance to array
      */
-    public function exportTrialBalance(?int $periodId = null): array
+    public function exportTrialBalance(?int $periodId = null, ?string $branchId = null): array
     {
-        $tb = $this->getTrialBalance($periodId);
+        $tb = $this->getTrialBalance($periodId, $branchId);
 
         $data = [];
         foreach ($tb['accounts'] as $account) {

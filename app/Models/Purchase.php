@@ -97,7 +97,7 @@ class Purchase extends Model
     public function recorder(): BelongsTo
     {
         return $this->morphTo(
-            'recorded_by',
+            'recorder',
             'recorded_by_type',
             'recorded_by_id'
         );

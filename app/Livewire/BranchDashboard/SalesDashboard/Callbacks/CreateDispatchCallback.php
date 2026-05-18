@@ -9,6 +9,7 @@ use App\Models\SalesShift;
 use App\Models\Department;
 use App\Models\Branch;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\WithPagination;
@@ -85,17 +86,23 @@ class CreateDispatchCallback extends BaseComponent
         return ProductDispatch::query()
             ->where('branch_id', $this->getBranchId())
             ->when($this->departmentId, fn ($q) => $q->where('sales_department_id', $this->departmentId))
-            ->when($shiftId, fn ($q) => $q->where('sales_shift_id', $shiftId))
-            ->where('status', 'received');
+            ->where('status', 'received')
+            ->where(function ($q) use ($shiftId) {
+                if ($shiftId) {
+                    $q->where('sales_shift_id', $shiftId)
+                      ->orWhereNull('sales_shift_id');
+                }
+            });
     }
 
     public function getBranchId()
     {
-        return $this->b_id ?: request()->query('b_id');
+        return $this->b_id ?? current_branch_id();
     }
 
     public function mount()
     {
+        $this->b_id = $this->b_id ?? current_branch_id();
         $this->stockDate = \Carbon\Carbon::today()->format('Y-m-d');
         $this->isSuperAdmin = is_super_admin();
         $this->loadBranchAndDepartment();
@@ -191,15 +198,21 @@ class CreateDispatchCallback extends BaseComponent
         $this->resetPage();
     }
 
-    public function getRowsProperty()
+    #[Computed]
+    public function rows()
     {
         $shiftId = $this->selectedSalesShiftId ?? $this->currentSalesShiftId;
 
         $query = ProductDispatch::with(['product', 'shift', 'productDispatchCallbacks'])
             ->where('branch_id', $this->getBranchId())
             ->when($this->departmentId, fn ($q) => $q->where('sales_department_id', $this->departmentId))
-            ->when($shiftId, fn ($q) => $q->where('sales_shift_id', $shiftId))
-            ->where('status', 'received');
+            ->where('status', 'received')
+            ->where(function ($q) use ($shiftId) {
+                if ($shiftId) {
+                    $q->where('sales_shift_id', $shiftId)
+                      ->orWhereNull('sales_shift_id');
+                }
+            });
 
         // Search filter
         if ($this->search) {

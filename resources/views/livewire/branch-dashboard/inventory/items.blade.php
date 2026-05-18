@@ -29,6 +29,42 @@
         :with-icons="true"
     />
 
+    <!-- Low Stock Alerts -->
+    @if($lowStockAlerts->isNotEmpty())
+        <div x-data="{ open: true }" x-show="open" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <div class="flex items-start justify-between gap-2">
+                <div class="flex items-start gap-2">
+                    <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <div>
+                        <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                            {{ $lowStockAlerts->count() }} item(s) below reorder level
+                        </p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            @foreach($lowStockAlerts->take(8) as $alert)
+                                @php
+                                    $stock = $alert->stocks->first();
+                                    $current = $stock?->quantity_available ?? 0;
+                                @endphp
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 text-xs rounded">
+                                    <strong>{{ $alert->name }}</strong>
+                                    — {{ number_format($current, 2) }} / {{ number_format($alert->reorder_level, 2) }} {{ $alert->unitOfMeasure?->symbol ?? '' }}
+                                </span>
+                            @endforeach
+                            @if($lowStockAlerts->count() > 8)
+                                <span class="text-xs text-amber-700 dark:text-amber-400 self-center">+{{ $lowStockAlerts->count() - 8 }} more</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <button @click="open = false" class="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+    @endif
+
     <!-- Header with Add Button -->
 <button
     x-data="{ loadingAdd: false }"

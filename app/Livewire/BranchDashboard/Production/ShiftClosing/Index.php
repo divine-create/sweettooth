@@ -8,6 +8,7 @@ use App\Models\ProductionRecord;
 use App\Models\DailyProduce;
 use App\Models\Branch;
 use App\Models\Department;
+use App\Models\ItemRequest;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;

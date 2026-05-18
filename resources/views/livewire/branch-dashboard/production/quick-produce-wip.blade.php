@@ -30,7 +30,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Work in Progress (WIP)</label>
-                        <select wire:change="selectProduct($event.target.value)" class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600">
+                        <select wire:model.live="selectedProductId" class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600">
                             <option value="">-- Select WIP Product --</option>
                             @foreach($this->getProducts() as $product)
                                 <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->sku }})</option>

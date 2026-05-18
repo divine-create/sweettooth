@@ -214,6 +214,9 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             Route::get('department-report/{reportId}', [\App\Http\Controllers\ReportPrintController::class, 'departmentReport'])->name('department-report');
             Route::get('compiled-report/{reportId}', [\App\Http\Controllers\ReportPrintController::class, 'compiled-report'])->name('compiled-report');
             Route::get('accounting/cash-flow-statement', [\App\Http\Controllers\ReportPrintController::class, 'cashFlowStatement'])->name('accounting.cash-flow-statement');
+            Route::get('accounting/trial-balance', [\App\Http\Controllers\ReportPrintController::class, 'trialBalance'])->name('accounting.trial-balance');
+            Route::get('accounting/income-statement', [\App\Http\Controllers\ReportPrintController::class, 'incomeStatement'])->name('accounting.income-statement');
+            Route::get('accounting/balance-sheet', [\App\Http\Controllers\ReportPrintController::class, 'balanceSheet'])->name('accounting.balance-sheet');
         });
 
         // Reporting Department Routes
@@ -335,6 +338,8 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
                 Route::get('/income-statement', \App\Livewire\BranchDashboard\Accounting\Report\IncomeStatementReport::class)->name('income-statement');
                 Route::get('/balance-sheet', \App\Livewire\BranchDashboard\Accounting\Report\BalanceSheetReport::class)->name('balance-sheet');
                 Route::get('/cash-flow-statement', \App\Livewire\BranchDashboard\Accounting\Report\CashFlowStatementReport::class)->name('cash-flow-statement');
+                Route::get('/budget-vs-actual', \App\Livewire\BranchDashboard\Accounting\Report\BudgetVsActualReport::class)->name('budget-vs-actual');
+                Route::middleware('role.level:5')->get('/branch-comparison', \App\Livewire\BranchDashboard\Accounting\Report\BranchComparisonReport::class)->name('branch-comparison');
             });
         });
 

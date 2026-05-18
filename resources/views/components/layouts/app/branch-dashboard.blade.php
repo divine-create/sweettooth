@@ -1089,6 +1089,9 @@
             </div>
         </div>
 
+        <!-- Notification Bell -->
+        <livewire:notification-bell />
+
         <!-- Search Navbar -->
         <flux:navbar class="me-1.5 space-x-0.5 rtl:space-x-reverse py-0!">
             <div x-data="{

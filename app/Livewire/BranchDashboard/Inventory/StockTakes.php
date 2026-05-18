@@ -33,13 +33,19 @@ class StockTakes extends Component
 
     public $stockTakeId;
 
+    public $showViewModal = false;
+
+    public $viewingStockTakeId = null;
+
     public $stock_take_date;
 
-    public $type = 'full';
+    public $type = 'daily';
 
     public $notes;
 
     public $stockTakeItems = [];
+
+    public ?int $quantity = 15;
 
     protected array $bulkActions = [
         'export' => ['label' => 'Export Selected', 'method' => 'exportSelected'],
@@ -47,7 +53,7 @@ class StockTakes extends Component
 
     protected $rules = [
         'stock_take_date' => 'required|date',
-        'type' => 'required|in:full,partial,cycle',
+        'type' => 'required|in:daily,weekly,monthly,annual,ad_hoc',
         'notes' => 'nullable|string',
     ];
 
@@ -85,10 +91,17 @@ class StockTakes extends Component
             ->when($this->filterStatus, fn ($q) => $q->where('status', $this->filterStatus))
             ->orderBy('stock_take_date', 'desc');
 
-        $stockTakes = $query->paginate(15);
+        $stockTakes = $query->paginate($this->quantity ?? 15);
+
+        $viewingStockTake = null;
+        if ($this->showViewModal && $this->viewingStockTakeId) {
+            $viewingStockTake = StockTake::with(['stockTakeDetails.stock.item.unitOfMeasure', 'conductor', 'verifier'])
+                ->find($this->viewingStockTakeId);
+        }
 
         return view('livewire.branch-dashboard.inventory.stock-takes', [
             'stockTakes' => $stockTakes,
+            'viewingStockTake' => $viewingStockTake,
         ]);
     }
 
@@ -109,6 +122,9 @@ class StockTakes extends Component
 
         $this->stockTakeItems = [];
         foreach ($stocks as $stock) {
+            if (! $stock->item) {
+                continue;
+            }
             $this->stockTakeItems[] = [
                 'stock_id' => $stock->id,
                 'item_name' => $stock->item->name,
@@ -127,7 +143,7 @@ class StockTakes extends Component
         DB::beginTransaction();
         try {
             $branchId = $this->getBranchId();
-            $branch = Auth::guard('web')->user()->employee->branch;
+            $branch = \App\Models\Branch::find($branchId);
 
             $stockTakeNumber = StockTake::generateStockTakeNumber($branch->code);
 
@@ -136,7 +152,8 @@ class StockTakes extends Component
                 'stock_take_number' => $stockTakeNumber,
                 'stock_take_date' => $this->stock_take_date,
                 'type' => $this->type,
-                'conducted_by' => Auth::guard('web')->id(),
+                'conducted_by_id' => Auth::guard('web')->id(),
+                'conducted_by_type' => \App\Models\User::class,
                 'status' => 'in_progress',
                 'notes' => $this->notes,
             ]);
@@ -225,6 +242,23 @@ class StockTakes extends Component
         session()->flash('success', 'Stock take marked as completed.');
     }
 
+    public function viewStockTake($id)
+    {
+        $stockTake = StockTake::findOrFail($id);
+        if ($stockTake->branch_id !== $this->getBranchId()) {
+            session()->flash('error', 'Unauthorized action.');
+            return;
+        }
+        $this->viewingStockTakeId = $id;
+        $this->showViewModal = true;
+    }
+
+    public function closeViewModal()
+    {
+        $this->showViewModal = false;
+        $this->viewingStockTakeId = null;
+    }
+
     public function closeModal()
     {
         $this->showModal = false;
@@ -236,7 +270,7 @@ class StockTakes extends Component
     {
         $this->stockTakeId = null;
         $this->stock_take_date = now()->format('Y-m-d');
-        $this->type = 'full';
+        $this->type = 'daily';
         $this->notes = '';
         $this->stockTakeItems = [];
     }

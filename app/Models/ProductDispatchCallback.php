@@ -508,15 +508,26 @@ class ProductDispatchCallback extends Model
             ->lockForUpdate()
             ->first();
 
+        // Fallback: ProductStock in current system has sales_shift_id = null,
+        // so look up by department + stock date + product instead.
         if (! $productStock) {
-            CleanError::show(
-                'Product stock record not found for sales shift: '.$this->sales_shift_id
-            );
+            $dispatch = $this->productDispatch;
+            if ($dispatch && $dispatch->sales_department_id) {
+                $stockDate = $this->callback_time?->toDateString() ?? now()->toDateString();
+                $productStock = ProductStock::where('department_id', $dispatch->sales_department_id)
+                    ->where('product_id', $this->product_id)
+                    ->where('stock_date', $stockDate)
+                    ->lockForUpdate()
+                    ->first();
+            }
+        }
+
+        if (! $productStock) {
+            CleanError::show('Product stock record not found for callback.');
             return;
         }
 
-        $totalCallbacks = self::where('sales_shift_id', $this->sales_shift_id)
-            ->where('product_id', $this->product_id)
+        $totalCallbacks = self::where('product_dispatch_id', $this->product_dispatch_id)
             ->whereIn('status', [
                 CallbackStatus::PENDING->value,
                 CallbackStatus::APPROVED_BY_PRODUCTION->value,
