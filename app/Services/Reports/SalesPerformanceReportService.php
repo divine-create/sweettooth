@@ -35,7 +35,7 @@ class SalesPerformanceReportService extends ReportService
             ->get();
 
         $saleItems = SaleItem::query()
-            ->with(['product', 'sale'])
+            ->with(['product', 'item', 'sale'])
             ->whereHas('sale', function ($q) {
                 $q->where('branch_id', $this->branchId)
                     ->when($this->departmentId, fn($q) => $q->where('department_id', $this->departmentId))
@@ -111,15 +111,22 @@ class SalesPerformanceReportService extends ReportService
      */
     private function generateProductPerformance($saleItems): array
     {
-        return $saleItems->groupBy('product_id')->map(function ($items) {
-            $product = $items->first()->product;
+        $keyed = $saleItems->groupBy(function ($saleItem) {
+            return $saleItem->product_id ? 'p_' . $saleItem->product_id : 'i_' . $saleItem->item_id;
+        });
+
+        return $keyed->map(function ($items) {
+            $first = $items->first();
+            $name = $first->product_id
+                ? ($first->product->name ?? 'Unknown Product')
+                : ($first->item->name ?? 'Unknown Item');
             $totalQuantity = $items->sum('quantity');
             $totalRevenue = $items->sum('total');
             $totalDiscount = $items->sum('discount');
 
             return [
-                'product_id' => $product->id ?? null,
-                'product_name' => $product->name ?? 'Unknown Product',
+                'product_id' => $first->product_id,
+                'product_name' => $name,
                 'quantity_sold' => $totalQuantity,
                 'revenue' => $totalRevenue,
                 'discount_given' => $totalDiscount,
