@@ -30,10 +30,10 @@ class PosDocumentService
         $symbol = $this->currencyService->getSymbol($currency);
 
         $items = $sale->saleItems()
-            ->with('product')
+            ->with(['product', 'item'])
             ->get()
             ->map(fn ($item) => [
-                'name' => $item->product->name ?? 'Product',
+                'name' => $item->product->name ?? $item->item->name ?? 'Product',
                 'qty' => number_format($item->quantity, 2),
                 'unit_price' => $this->currencyService->formatAmount($item->unit_price),
                 'total' => $this->currencyService->formatAmount($item->total),
@@ -160,11 +160,11 @@ class PosDocumentService
         $symbol = $this->currencyService->getSymbol($currency);
 
         $items = $sale->saleItems()
-            ->with('product')
+            ->with(['product', 'item'])
             ->get()
             ->map(fn ($item) => [
-                'name' => $item->product->name ?? 'Product',
-                'description' => $item->product->description ?? '',
+                'name' => $item->product->name ?? $item->item->name ?? 'Product',
+                'description' => $item->product->description ?? $item->item->description ?? '',
                 'qty' => number_format($item->quantity, 2),
                 'unit_price' => $this->currencyService->formatAmount($item->unit_price),
                 'total' => $this->currencyService->formatAmount($item->total),

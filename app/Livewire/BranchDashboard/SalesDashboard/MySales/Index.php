@@ -240,25 +240,33 @@ class Index extends BaseComponent
     public function topSellingProducts()
     {
         return Cache::remember($this->getCacheKey('my_top_products'), 300, function() {
-            return SaleItem::whereHas('sale', function($q) {
+            $saleFilter = function ($q) {
                 $q->where('branch_id', $this->branchId)
                   ->where('department_id', $this->departmentId)
                   ->where('sold_by_id', $this->employeeId)
                   ->whereIn('sold_by_type', $this->soldByTypes)
                   ->whereBetween('sale_time', [$this->dateFrom, $this->dateTo])
                   ->where('status', '!=', 'cancelled');
-            })
-            ->with('product')
-            ->select(
-                'product_id',
-                DB::raw('SUM(quantity) as total_quantity'),
-                DB::raw('SUM(total) as total_revenue'),
-                DB::raw('COUNT(DISTINCT sale_id) as order_count')
-            )
-            ->groupBy('product_id')
-            ->orderBy('total_revenue', 'desc')
-            ->limit(10)
-            ->get();
+            };
+
+            $products = SaleItem::whereHas('sale', $saleFilter)
+                ->whereNotNull('product_id')
+                ->with('product')
+                ->select('product_id', DB::raw('SUM(quantity) as total_quantity'), DB::raw('SUM(total) as total_revenue'), DB::raw('COUNT(DISTINCT sale_id) as order_count'))
+                ->groupBy('product_id')
+                ->get();
+
+            $items = SaleItem::whereHas('sale', $saleFilter)
+                ->whereNotNull('item_id')
+                ->with('item')
+                ->select('item_id', DB::raw('SUM(quantity) as total_quantity'), DB::raw('SUM(total) as total_revenue'), DB::raw('COUNT(DISTINCT sale_id) as order_count'))
+                ->groupBy('item_id')
+                ->get();
+
+            return $products->concat($items)
+                ->sortByDesc('total_revenue')
+                ->take(10)
+                ->values();
         });
     }
 

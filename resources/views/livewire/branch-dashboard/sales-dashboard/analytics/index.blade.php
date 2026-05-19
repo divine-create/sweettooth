@@ -350,8 +350,8 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $item->product->name ?? 'N/A' }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ $item->product->sku ?? '' }}</div>
+                                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $item->product->name ?? $item->item->name ?? 'N/A' }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ $item->product->sku ?? $item->item->sku ?? '' }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ number_format($item->total_quantity, 2) }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $this->formatCurrency($item->total_revenue) }}</td>
