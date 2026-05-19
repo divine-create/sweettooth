@@ -822,6 +822,15 @@
                             {{ __('Production Requests') }}
                         </flux:navlist.item>
 
+                        <flux:navlist.item icon="archive-box"
+                            :href="branch_route('branch-dashboard.sales-dashboard.item-requests', [
+                                'deptSlug' => $dept->slug,
+                                'page' => 'Item Requests' . '_' . $dept->slug
+                            ])"
+                            :current="request()->get('page') === 'Item Requests' . '_' . $dept->slug" wire:navigate>
+                            {{ __('Item Requests') }}
+                        </flux:navlist.item>
+
                         <flux:navlist.item icon="clipboard-document-check"
                             :href="branch_route('branch-dashboard.sales-dashboard.stock-monitor', [
                                 'salesDeptSlug' => $dept->slug,
