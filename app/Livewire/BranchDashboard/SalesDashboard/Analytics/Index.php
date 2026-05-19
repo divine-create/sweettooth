@@ -372,9 +372,10 @@ class Index extends Component
                   ->whereBetween('sale_time', [$this->dateFrom, $this->dateTo])
                   ->where('status', '!=', 'cancelled');
             })
+            ->whereNotNull('sale_items.product_id')
             ->join('products', 'sale_items.product_id', '=', 'products.id')
             ->join('product_types', 'products.product_type_id', '=', 'product_types.id')
-            ->where('product_types.department_id', $this->departmentId) // Filter by department
+            ->where('product_types.department_id', $this->departmentId)
             ->select(
                 'product_types.id',
                 'product_types.name as category_name',

@@ -149,18 +149,22 @@ class Index extends Component
             $totalSales = $sales->sum('total');
             $orderCount = $sales->count();
 
-            // Top selling product
+            // Top selling product/item (LEFT JOINs so inventory items are included)
             $topProduct = DB::table('sale_items')
                 ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                ->join('products', 'sale_items.product_id', '=', 'products.id')
+                ->leftJoin('products', 'sale_items.product_id', '=', 'products.id')
+                ->leftJoin('items', 'sale_items.item_id', '=', 'items.id')
                 ->where('sales.branch_id', $this->branchId)
                 ->where('sales.department_id', $dept->id)
                 ->whereBetween('sales.sale_time', [
                     Carbon::parse($this->startDate)->startOfDay(),
                     Carbon::parse($this->endDate)->endOfDay()
                 ])
-                ->select('products.name', DB::raw('SUM(sale_items.quantity) as total_qty'))
-                ->groupBy('products.name')
+                ->select(
+                    DB::raw('COALESCE(products.name, items.name) as name'),
+                    DB::raw('SUM(sale_items.quantity) as total_qty')
+                )
+                ->groupBy(DB::raw('COALESCE(products.name, items.name)'))
                 ->orderByDesc('total_qty')
                 ->first();
 

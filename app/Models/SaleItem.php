@@ -191,6 +191,38 @@ class SaleItem extends Model
                 $saleItem->sale->saveQuietly();
             }
 
+            // Restore inventory stock when a direct inventory item sale is deleted
+            if ($saleItem->item_id) {
+                $sale = $saleItem->sale;
+                $inventoryStock = Stock::where('item_id', $saleItem->item_id)
+                    ->when($sale?->branch_id, fn ($q) => $q->where('branch_id', $sale->branch_id))
+                    ->first();
+
+                if ($inventoryStock) {
+                    $before = (float) $inventoryStock->quantity_available;
+                    $inventoryStock->quantity_available = $before + (float) $saleItem->quantity;
+                    $inventoryStock->save();
+
+                    StockMovement::create([
+                        'stock_id'        => $inventoryStock->id,
+                        'branch_id'       => $inventoryStock->branch_id,
+                        'type'            => 'in',
+                        'quantity'        => (float) $saleItem->quantity,
+                        'quantity_before' => $before,
+                        'quantity_after'  => $inventoryStock->quantity_available,
+                        'unit_cost'       => (float) ($inventoryStock->average_cost ?? 0),
+                        'cost_impact'     => (float) $saleItem->quantity * (float) ($inventoryStock->average_cost ?? 0),
+                        'reference_type'  => Sale::class,
+                        'reference_id'    => (string) ($sale?->id ?? ''),
+                        'moved_by_type'   => \App\Models\User::class,
+                        'moved_by_id'     => auth()->id(),
+                        'movement_date'   => now(),
+                        'notes'           => 'Reversal: POS sale item deleted',
+                    ]);
+                }
+                return;
+            }
+
             // Restore product stock when sale item is deleted
             if ($saleItem->sale && $saleItem->sale->salesShift) {
                 $productStock = ProductStock::where('sales_shift_id', $saleItem->sale->sales_shift_id)

@@ -587,6 +587,10 @@ class Index extends BaseComponent
                 if (isset($line['item_id'])) {
                     $itemQty = (float) $line['qty'];
                     if ($itemQty > 0) {
+                        $invStock = \App\Models\Stock::where('item_id', $line['item_id'])
+                            ->where('branch_id', $this->branchId)
+                            ->value('average_cost');
+
                         SaleItem::create([
                             'sale_id'       => $sale->id,
                             'department_id' => $this->departmentId,
@@ -595,6 +599,7 @@ class Index extends BaseComponent
                             'quantity'      => $itemQty,
                             'sales_quantity'=> $itemQty,
                             'unit_price'    => $line['price'],
+                            'unit_cost'     => (float) ($invStock ?? 0),
                             'subtotal'      => $itemQty * $line['price'],
                             'discount'      => 0,
                             'total'         => $itemQty * $line['price'],
@@ -762,14 +767,15 @@ class Index extends BaseComponent
 
         foreach ($this->cart as $line) {
             SaleItem::create([
-                'sale_id' => $sale->id,
+                'sale_id'       => $sale->id,
                 'department_id' => $this->departmentId,
-                'product_id' => (string)$line['product_id'],
-                'quantity' => (float)$line['qty'],
-                'unit_price' => $line['price'],
-                'subtotal' => $line['qty'] * $line['price'],
-                'discount' => 0,
-                'total' => $line['qty'] * $line['price'],
+                'product_id'    => isset($line['item_id']) ? null : ($line['product_id'] ?? null),
+                'item_id'       => $line['item_id'] ?? null,
+                'quantity'      => (float) $line['qty'],
+                'unit_price'    => $line['price'],
+                'subtotal'      => $line['qty'] * $line['price'],
+                'discount'      => 0,
+                'total'         => $line['qty'] * $line['price'],
             ]);
         }
 
@@ -780,23 +786,39 @@ class Index extends BaseComponent
 
     public function resumeSale(int $saleId): void
     {
-        $sale = Sale::with('saleItems.product')->find($saleId);
+        $sale = Sale::with(['saleItems.product', 'saleItems.item'])->find($saleId);
         if (!$sale || $sale->status !== 'hold') {
             $this->toast()->warning('Hold ticket not found.')->send();
             return;
         }
         $this->cart = [];
-        foreach ($sale->saleItems as $item) {
-            $this->cart[(string)$item->product_id] = [
-                'product_id' => $item->product_id,
-                'name' => $item->product->name ?? 'Product',
-                'price' => (float)$item->unit_price,
-                'qty' => (float)$item->quantity,
-                'low_stock' => false,
-                'available' => $this->availableQuantity($this->getTodayStockForProduct($item->product_id)),
-            ];
+        foreach ($sale->saleItems as $saleItem) {
+            if ($saleItem->item_id) {
+                $key = 'item_' . $saleItem->item_id;
+                $available = (float) (\App\Models\Stock::where('item_id', $saleItem->item_id)
+                    ->where('branch_id', $this->branchId)
+                    ->value('quantity_available') ?? 0);
+                $this->cart[$key] = [
+                    'item_id'   => $saleItem->item_id,
+                    'name'      => $saleItem->item->name ?? 'Item',
+                    'price'     => (float) $saleItem->unit_price,
+                    'qty'       => (float) $saleItem->quantity,
+                    'uom'       => $saleItem->item->unitOfMeasure?->symbol ?? '',
+                    'available' => $available,
+                    'type'      => 'inventory_item',
+                ];
+            } else {
+                $this->cart[(string) $saleItem->product_id] = [
+                    'product_id' => $saleItem->product_id,
+                    'name'       => $saleItem->product->name ?? 'Product',
+                    'price'      => (float) $saleItem->unit_price,
+                    'qty'        => (float) $saleItem->quantity,
+                    'low_stock'  => false,
+                    'available'  => $this->availableQuantity($this->getTodayStockForProduct($saleItem->product_id)),
+                ];
+            }
         }
-        $this->discount = (float)$sale->discount;
+        $this->discount = (float) $sale->discount;
         $this->orderType = $sale->order_type ?? 'dine-in';
         $this->recalculateTotals();
     }
@@ -1312,18 +1334,35 @@ class Index extends BaseComponent
 
     protected function loadTableTab(Sale $sale): void
     {
+        $sale->loadMissing(['saleItems.product', 'saleItems.item']);
         $this->cart = [];
-        foreach ($sale->saleItems as $item) {
-            $this->cart[(string)$item->product_id] = [
-                'product_id' => $item->product_id,
-                'name' => $item->product->name ?? 'Product',
-                'price' => (float)$item->unit_price,
-                'qty' => (float)$item->quantity,
-                'low_stock' => false,
-                'available' => $this->availableQuantity($this->getTodayStockForProduct($item->product_id)),
-            ];
+        foreach ($sale->saleItems as $saleItem) {
+            if ($saleItem->item_id) {
+                $key = 'item_' . $saleItem->item_id;
+                $available = (float) (\App\Models\Stock::where('item_id', $saleItem->item_id)
+                    ->where('branch_id', $this->branchId)
+                    ->value('quantity_available') ?? 0);
+                $this->cart[$key] = [
+                    'item_id'   => $saleItem->item_id,
+                    'name'      => $saleItem->item->name ?? 'Item',
+                    'price'     => (float) $saleItem->unit_price,
+                    'qty'       => (float) $saleItem->quantity,
+                    'uom'       => $saleItem->item->unitOfMeasure?->symbol ?? '',
+                    'available' => $available,
+                    'type'      => 'inventory_item',
+                ];
+            } else {
+                $this->cart[(string) $saleItem->product_id] = [
+                    'product_id' => $saleItem->product_id,
+                    'name'       => $saleItem->product->name ?? 'Product',
+                    'price'      => (float) $saleItem->unit_price,
+                    'qty'        => (float) $saleItem->quantity,
+                    'low_stock'  => false,
+                    'available'  => $this->availableQuantity($this->getTodayStockForProduct($saleItem->product_id)),
+                ];
+            }
         }
-        $this->discount = (float)$sale->discount;
+        $this->discount = (float) $sale->discount;
         $this->orderType = $sale->order_type ?? 'dine-in';
         $this->currentSaleId = $sale->id;
         $this->recalculateTotals();
@@ -1367,7 +1406,7 @@ class Index extends BaseComponent
                     'order_type' => $this->orderType,
                 ]);
 
-                $existingItems = $existingSale->saleItems()->with('product')->get();
+                $existingItems = $existingSale->saleItems()->with(['product', 'item'])->get();
 
                 // Delete existing items
                 $existingSale->saleItems()->delete();
@@ -1395,11 +1434,11 @@ class Index extends BaseComponent
                 ]);
             }
 
-            // Reserve stock delta (base UOM)
-            $productIds = array_values(array_unique(array_map(
-                static fn ($line): string => (string) ($line['product_id'] ?? ''),
+            // Reserve stock delta (base UOM) — only for production products, not inventory items
+            $productIds = array_values(array_unique(array_filter(array_map(
+                static fn ($line) => isset($line['item_id']) ? null : ($line['product_id'] ?? null),
                 $this->cart
-            )));
+            ))));
             $productsById = Product::query()
                 ->with(['unitOfMeasure', 'salesUom'])
                 ->whereIn('id', $productIds)
@@ -1409,7 +1448,7 @@ class Index extends BaseComponent
             $existingReserved = [];
             foreach ($existingItems as $item) {
                 $product = $item->product;
-                if ($product) {
+                if ($product && $item->product_id) {
                     $existingReserved[(string) $item->product_id] = ($existingReserved[(string) $item->product_id] ?? 0)
                         + $this->toBaseQty($product, (float) $item->quantity);
                 }
@@ -1417,6 +1456,7 @@ class Index extends BaseComponent
 
             $newReserved = [];
             foreach ($this->cart as $line) {
+                if (isset($line['item_id'])) continue; // inventory items don't use product_stocks
                 $productId = (string) $line['product_id'];
                 $product = $productsById->get($productId);
                 if (!$product) {
@@ -1453,14 +1493,15 @@ class Index extends BaseComponent
             // Add items to sale
             foreach ($this->cart as $line) {
                 SaleItem::create([
-                    'sale_id' => $sale->id,
+                    'sale_id'       => $sale->id,
                     'department_id' => $this->departmentId,
-                    'product_id' => (string)$line['product_id'],
-                    'quantity' => (float)$line['qty'],
-                    'unit_price' => $line['price'],
-                    'subtotal' => $line['qty'] * $line['price'],
-                    'discount' => 0,
-                    'total' => $line['qty'] * $line['price'],
+                    'product_id'    => isset($line['item_id']) ? null : ($line['product_id'] ?? null),
+                    'item_id'       => $line['item_id'] ?? null,
+                    'quantity'      => (float) $line['qty'],
+                    'unit_price'    => $line['price'],
+                    'subtotal'      => $line['qty'] * $line['price'],
+                    'discount'      => 0,
+                    'total'         => $line['qty'] * $line['price'],
                 ]);
             }
 
