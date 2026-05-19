@@ -79,6 +79,17 @@
                     Target: {{ $selectedRequest->department?->name }}
                 </p>
                 
+                @php $isCompleted = $selectedRequest->status === 'completed'; @endphp
+
+                @if($isCompleted)
+                    <div class="mb-4 flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg">
+                        <svg class="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span class="text-sm font-medium text-green-700 dark:text-green-300">All items have been approved and dispatched.</span>
+                    </div>
+                @endif
+
                 <table class="w-full text-sm">
                     <thead class="bg-zinc-50 dark:bg-zinc-700">
                         <tr>
@@ -87,30 +98,54 @@
                             <th class="px-2 py-2 text-right">Approved Qty</th>
                             <th class="px-2 py-2 text-right">Dispatched</th>
                             <th class="px-2 py-2 text-center">UOM</th>
+                            <th class="px-2 py-2 text-center">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($approvalItems as $index => $item)
-                            <tr class="border-b">
+                            @php
+                                $itemDispatched = (float)$item['quantity_dispatched'] >= (float)$item['quantity_approved']
+                                    && (float)$item['quantity_approved'] > 0;
+                            @endphp
+                            <tr class="border-b {{ $itemDispatched ? 'bg-green-50/50 dark:bg-green-900/10' : '' }}">
                                 <td class="px-2 py-2">{{ $item['item_name'] }}</td>
                                 <td class="px-2 py-2 text-right">{{ $item['quantity_requested'] }}</td>
                                 <td class="px-2 py-2 text-right">
-                                    <input type="number" 
-                                        wire:model="approvalItems.{{ $index }}.quantity_approved" 
+                                    <input type="number"
+                                        wire:model="approvalItems.{{ $index }}.quantity_approved"
                                         min="0"
                                         step="0.01"
-                                        class="w-20 text-right rounded border p-1"/>
+                                        @disabled($itemDispatched || $isCompleted)
+                                        class="w-20 text-right rounded border p-1 {{ $itemDispatched || $isCompleted ? 'bg-zinc-100 dark:bg-zinc-700 text-zinc-400 cursor-not-allowed' : '' }}"/>
                                 </td>
                                 <td class="px-2 py-2 text-right">{{ $item['quantity_dispatched'] }}</td>
                                 <td class="px-2 py-2 text-center">{{ $item['uom_symbol'] }}</td>
+                                <td class="px-2 py-2 text-center">
+                                    @if($itemDispatched)
+                                        <span class="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">Dispatched</span>
+                                    @else
+                                        <span class="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 rounded-full text-xs font-medium">Pending</span>
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
-                
+
                 <div class="flex justify-end gap-2 mt-6">
-                    <button type="button" wire:click="closeModal" class="px-4 py-2 border rounded">Cancel</button>
-                    <button type="button" wire:click="approveAndDispatch" class="px-4 py-2 bg-green-600 text-white rounded">Approve & Dispatch</button>
+                    <button type="button" wire:click="closeModal" class="px-4 py-2 border rounded">Close</button>
+                    @if(!$isCompleted)
+                        <button type="button" wire:click="approveAndDispatch" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
+                            Approve & Dispatch
+                        </button>
+                    @else
+                        <span class="px-4 py-2 bg-zinc-100 dark:bg-zinc-700 text-zinc-400 dark:text-zinc-500 rounded cursor-not-allowed text-sm font-medium flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Fully Dispatched
+                        </span>
+                    @endif
                 </div>
             </div>
         </div>
