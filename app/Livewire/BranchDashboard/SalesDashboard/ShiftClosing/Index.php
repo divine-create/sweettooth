@@ -219,7 +219,7 @@ class Index extends BaseComponent
 
         $sales = $salesQuery
             ->where('status', '!=', 'cancelled')
-            ->with(['saleItems.product', 'payments'])
+            ->with(['saleItems.product', 'saleItems.item', 'payments'])
             ->get();
 
         // Basic sales summary
@@ -256,16 +256,19 @@ class Index extends BaseComponent
         $productSales = [];
         foreach ($sales as $sale) {
             foreach ($sale->saleItems as $item) {
-                $productId = $item->product_id;
-                if (!isset($productSales[$productId])) {
-                    $productSales[$productId] = [
-                        'product_name' => $item->product->name ?? 'Unknown',
+                $key = $item->product_id ? 'p_' . $item->product_id : 'i_' . $item->item_id;
+                $name = $item->product_id
+                    ? ($item->product->name ?? 'Unknown')
+                    : ($item->item->name ?? 'Unknown');
+                if (!isset($productSales[$key])) {
+                    $productSales[$key] = [
+                        'product_name' => $name,
                         'quantity' => 0,
                         'revenue' => 0,
                     ];
                 }
-                $productSales[$productId]['quantity'] += $item->quantity;
-                $productSales[$productId]['revenue'] += $item->total;
+                $productSales[$key]['quantity'] += $item->quantity;
+                $productSales[$key]['revenue'] += $item->total;
             }
         }
 
