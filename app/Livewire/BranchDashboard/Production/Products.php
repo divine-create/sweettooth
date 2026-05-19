@@ -79,6 +79,8 @@ class Products extends BaseComponent
 
     public array $tags = [];
 
+    public ?int $linked_item_id = null;
+
     public User|Employee|null $employee = null;
 
     private int $cacheTtlMinutes = 5;
@@ -330,6 +332,13 @@ class Products extends BaseComponent
 
         $employees_department = $this->department;
 
+        $branchIdForItems = $this->getBranchId();
+        $inventoryItems = \App\Models\Item::when($branchIdForItems, fn ($q) => $q->where('branch_id', $branchIdForItems))
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->select('id', 'name', 'sku')
+            ->get();
+
         return view('livewire.branch-dashboard.production.products', [
             'headers' => [
                 ['index' => 'id', 'label' => '#'],
@@ -345,6 +354,7 @@ class Products extends BaseComponent
             'salesDepartments' => $salesDepartments,
             'employees_department' => $employees_department,
             'no_department_selected' => false,
+            'inventoryItems' => $inventoryItems,
         ]);
     }
 
@@ -386,6 +396,7 @@ class Products extends BaseComponent
         $this->image_url = $product->image_url ?? '';
         $this->allergens = $product->allergens ?? [];
         $this->tags = $product->tags ?? [];
+        $this->linked_item_id = $product->linked_item_id;
 
         $this->isEditing = true;
         $this->showModal = true;
@@ -420,6 +431,7 @@ class Products extends BaseComponent
             'is_active' => 'boolean',
             'is_available' => 'boolean',
             'image_url' => 'nullable|string',
+            'linked_item_id' => 'nullable|exists:items,id',
         ];
 
         if ($this->isEditing) {
@@ -462,6 +474,7 @@ class Products extends BaseComponent
             'image_url' => $this->image_url,
             'allergens' => $this->allergens,
             'tags' => $this->tags,
+            'linked_item_id' => $this->linked_item_id ?: null,
         ];
 
         // Super admin bypass - save directly without audit
@@ -635,6 +648,7 @@ class Products extends BaseComponent
         $this->image_url = '';
         $this->allergens = [];
         $this->tags = [];
+        $this->linked_item_id = null;
         $this->isEditing = false;
     }
 

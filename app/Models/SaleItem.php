@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Stock;
+use App\Models\StockMovement;
 
 class SaleItem extends Model
 {
@@ -11,6 +13,7 @@ class SaleItem extends Model
         'sale_id',
         'department_id',
         'product_id',
+        'item_id',
         'quantity',
         'sales_quantity',
         'sales_uom_id',
@@ -51,6 +54,11 @@ class SaleItem extends Model
     public function salesUom(): BelongsTo
     {
         return $this->belongsTo(UnitOfMeasure::class, 'sales_uom_id');
+    }
+
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(Item::class);
     }
 
     /**
@@ -98,6 +106,38 @@ class SaleItem extends Model
             if ($saleItem->sale) {
                 $saleItem->sale->calculateTotals();
                 $saleItem->sale->saveQuietly();
+            }
+
+            // For direct inventory item sales: decrement stocks.quantity_available
+            if ($saleItem->wasRecentlyCreated && $saleItem->item_id) {
+                $sale = $saleItem->sale;
+                $inventoryStock = Stock::where('item_id', $saleItem->item_id)
+                    ->when($sale?->branch_id, fn ($q) => $q->where('branch_id', $sale->branch_id))
+                    ->first();
+
+                if ($inventoryStock) {
+                    $before = (float) $inventoryStock->quantity_available;
+                    $inventoryStock->quantity_available = max(0, $before - (float) $saleItem->quantity);
+                    $inventoryStock->save();
+
+                    StockMovement::create([
+                        'stock_id'        => $inventoryStock->id,
+                        'branch_id'       => $inventoryStock->branch_id,
+                        'type'            => 'out',
+                        'quantity'        => -(float) $saleItem->quantity,
+                        'quantity_before' => $before,
+                        'quantity_after'  => $inventoryStock->quantity_available,
+                        'unit_cost'       => (float) ($inventoryStock->average_cost ?? 0),
+                        'cost_impact'     => -((float) $saleItem->quantity * (float) ($inventoryStock->average_cost ?? 0)),
+                        'reference_type'  => Sale::class,
+                        'reference_id'    => (string) ($sale?->id ?? ''),
+                        'moved_by_type'   => \App\Models\User::class,
+                        'moved_by_id'     => auth()->id(),
+                        'movement_date'   => now(),
+                        'notes'           => 'POS direct sale from inventory',
+                    ]);
+                }
+                return; // skip product_stocks update — no product_stock record for items
             }
 
             // Update product stock - deduct quantity sold

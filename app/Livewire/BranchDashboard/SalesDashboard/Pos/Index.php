@@ -5,6 +5,8 @@ namespace App\Livewire\BranchDashboard\SalesDashboard\Pos;
 use App\Helpers\Settings;
 use App\Livewire\BaseComponent;
 use App\Livewire\Concerns\SalesDepartmentContext;
+use App\Models\Item;
+use App\Models\MaterialRequestDispatch;
 use App\Models\Product;
 use App\Models\ProductDispatch;
 use App\Models\ProductStock;
@@ -14,6 +16,7 @@ use App\Models\Payment;
 use App\Models\Receipt;
 use App\Models\SalesShift;
 use App\Models\Shift;
+use App\Models\Stock;
 use App\Models\Table;
 use App\Models\BankAccount;
 use App\Models\Branch;
@@ -571,6 +574,28 @@ class Index extends BaseComponent
             $lowStockWarnings = [];
 
             foreach ($this->cart as $line) {
+                // ── Inventory item sale ──────────────────────────────────
+                if (isset($line['item_id'])) {
+                    $itemQty = (float) $line['qty'];
+                    if ($itemQty > 0) {
+                        SaleItem::create([
+                            'sale_id'       => $sale->id,
+                            'department_id' => $this->departmentId,
+                            'product_id'    => null,
+                            'item_id'       => $line['item_id'],
+                            'quantity'      => $itemQty,
+                            'sales_quantity'=> $itemQty,
+                            'unit_price'    => $line['price'],
+                            'subtotal'      => $itemQty * $line['price'],
+                            'discount'      => 0,
+                            'total'         => $itemQty * $line['price'],
+                        ]);
+                        // Stock decrement is handled by SaleItem::saved() observer
+                    }
+                    continue;
+                }
+
+                // ── Production product sale (existing logic) ─────────────
                 $productId = (string)$line['product_id'];
                 $qty = (float)$line['qty'];
 
@@ -834,6 +859,114 @@ class Index extends BaseComponent
         // available is closing quantity; if not up to date, compute
         $stock->updateCalculatedFields();
         return max(0, (float)$stock->closing_quantity);
+    }
+
+    /**
+     * Returns inventory items dispatched to this sales dept that have a sell_price.
+     * Available qty = total dispatched - total sold today by this dept.
+     */
+    public function getDispatchedItemsForSale(): array
+    {
+        if (! $this->departmentId) {
+            return [];
+        }
+
+        $dispatched = MaterialRequestDispatch::query()
+            ->whereHas('request', function ($q) {
+                $q->where('department_id', $this->departmentId)
+                  ->where('branch_id', $this->branchId)
+                  ->whereNotIn('status', ['cancelled']);
+            })
+            ->whereHas('item', fn ($q) => $q->whereNotNull('sell_price')->where('status', 'active'))
+            ->with(['item.unitOfMeasure:id,symbol'])
+            ->get();
+
+        if ($dispatched->isEmpty()) {
+            return [];
+        }
+
+        // Group by item_id and sum dispatched quantities
+        $byItem = $dispatched->groupBy('item_id');
+
+        // Sum quantities already sold from inventory today for this dept
+        $itemIds = $byItem->keys()->all();
+        $soldToday = SaleItem::whereNotNull('item_id')
+            ->whereIn('item_id', $itemIds)
+            ->whereHas('sale', fn ($q) => $q
+                ->where('department_id', $this->departmentId)
+                ->whereDate('sale_time', Carbon::today())
+                ->where('status', 'completed')
+            )
+            ->selectRaw('item_id, SUM(quantity) as total_sold')
+            ->groupBy('item_id')
+            ->pluck('total_sold', 'item_id');
+
+        $result = [];
+        foreach ($byItem as $itemId => $rows) {
+            $item = $rows->first()->item;
+            if (! $item || ! $item->isSellable()) {
+                continue;
+            }
+
+            $totalDispatched = (float) $rows->sum('quantity');
+            $totalSold = (float) ($soldToday[$itemId] ?? 0);
+            $available = max(0, $totalDispatched - $totalSold);
+
+            $cartKey = 'item_' . $itemId;
+            $inCart = (float) ($this->cart[$cartKey]['qty'] ?? 0);
+
+            $result[] = [
+                'item_id'   => $itemId,
+                'name'      => $item->name,
+                'sku'       => $item->sku,
+                'price'     => (float) $item->sell_price,
+                'uom'       => $item->unitOfMeasure?->symbol ?? 'unit',
+                'available' => $available,
+                'in_cart'   => $inCart,
+            ];
+        }
+
+        return $result;
+    }
+
+    public function addItemToCart(int $itemId): void
+    {
+        $item = Item::whereNotNull('sell_price')->where('status', 'active')->find($itemId);
+
+        if (! $item) {
+            $this->toast()->error('Item not available for sale.')->send();
+            return;
+        }
+
+        $cartKey = 'item_' . $itemId;
+        $currentQty = (float) ($this->cart[$cartKey]['qty'] ?? 0);
+        $newQty = $currentQty + 1;
+
+        // Compute available from dispatches
+        $dispatchedItems = $this->getDispatchedItemsForSale();
+        $itemData = collect($dispatchedItems)->firstWhere('item_id', $itemId);
+
+        if (! $itemData || $itemData['available'] <= 0) {
+            $this->toast()->error('No dispatched stock available for ' . $item->name . '.')->send();
+            return;
+        }
+
+        if ($newQty > $itemData['available']) {
+            $this->toast()->warning('Cannot exceed dispatched stock (' . $itemData['available'] . ' ' . $item->unitOfMeasure?->symbol . ') for ' . $item->name)->send();
+            return;
+        }
+
+        $this->cart[$cartKey] = [
+            'item_id'   => $itemId,
+            'name'      => $item->name,
+            'price'     => (float) $item->sell_price,
+            'qty'       => $newQty,
+            'uom'       => $item->unitOfMeasure?->symbol ?? 'unit',
+            'available' => $itemData['available'],
+            'type'      => 'inventory_item',
+        ];
+
+        $this->recalculateTotals();
     }
 
     public function getAvailableForProduct(string $productId): float

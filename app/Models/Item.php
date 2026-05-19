@@ -23,6 +23,7 @@ class Item extends Model
         'max_stock_level',
         'unit_price',
         'last_unit_price',
+        'sell_price',
         'status',
         'requires_request',
     ];
@@ -32,6 +33,7 @@ class Item extends Model
         'max_stock_level' => 'decimal:2',
         'unit_price' => 'decimal:4',
         'last_unit_price' => 'decimal:4',
+        'sell_price' => 'decimal:2',
         'requires_request' => 'boolean',
     ];
 
@@ -135,6 +137,11 @@ class Item extends Model
     public function stockTakeDetails(): HasMany
     {
         return $this->hasMany(StockTakeDetail::class);
+    }
+
+    public function isSellable(): bool
+    {
+        return $this->sell_price !== null && (float) $this->sell_price > 0;
     }
 
     /**

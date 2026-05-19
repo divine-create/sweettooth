@@ -296,6 +296,44 @@
                 </div>
             </div>
 
+            <!-- From Inventory Section -->
+            @php $dispatchedItems = $this->getDispatchedItemsForSale(); @endphp
+            @if(count($dispatchedItems) > 0)
+            <div class="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3">
+                <div class="flex items-center gap-2 mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-blue-600 dark:text-blue-400">
+                        <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z"/>
+                        <path fill-rule="evenodd" d="m3.087 9 .54 9.176A3 3 0 0 0 6.62 21h10.757a3 3 0 0 0 2.995-2.824L20.913 9H3.087Zm6.163 3.75A.75.75 0 0 1 10 12h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="text-sm font-semibold text-blue-700 dark:text-blue-300">From Inventory</span>
+                    <span class="text-xs text-blue-500 dark:text-blue-400">({{ count($dispatchedItems) }} item{{ count($dispatchedItems) !== 1 ? 's' : '' }} dispatched to your dept)</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    @foreach($dispatchedItems as $invItem)
+                    <div class="rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-zinc-900 p-3 flex flex-col gap-2">
+                        <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $invItem['name'] }}</div>
+                        <div class="text-xs text-zinc-500">{{ $this->formatCurrency($invItem['price']) }} / {{ $invItem['uom'] }}</div>
+                        <div class="text-xs">
+                            @if($invItem['available'] <= 0)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30">Out of Stock</span>
+                            @else
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-blue-700 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30">
+                                    {{ number_format($invItem['available'], 2) }} {{ $invItem['uom'] }}
+                                </span>
+                            @endif
+                        </div>
+                        <button type="button" wire:click="addItemToCart({{ $invItem['item_id'] }})"
+                            @if($invItem['available'] <= 0) disabled @endif
+                            class="mt-auto inline-flex items-center justify-center gap-1 px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-zinc-400 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M12 4.5a.75.75 0 0 1 .75.75v6h6a.75.75 0 0 1 0 1.5h-6v6a.75.75 0 0 1-1.5 0v-6h-6a.75.75 0 0 1 0-1.5h6v-6A.75.75 0 0 1 12 4.5Z" clip-rule="evenodd"/></svg>
+                            Add
+                        </button>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             <!-- Grid View -->
             <div x-show="productView === 'grid'" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 @forelse($this->products as $product)

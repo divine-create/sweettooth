@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\UomConversionService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\Item;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,6 +41,7 @@ class Product extends Model
         'allergens',
         'tags',
         'branch_id',
+        'linked_item_id',
     ];
 
     protected $casts = [
@@ -82,6 +84,22 @@ class Product extends Model
     public function scopeByType($query, $typeId)
     {
         return $query->where('product_type_id', $typeId);
+    }
+
+    /**
+     * Get the inventory item this product is sourced from (for direct inventory sales).
+     */
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(Item::class, 'linked_item_id');
+    }
+
+    /**
+     * Whether this product draws stock from a linked inventory item rather than production dispatch.
+     */
+    public function isSoldFromInventory(): bool
+    {
+        return $this->linked_item_id !== null;
     }
 
     /**

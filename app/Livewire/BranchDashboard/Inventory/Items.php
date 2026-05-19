@@ -70,6 +70,8 @@ class Items extends BaseComponent
 
     public ?float $unit_price = null;
 
+    public ?float $sell_price = null;
+
     public string $status = 'active';
 
     public bool $requires_request = false;
@@ -130,6 +132,7 @@ class Items extends BaseComponent
             'max_stock_level' => $this->max_stock_level ?? 0,
             'unit_price' => $this->unit_price ?? 0,
             'last_unit_price' => $this->unit_price ?? 0,
+            'sell_price' => $this->sell_price ?: null,
             'status' => $this->status,
             'requires_request' => (bool) $this->requires_request,
         ];
@@ -161,6 +164,7 @@ class Items extends BaseComponent
             'reorder_level' => 'nullable|numeric|min:0',        // ← FIXED
             'max_stock_level' => 'nullable|numeric|min:0',      // ← also make sure this one is correct
             'unit_price' => 'nullable|numeric|min:0',
+            'sell_price' => 'nullable|numeric|min:0',
             'status' => 'required|in:active,inactive',
             'requires_request' => 'required|boolean',
         ];
@@ -349,6 +353,7 @@ class Items extends BaseComponent
         $this->reorder_level = $item->reorder_level;
         $this->max_stock_level = $item->max_stock_level;
         $this->unit_price = (float) ($item->unit_price ?? 0);
+        $this->sell_price = $item->sell_price ? (float) $item->sell_price : null;
         $this->status = $item->status;
         $this->requires_request = (bool) $item->requires_request;
         $this->isEditing = true;
@@ -623,8 +628,9 @@ class Items extends BaseComponent
 
     private function resetForm()
     {
-        $this->reset(['itemId', 'name', 'sku', 'category_id', 'uom_id', 'reorder_level', 'max_stock_level', 'unit_price', 'status', 'requires_request', 'isEditing']);
+        $this->reset(['itemId', 'name', 'sku', 'category_id', 'uom_id', 'reorder_level', 'max_stock_level', 'unit_price', 'sell_price', 'status', 'requires_request', 'isEditing']);
         $this->unit_price = 0;
+        $this->sell_price = null;
         $this->requires_request = false;
     }
 

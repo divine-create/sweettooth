@@ -150,6 +150,9 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
     // Sales Helper
     Route::get('sales-dashboard/helper', \App\Livewire\BranchDashboard\SalesDashboard\Helper::class)->name('sales-dashboard.helper');
 
+    // Sales: Inventory Item Requests (same component as production material requests)
+    Route::get('sales-dashboard/item-requests/{deptSlug}', \App\Livewire\BranchDashboard\Production\MaterialRequest\Index::class)->name('sales-dashboard.item-requests');
+
     // Production Helper
     Route::get('production/helper', \App\Livewire\BranchDashboard\Production\Helper::class)->name('production.helper');
 
