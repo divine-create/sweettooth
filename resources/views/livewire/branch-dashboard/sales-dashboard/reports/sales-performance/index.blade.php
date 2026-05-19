@@ -194,6 +194,156 @@
             </div>
         </div>
 
+        {{-- Variance & Callback Summary Cards --}}
+        @php
+            $varianceData = data_get($reportData, 'variance_analysis', []);
+            $callbackData = data_get($reportData, 'callback_analysis', []);
+        @endphp
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6 border-l-4 border-orange-400">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Total Variances</p>
+                        <p class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">
+                            {{ number_format($summaryMetrics['total_variances'] ?? 0) }}
+                        </p>
+                        <p class="text-xs text-zinc-500 mt-1">
+                            {{ number_format($summaryMetrics['variance_rate'] ?? 0, 2) }}% of qty sold
+                        </p>
+                    </div>
+                    <div class="p-3 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                        <x-icon name="scale" class="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6 border-l-4 border-red-400">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Unresolved Variances</p>
+                        <p class="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
+                            {{ number_format($summaryMetrics['unresolved_variances'] ?? 0) }}
+                        </p>
+                        <p class="text-xs text-zinc-500 mt-1">Pending resolution</p>
+                    </div>
+                    <div class="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+                        <x-icon name="exclamation-triangle" class="w-6 h-6 text-red-600 dark:text-red-400" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6 border-l-4 border-yellow-400">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Total Callbacks</p>
+                        <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">
+                            {{ number_format($summaryMetrics['total_callbacks'] ?? 0) }}
+                        </p>
+                        <p class="text-xs text-zinc-500 mt-1">
+                            {{ number_format($summaryMetrics['callback_rate'] ?? 0, 2) }}% callback rate
+                        </p>
+                    </div>
+                    <div class="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                        <x-icon name="arrow-uturn-left" class="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Variance Detail Table --}}
+        @if(!empty($varianceData['by_product']))
+        <div class="bg-white dark:bg-zinc-800 rounded-lg shadow">
+            <div class="p-4 border-b border-zinc-200 dark:border-zinc-700 flex items-center gap-2">
+                <x-icon name="scale" class="w-5 h-5 text-orange-500" />
+                <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Stock Variance Breakdown</h3>
+                <span class="ml-auto text-sm text-zinc-500">Total qty: {{ number_format($varianceData['total_qty'] ?? 0, 2) }}</span>
+            </div>
+            <div class="p-4 overflow-x-auto">
+                <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Product</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-zinc-500 uppercase">Variance Qty</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-zinc-500 uppercase">Occurrences</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-zinc-500 uppercase">Unresolved</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                        @foreach($varianceData['by_product'] as $row)
+                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
+                            <td class="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $row['product_name'] }}</td>
+                            <td class="px-4 py-3 text-sm text-right text-orange-600 dark:text-orange-400">{{ number_format($row['total_variance'], 2) }}</td>
+                            <td class="px-4 py-3 text-sm text-right text-zinc-600 dark:text-zinc-400">{{ $row['occurrences'] }}</td>
+                            <td class="px-4 py-3 text-sm text-right">
+                                @if($row['unresolved'] > 0)
+                                    <span class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded text-xs font-medium">{{ $row['unresolved'] }}</span>
+                                @else
+                                    <span class="text-zinc-400">—</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if(!empty($varianceData['by_resolution']))
+            <div class="px-4 pb-4">
+                <p class="text-xs font-medium text-zinc-500 uppercase mb-2">Resolution Breakdown</p>
+                <div class="flex flex-wrap gap-2">
+                    @foreach($varianceData['by_resolution'] as $res)
+                    <span class="px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-full text-xs text-zinc-700 dark:text-zinc-300">
+                        {{ $res['type'] }}: {{ $res['count'] }} ({{ number_format($res['quantity'], 2) }} units)
+                    </span>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+        </div>
+        @endif
+
+        {{-- Callback Detail Table --}}
+        @if(!empty($callbackData['by_product']))
+        <div class="bg-white dark:bg-zinc-800 rounded-lg shadow">
+            <div class="p-4 border-b border-zinc-200 dark:border-zinc-700 flex items-center gap-2">
+                <x-icon name="arrow-uturn-left" class="w-5 h-5 text-yellow-500" />
+                <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Callback Breakdown</h3>
+                <span class="ml-auto text-sm text-zinc-500">Total qty returned: {{ number_format($callbackData['total_qty'] ?? 0, 2) }}</span>
+            </div>
+            <div class="p-4 overflow-x-auto">
+                <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Product</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-zinc-500 uppercase">Qty Returned</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-zinc-500 uppercase">Occurrences</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                        @foreach($callbackData['by_product'] as $row)
+                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
+                            <td class="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $row['product_name'] }}</td>
+                            <td class="px-4 py-3 text-sm text-right text-yellow-600 dark:text-yellow-400">{{ number_format($row['total_quantity'], 2) }}</td>
+                            <td class="px-4 py-3 text-sm text-right text-zinc-600 dark:text-zinc-400">{{ $row['occurrences'] }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if(!empty($callbackData['by_reason']))
+            <div class="px-4 pb-4">
+                <p class="text-xs font-medium text-zinc-500 uppercase mb-2">By Reason</p>
+                <div class="flex flex-wrap gap-2">
+                    @foreach($callbackData['by_reason'] as $r)
+                    <span class="px-3 py-1 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-full text-xs text-yellow-700 dark:text-yellow-300">
+                        {{ $r['reason'] }}: {{ $r['count'] }} ({{ number_format($r['quantity'], 2) }} units)
+                    </span>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+        </div>
+        @endif
+
         {{-- Narrative Insights --}}
         @if(!empty($narrative))
             <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6">

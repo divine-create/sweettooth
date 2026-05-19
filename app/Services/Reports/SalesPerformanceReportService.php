@@ -2,8 +2,10 @@
 
 namespace App\Services\Reports;
 
+use App\Models\Callback;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\StockVariance;
 use Illuminate\Support\Facades\DB;
 
 class SalesPerformanceReportService extends ReportService
@@ -44,6 +46,26 @@ class SalesPerformanceReportService extends ReportService
             })
             ->get();
 
+        $variances = StockVariance::query()
+            ->with(['product'])
+            ->where('branch_id', $this->branchId)
+            ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
+            ->whereBetween('variance_date', [
+                \Carbon\Carbon::parse($this->periodFrom)->toDateString(),
+                \Carbon\Carbon::parse($this->periodTo)->toDateString(),
+            ])
+            ->get();
+
+        $callbacks = Callback::query()
+            ->with(['product'])
+            ->where('branch_id', $this->branchId)
+            ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
+            ->whereBetween('callback_date', [
+                \Carbon\Carbon::parse($this->periodFrom)->toDateString(),
+                \Carbon\Carbon::parse($this->periodTo)->toDateString(),
+            ])
+            ->get();
+
         return [
             'revenue_overview' => $this->generateRevenueOverview($sales),
             'daily_sales' => $this->generateDailySales($sales),
@@ -52,6 +74,8 @@ class SalesPerformanceReportService extends ReportService
             'payment_analysis' => $this->generatePaymentAnalysis($sales),
             'hourly_distribution' => $this->generateHourlyDistribution($sales),
             'sales_trends' => $this->generateSalesTrends($sales),
+            'variance_analysis' => $this->generateVarianceAnalysis($variances, $saleItems),
+            'callback_analysis' => $this->generateCallbackAnalysis($callbacks, $saleItems),
             'period_info' => [
                 'from' => $this->periodFrom,
                 'to' => $this->periodTo,
@@ -224,28 +248,109 @@ class SalesPerformanceReportService extends ReportService
     }
 
     /**
+     * Generate stock variance analysis.
+     */
+    private function generateVarianceAnalysis($variances, $saleItems): array
+    {
+        $totalSoldQty = $saleItems->sum('quantity');
+        $totalVarianceQty = $variances->sum('quantity');
+        $unresolvedCount = $variances->whereIn('status', ['pending', 'under_review'])->count();
+
+        $byProduct = $variances->groupBy('product_id')->map(function ($rows) {
+            $first = $rows->first();
+            return [
+                'product_name' => $first->product->name ?? 'Unknown',
+                'total_variance' => $rows->sum('quantity'),
+                'occurrences'   => $rows->count(),
+                'unresolved'    => $rows->whereIn('status', ['pending', 'under_review'])->count(),
+            ];
+        })->sortByDesc('total_variance')->values()->toArray();
+
+        $byResolution = $variances->whereNotNull('resolution_type')
+            ->groupBy('resolution_type')->map(function ($rows, $type) {
+                return [
+                    'type'     => ucfirst(str_replace('_', ' ', $type)),
+                    'count'    => $rows->count(),
+                    'quantity' => $rows->sum('quantity'),
+                ];
+            })->values()->toArray();
+
+        return [
+            'total_variances'   => $variances->count(),
+            'total_qty'         => $totalVarianceQty,
+            'unresolved_count'  => $unresolvedCount,
+            'variance_rate'     => $totalSoldQty > 0 ? round(($totalVarianceQty / $totalSoldQty) * 100, 2) : 0,
+            'by_product'        => $byProduct,
+            'by_resolution'     => $byResolution,
+        ];
+    }
+
+    /**
+     * Generate sales callback analysis.
+     */
+    private function generateCallbackAnalysis($callbacks, $saleItems): array
+    {
+        $totalSoldQty = $saleItems->sum('quantity');
+        $totalCallbackQty = $callbacks->sum('quantity');
+
+        $byProduct = $callbacks->groupBy('product_id')->map(function ($rows) {
+            $first = $rows->first();
+            return [
+                'product_name'     => $first->product->name ?? 'Unknown',
+                'total_quantity'   => $rows->sum('quantity'),
+                'occurrences'      => $rows->count(),
+            ];
+        })->sortByDesc('total_quantity')->values()->toArray();
+
+        $byReason = $callbacks->whereNotNull('reason')
+            ->groupBy('reason')->map(function ($rows, $reason) {
+                return [
+                    'reason'   => $reason ?: 'Not specified',
+                    'count'    => $rows->count(),
+                    'quantity' => $rows->sum('quantity'),
+                ];
+            })->sortByDesc('count')->values()->toArray();
+
+        return [
+            'total_callbacks'   => $callbacks->count(),
+            'total_qty'         => $totalCallbackQty,
+            'callback_rate'     => $totalSoldQty > 0 ? round(($totalCallbackQty / $totalSoldQty) * 100, 2) : 0,
+            'by_product'        => $byProduct,
+            'by_reason'         => $byReason,
+        ];
+    }
+
+    /**
      * Generate summary metrics.
      */
     protected function generateSummaryMetrics(array $reportData): array
     {
-        $overview = $reportData['revenue_overview'];
+        $overview  = $reportData['revenue_overview'];
         $dailySales = collect($reportData['daily_sales']);
-        $products = collect($reportData['product_performance']);
+        $products  = collect($reportData['product_performance']);
+        $variance  = $reportData['variance_analysis'];
+        $callback  = $reportData['callback_analysis'];
 
-        $bestDay = $dailySales->sortByDesc('revenue')->first();
-        $worstDay = $dailySales->sortBy('revenue')->where('revenue', '>', 0)->first();
+        $bestDay   = $dailySales->sortByDesc('revenue')->first();
+        $worstDay  = $dailySales->sortBy('revenue')->where('revenue', '>', 0)->first();
         $topProduct = $products->first();
 
         return [
-            'total_revenue' => $overview['total_revenue'],
-            'total_orders' => $overview['total_orders'],
-            'average_order_value' => $overview['average_order_value'],
-            'total_discount' => $overview['total_discount'],
-            'average_daily_revenue' => $dailySales->avg('revenue'),
-            'best_day' => $bestDay,
-            'worst_day' => $worstDay,
-            'top_selling_product' => $topProduct['product_name'] ?? 'N/A',
-            'products_sold' => $products->count(),
+            'total_revenue'           => $overview['total_revenue'],
+            'total_orders'            => $overview['total_orders'],
+            'average_order_value'     => $overview['average_order_value'],
+            'total_discount'          => $overview['total_discount'],
+            'average_daily_revenue'   => $dailySales->avg('revenue'),
+            'best_day'                => $bestDay,
+            'worst_day'               => $worstDay,
+            'top_selling_product'     => $topProduct['product_name'] ?? 'N/A',
+            'products_sold'           => $products->count(),
+            'total_variances'         => $variance['total_variances'],
+            'unresolved_variances'    => $variance['unresolved_count'],
+            'variance_rate'           => $variance['variance_rate'],
+            'total_callbacks'         => $callback['total_callbacks'],
+            'total_callback_qty'      => $callback['total_qty'],
+            'callback_rate'           => $callback['callback_rate'],
         ];
     }
 
