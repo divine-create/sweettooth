@@ -5,6 +5,7 @@ namespace App\Livewire\BranchDashboard\Production\MaterialRequest;
 use App\Models\Department;
 use App\Models\Item;
 use App\Models\MaterialRequest;
+use App\Models\Shift;
 use App\Services\MaterialRequestService;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
@@ -51,10 +52,21 @@ class Index extends Component
         $this->b_id = request()->query('b_id');
         $this->department = Department::where('slug', $deptSlug)->first();
         $this->newRequestDate = now()->format('Y-m-d');
+        $this->newShift = $this->resolveCurrentShift();
 
         if (! $this->department) {
             abort(404, 'Department not found');
         }
+    }
+
+    private function resolveCurrentShift(): string
+    {
+        $activeShift = Shift::where('employee_id', auth()->id())
+            ->where('shift_date', today())
+            ->where('status', 'active')
+            ->value('shift_type');
+
+        return in_array($activeShift, ['morning', 'afternoon', 'night']) ? $activeShift : 'morning';
     }
 
     public function getBranchId()
@@ -90,7 +102,7 @@ class Index extends Component
     {
         $this->newItems = [];
         $this->newRequestDate = now()->format('Y-m-d');
-        $this->newShift = 'morning';
+        $this->newShift = $this->resolveCurrentShift();
         $this->newNotes = '';
         $this->showCreateModal = true;
     }
@@ -137,7 +149,7 @@ class Index extends Component
         try {
             $this->validate([
                 'newRequestDate' => 'required|date',
-                'newShift' => 'required|in:morning,afternoon',
+                'newShift' => 'required|in:morning,afternoon,night',
                 'newItems' => 'required|array|min:1',
                 'newItems.*.item_id' => 'required|integer',
                 'newItems.*.quantity' => 'required|numeric|min:0.01',

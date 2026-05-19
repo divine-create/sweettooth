@@ -30,7 +30,7 @@
                 <thead class="bg-zinc-50 dark:bg-zinc-700 border-b">
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Request #</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Requesting Dept</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Requesting Staff</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Target Dept</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Date</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Items</th>
@@ -75,7 +75,7 @@
             <div class="p-6">
                 <h3 class="text-lg font-semibold mb-2">Request: {{ $selectedRequest->request_number }}</h3>
                 <p class="text-sm text-zinc-500 mb-4">
-                    Requesting Dept: {{ $selectedRequest->requester?->name ?? 'System' }} → 
+                    Requesting Staff: {{ $selectedRequest->requester?->name ?? 'System' }} →
                     Target: {{ $selectedRequest->department?->name }}
                 </p>
                 

@@ -314,19 +314,24 @@ class Index extends BaseComponent
     public function increment(string $lineKey): void
     {
         if (!isset($this->cart[$lineKey])) return;
-        $productId = (string)$this->cart[$lineKey]['product_id'];
-        $stock = $this->getTodayStockForProduct($productId);
-        $available = $this->availableQuantity($stock);
-        $newQty = $this->cart[$lineKey]['qty'] + 1;
 
-        // Strict stock enforcement: cannot exceed available quantity
+        $line = $this->cart[$lineKey];
+        $newQty = $line['qty'] + 1;
+
+        if (isset($line['item_id'])) {
+            $available = (float) ($line['available'] ?? 0);
+        } else {
+            $stock = $this->getTodayStockForProduct((string) $line['product_id']);
+            $available = $this->availableQuantity($stock);
+            $this->cart[$lineKey]['available'] = $available;
+        }
+
         if ($newQty > $available) {
-            $this->toast()->warning('Cannot exceed available stock (' . $available . ') for ' . $this->cart[$lineKey]['name'])->send();
+            $this->toast()->warning('Cannot exceed available stock (' . $available . ') for ' . $line['name'])->send();
             return;
         }
 
         $this->cart[$lineKey]['qty'] = $newQty;
-        $this->cart[$lineKey]['available'] = $available;
         $this->recalculateTotals();
     }
 
@@ -342,19 +347,23 @@ class Index extends BaseComponent
     {
         if (!isset($this->cart[$lineKey])) return;
 
-        $qty = max(1, (float)$quantity);
-        $productId = (string)$this->cart[$lineKey]['product_id'];
-        $stock = $this->getTodayStockForProduct($productId);
-        $available = $this->availableQuantity($stock);
+        $line = $this->cart[$lineKey];
+        $qty = max(1, (float) $quantity);
 
-        // Enforce stock limit
+        if (isset($line['item_id'])) {
+            $available = (float) ($line['available'] ?? 0);
+        } else {
+            $stock = $this->getTodayStockForProduct((string) $line['product_id']);
+            $available = $this->availableQuantity($stock);
+            $this->cart[$lineKey]['available'] = $available;
+        }
+
         if ($qty > $available) {
-            $this->toast()->warning('Cannot exceed available stock (' . $available . ') for ' . $this->cart[$lineKey]['name'])->send();
+            $this->toast()->warning('Cannot exceed available stock (' . $available . ') for ' . $line['name'])->send();
             $qty = $available;
         }
 
         $this->cart[$lineKey]['qty'] = $qty;
-        $this->cart[$lineKey]['available'] = $available;
         $this->recalculateTotals();
     }
 

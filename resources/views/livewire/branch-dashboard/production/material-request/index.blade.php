@@ -87,10 +87,9 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium mb-1">Shift</label>
-                            <select wire:model="newShift" class="w-full rounded border p-2">
-                                <option value="morning">Morning</option>
-                                <option value="afternoon">Afternoon</option>
-                            </select>
+                            <div class="w-full rounded border p-2 bg-zinc-50 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 capitalize">
+                                {{ $newShift }} Shift
+                            </div>
                         </div>
                     </div>
                     
