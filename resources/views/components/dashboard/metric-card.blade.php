@@ -12,6 +12,8 @@
 ])
 
 @php
+    $currencyService = new \App\Services\CurrencyFormattingService();
+
     $colorClasses = match($color) {
         'blue' => 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
         'green' => 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
@@ -67,7 +69,7 @@
         <div class="mb-4">
             @if($format === 'currency')
                 <p class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-                    {{ '$' . number_format($value, 2) }}
+                    {{ $currencyService->format($value) }}
                 </p>
             @elseif($format === 'percentage')
                 <p class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">

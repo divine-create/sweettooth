@@ -2,9 +2,11 @@
 
 namespace App\Livewire\BranchDashboard\Inventory;
 
+use App\Helpers\Settings;
 use App\Models\HealthCheck;
 use App\Models\Stock;
 use App\Services\AuditService;
+use App\Services\StockBatchService;
 use App\Traits\Exportable;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -41,6 +43,8 @@ class HealthChecks extends Component
     public $showModal = false;
 
     public $isEditing = false;
+
+    public array $stocks = [];
 
     public $healthCheckId;
 
@@ -109,31 +113,40 @@ class HealthChecks extends Component
             ->orderBy('check_date', 'desc');
 
         $healthChecks = $query->paginate(15);
-        $stocks = collect();
-        if ($this->showModal) {
-            $stocks = Stock::with(['item:id,name,sku,uom_id', 'item.unitOfMeasure:id,symbol'])
-                ->select(['id', 'branch_id', 'item_id', 'quantity_available'])
-                ->where('branch_id', $branchId)
-                ->orderBy('id', 'desc')
-                ->get()
-                ->map(fn($stock) => [
-                    'label' => ($stock->item?->name ?? 'Unknown') . ' - ' . ($stock->item?->sku ?? 'N/A') . ' (' . number_format($stock->quantity_available, 2) . ' ' . ($stock->item?->unitOfMeasure?->symbol ?? 'N/A') . ')',
-                    'value' => (string) $stock->id,
-                    'quantity_available' => (float) $stock->quantity_available,
-                    'uom' => $stock->item?->unitOfMeasure?->symbol ?? 'N/A',
-                ]);
-        }
+
+        $batchService = app(StockBatchService::class);
+        $warningDays = (int) Settings::inventoryManagement('expiry_warning_days', 7);
 
         return view('livewire.branch-dashboard.inventory.health-checks', [
-            'healthChecks' => $healthChecks,
-            'stocks' => $stocks,
+            'healthChecks'           => $healthChecks,
+            'expiringBatches'        => $batchService->getExpiringBatches($branchId, $warningDays),
+            'expiredBatchesWithStock' => $batchService->getExpiredBatchesWithStock($branchId),
+            'expiryWarningDays'      => $warningDays,
         ]);
+    }
+
+    private function loadStocks(): void
+    {
+        $branchId = $this->getBranchId();
+        $this->stocks = Stock::with(['item:id,name,sku,uom_id', 'item.unitOfMeasure:id,symbol'])
+            ->select(['id', 'branch_id', 'item_id', 'quantity_available'])
+            ->where('branch_id', $branchId)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(fn ($stock) => [
+                'label'              => ($stock->item?->name ?? 'Unknown').' - '.($stock->item?->sku ?? 'N/A').' ('.number_format($stock->quantity_available, 2).' '.($stock->item?->unitOfMeasure?->symbol ?? 'N/A').')',
+                'value'              => (string) $stock->id,
+                'quantity_available' => (float) $stock->quantity_available,
+                'uom'                => $stock->item?->unitOfMeasure?->symbol ?? 'N/A',
+            ])
+            ->toArray();
     }
 
     public function openCreateModal()
     {
         // $this->authorize('create-health-checks'); // TODO: Enable permissions after testing
         $this->resetFields();
+        $this->loadStocks();
         $this->showModal = true;
     }
 
@@ -227,6 +240,7 @@ class HealthChecks extends Component
         $this->observations = $healthCheck->observations;
         $this->action_taken = $healthCheck->action_taken;
         $this->isEditing = true;
+        $this->loadStocks();
         $this->showModal = true;
     }
 
@@ -257,6 +271,7 @@ class HealthChecks extends Component
     public function closeModal()
     {
         $this->showModal = false;
+        $this->stocks = [];
         $this->resetFields();
         $this->resetValidation();
     }

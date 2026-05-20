@@ -5,6 +5,7 @@ namespace App\Livewire\BranchDashboard\Inventory;
 use App\Helpers\Settings;
 use App\Livewire\BaseComponent;
 use App\Models\Stock;
+use App\Models\StockBatch;
 use App\Models\StockMovement;
 use App\Services\AuditService;
 use App\Services\CurrencyFormattingService;
@@ -87,6 +88,11 @@ class Stocks extends BaseComponent
 
     public $pendingStockId = null;
 
+    // Batch Panel
+    public bool $showBatchPanel = false;
+
+    public ?int $batchPanelStockId = null;
+
     protected $rules = [
         'quantity_available' => 'required|numeric|min:0',
         'quantity_reserved' => 'required|numeric|min:0',
@@ -141,9 +147,35 @@ class Stocks extends BaseComponent
 
         $stocks = $query->paginate((int) ($this->quantity ?? 15));
 
+        $batchPanelData = collect();
+        $batchPanelStock = null;
+        if ($this->showBatchPanel && $this->batchPanelStockId) {
+            $batchPanelStock = Stock::with('item')->find($this->batchPanelStockId);
+            $batchPanelData = StockBatch::where('stock_id', $this->batchPanelStockId)
+                ->with('purchaseItem.purchase')
+                ->orderByRaw('CASE WHEN status = "active" THEN 0 ELSE 1 END')
+                ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('expiry_date')
+                ->get();
+        }
+
         return view('livewire.branch-dashboard.inventory.stocks', [
-            'stocks' => $stocks,
+            'stocks'           => $stocks,
+            'batchPanelData'   => $batchPanelData,
+            'batchPanelStock'  => $batchPanelStock,
         ]);
+    }
+
+    public function openBatchPanel(int $stockId): void
+    {
+        $this->batchPanelStockId = $stockId;
+        $this->showBatchPanel = true;
+    }
+
+    public function closeBatchPanel(): void
+    {
+        $this->showBatchPanel = false;
+        $this->batchPanelStockId = null;
     }
 
     public function openEditModal($stockId)

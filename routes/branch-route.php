@@ -194,9 +194,9 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
         });
 
         // Supplier Management routes
-        Route::middleware('role_or_permission:view-suppliers|manage-suppliers')->prefix('suppliers')->name('suppliers.')->group(function () {
+        Route::middleware('role.level:3')->prefix('suppliers')->name('suppliers.')->group(function () {
             Route::get('/', \App\Livewire\BranchDashboard\Supplier\SupplierIndex::class)->name('index');
-            Route::middleware('role_or_permission:create-suppliers|manage-suppliers')->get('/create', \App\Livewire\BranchDashboard\Supplier\CreateSupplier::class)->name('create');
+            Route::get('/create', \App\Livewire\BranchDashboard\Supplier\CreateSupplier::class)->name('create');
             Route::get('/{supplier}', \App\Livewire\BranchDashboard\Supplier\SupplierDetails::class)->name('show');
             Route::get('/{supplier}/performance', \App\Livewire\BranchDashboard\Supplier\SupplierPerformance::class)->name('performance');
         });

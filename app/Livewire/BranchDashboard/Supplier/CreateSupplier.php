@@ -2,12 +2,16 @@
 
 namespace App\Livewire\BranchDashboard\Supplier;
 
+use App\Models\Branch;
 use App\Models\Supplier;
+use App\Services\AuditService;
 use Livewire\Component;
+use TallStackUi\Traits\Interactions;
 
 class CreateSupplier extends Component
 {
-    public string $code = '';
+    use Interactions;
+
     public string $name = '';
     public string $email = '';
     public string $phone = '';
@@ -18,94 +22,117 @@ class CreateSupplier extends Component
     public string $postalCode = '';
     public string $country = 'Kenya';
     public string $taxId = '';
-    public string $status = 'pending';
+    public string $status = 'active';
     public string $creditLimit = '';
-    public string $paymentTermsDays = '30';
+    public string $paymentTermsDays = '';
     public string $notes = '';
-    public bool $showSuccessMessage = false;
 
-    protected function rules()
+    protected function rules(): array
     {
         return [
-            'code' => 'required|unique:suppliers,code|string|max:50',
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:suppliers,email',
-            'phone' => 'required|string|max:20',
-            'website' => 'nullable|url|max:255',
-            'address' => 'required|string|max:255',
-            'city' => 'required|string|max:100',
-            'state' => 'required|string|max:100',
-            'postalCode' => 'required|string|max:20',
-            'country' => 'required|string|max:100',
-            'taxId' => 'required|string|max:50|unique:suppliers,tax_id',
-            'creditLimit' => 'required|numeric|min:0',
-            'paymentTermsDays' => 'required|numeric|min:0',
-            'notes' => 'nullable|string|max:1000',
+            'name'             => 'required|string|max:255',
+            'email'            => 'required|email|max:255',
+            'phone'            => 'required|string|max:20',
+            'website'          => 'nullable|url|max:255',
+            'address'          => 'required|string|max:255',
+            'city'             => 'required|string|max:100',
+            'state'            => 'required|string|max:100',
+            'postalCode'       => 'required|string|max:20',
+            'country'          => 'required|string|max:100',
+            'taxId'            => 'nullable|string|max:50',
+            'status'           => 'required|in:active,inactive,blacklisted',
+            'creditLimit'      => 'nullable|numeric|min:0',
+            'paymentTermsDays' => 'nullable|integer|min:0',
+            'notes'            => 'nullable|string|max:1000',
         ];
     }
 
-    protected function validationAttributes()
+    protected function validationAttributes(): array
     {
         return [
-            'code' => 'Supplier Code',
-            'name' => 'Supplier Name',
-            'email' => 'Email Address',
-            'phone' => 'Phone Number',
-            'website' => 'Website',
-            'address' => 'Street Address',
-            'city' => 'City',
-            'state' => 'State',
-            'postalCode' => 'Postal Code',
-            'country' => 'Country',
-            'taxId' => 'Tax ID',
-            'creditLimit' => 'Credit Limit',
+            'name'             => 'Supplier Name',
+            'email'            => 'Email Address',
+            'phone'            => 'Phone Number',
+            'website'          => 'Website',
+            'address'          => 'Street Address',
+            'city'             => 'City',
+            'state'            => 'State',
+            'postalCode'       => 'Postal Code',
+            'country'          => 'Country',
+            'taxId'            => 'Tax ID',
+            'status'           => 'Status',
+            'creditLimit'      => 'Credit Limit',
             'paymentTermsDays' => 'Payment Terms (Days)',
-            'notes' => 'Notes',
+            'notes'            => 'Notes',
         ];
+    }
+
+    private function generateCode(): string
+    {
+        $branchId = current_branch_id();
+        $branch = Branch::find($branchId);
+
+        $prefix = 'SUP';
+        if ($branch?->name) {
+            $slug = strtoupper(preg_replace('/[^a-zA-Z0-9]/', '', $branch->name));
+            $prefix .= '-' . substr($slug, 0, 3);
+        }
+
+        $sequence = Supplier::where('branch_id', $branchId)->count() + 1;
+
+        do {
+            $code = $prefix . '-' . str_pad($sequence, 3, '0', STR_PAD_LEFT);
+            $sequence++;
+        } while (Supplier::where('code', $code)->exists());
+
+        return $code;
     }
 
     public function createSupplier(): void
     {
         $validated = $this->validate();
 
-        Supplier::create([
-            'code' => $validated['code'],
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'],
-            'website' => $validated['website'],
-            'address' => $validated['address'],
-            'city' => $validated['city'],
-            'state' => $validated['state'],
-            'postal_code' => $validated['postalCode'],
-            'country' => $validated['country'],
-            'tax_id' => $validated['taxId'],
-            'credit_limit' => $validated['creditLimit'],
-            'payment_terms_days' => $validated['paymentTermsDays'],
-            'notes' => $validated['notes'],
-            'status' => $validated['status'],
-            'created_by' => auth()->id(),
+        $supplier = Supplier::create([
+            'branch_id'          => current_branch_id(),
+            'created_by'         => auth()->id(),
+            'code'               => $this->generateCode(),
+            'name'               => $validated['name'],
+            'email'              => $validated['email'],
+            'phone'              => $validated['phone'],
+            'website'            => $validated['website'] ?? null,
+            'address'            => $validated['address'],
+            'city'               => $validated['city'],
+            'state'              => $validated['state'],
+            'postal_code'        => $validated['postalCode'],
+            'country'            => $validated['country'],
+            'tax_id'             => $validated['taxId'] ?? null,
+            'status'             => $validated['status'],
+            'credit_limit'       => (float) ($validated['creditLimit'] ?: 0),
+            'payment_terms_days' => (int) ($validated['paymentTermsDays'] ?: 30),
+            'notes'              => $validated['notes'] ?? null,
         ]);
 
-        $this->showSuccessMessage = true;
+        AuditService::log(
+            current_actor(),
+            'create',
+            $supplier,
+            "Created supplier '{$supplier->name}' (code: {$supplier->code})",
+            'completed'
+        );
+
         $this->resetForm();
-
         $this->dispatch('supplierCreated');
-
-        // Auto-hide success message after 3 seconds
-        $this->dispatch('hideSuccessMessage')->later(3000);
     }
 
     public function resetForm(): void
     {
         $this->reset([
-            'code', 'name', 'email', 'phone', 'website', 'address',
-            'city', 'state', 'postalCode', 'country', 'taxId',
-            'status', 'creditLimit', 'paymentTermsDays', 'notes'
+            'name', 'email', 'phone', 'website', 'address',
+            'city', 'state', 'postalCode', 'taxId', 'creditLimit',
+            'paymentTermsDays', 'notes',
         ]);
         $this->country = 'Kenya';
-        $this->status = 'pending';
-        $this->paymentTermsDays = '30';
+        $this->status = 'active';
     }
 
     public function render()

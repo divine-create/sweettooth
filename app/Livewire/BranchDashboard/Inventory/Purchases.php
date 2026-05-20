@@ -9,10 +9,12 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Models\Supplier;
 use App\Models\UnitOfMeasure;
 use App\Services\AuditService;
 use App\Services\CurrencyFormattingService;
 use App\Services\PurchaseAuditApprovalService;
+use App\Services\StockBatchService;
 use App\Traits\Exportable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +40,10 @@ class Purchases extends Component
     public $supplier_name;
 
     public $supplier_contact;
+
+    public $supplierId = null;
+
+    public string $supplierSearch = '';
 
     public $other_costs = 0;
 
@@ -91,6 +97,8 @@ class Purchases extends Component
         'purchaseItems.*.quantity' => 'required|numeric|min:1',
         'purchaseItems.*.uom' => 'required|exists:units_of_measure,symbol',
         'purchaseItems.*.unit_price' => 'required|numeric|min:0.01',
+        'purchaseItems.*.expiry_date' => 'nullable|date',
+        'purchaseItems.*.batch_number' => 'nullable|string|max:100',
     ];
 
     public function mount()
@@ -147,13 +155,44 @@ class Purchases extends Component
 
         $uoms = UnitOfMeasure::orderBy('symbol')->get();
 
+        $suppliersList = Supplier::where('branch_id', $branchId)
+            ->active()
+            ->when($this->supplierSearch, fn ($q) => $q->search($this->supplierSearch))
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'phone', 'email']);
+
         return view('livewire.branch-dashboard.inventory.purchases', [
-            'purchases' => $purchases,
-            'items' => $items,
-            'uoms' => $uoms,
-            'summary' => $this->getPurchaseSummary(),
+            'purchases'      => $purchases,
+            'items'          => $items,
+            'uoms'           => $uoms,
+            'suppliersList'  => $suppliersList,
+            'summary'        => $this->getPurchaseSummary(),
             'purchasesByStatus' => $this->getPurchasesByStatus(),
         ]);
+    }
+
+    public function selectSupplier(int $supplierId): void
+    {
+        $supplier = Supplier::where('branch_id', $this->getBranchId())->find($supplierId);
+        if (! $supplier) {
+            return;
+        }
+        $this->supplierId = $supplier->id;
+        $this->supplier_name = $supplier->name;
+        $primaryContact = $supplier->contacts()->where('is_primary', true)->first()
+            ?? $supplier->contacts()->first();
+        $this->supplier_contact = $primaryContact
+            ? ($primaryContact->name . ($primaryContact->phone ? ' - ' . $primaryContact->phone : ''))
+            : $supplier->phone;
+        $this->supplierSearch = '';
+    }
+
+    public function clearSupplier(): void
+    {
+        $this->supplierId = null;
+        $this->supplier_name = '';
+        $this->supplier_contact = '';
+        $this->supplierSearch = '';
     }
 
     public function openCreateModal()
@@ -165,14 +204,23 @@ class Purchases extends Component
         $this->showModal = true;
     }
 
+    private function generateBatchNumber(): string
+    {
+        $date = now()->format('Ymd');
+        $sequence = str_pad($this->itemIndex + 1, 4, '0', STR_PAD_LEFT);
+        return "BTCH-{$date}-{$sequence}";
+    }
+
     public function addPurchaseItem()
     {
         $this->purchaseItems[] = [
-            'id' => $this->itemIndex++,
-            'item_id' => '',
-            'quantity' => 1,
-            'uom' => '',
-            'unit_price' => 0,
+            'id'           => $this->itemIndex++,
+            'item_id'      => '',
+            'quantity'     => 1,
+            'uom'          => '',
+            'unit_price'   => 0,
+            'expiry_date'  => '',
+            'batch_number' => $this->generateBatchNumber(),
         ];
     }
 
@@ -241,6 +289,7 @@ class Purchases extends Component
 
             $purchase = Purchase::create([
                 'branch_id' => $branchId,
+                'supplier_id' => $this->supplierId,
                 'recorded_by_id' => $actor->id,
                 'recorded_by_type' => get_class($actor),
                 'purchase_number' => $purchaseNumber,
@@ -288,17 +337,19 @@ class Purchases extends Component
                 }
                 $baseCostPerUnit = $baseQuantity > 0 ? ($landingCostItem / $baseQuantity) : 0;
 
-                PurchaseItem::create([
-                    'purchase_id' => $purchase->id,
-                    'item_id' => $itemId,
-                    'quantity' => $quantity,
-                    'uom' => $purchaseUom,
-                    'fob_fc' => 0,
-                    'fob_ngn' => $unitPrice,
-                    'other_costs' => $allocatedOtherCosts,
+                $purchaseItemModel = PurchaseItem::create([
+                    'purchase_id'  => $purchase->id,
+                    'item_id'      => $itemId,
+                    'quantity'     => $quantity,
+                    'uom'          => $purchaseUom,
+                    'fob_fc'       => 0,
+                    'fob_ngn'      => $unitPrice,
+                    'other_costs'  => $allocatedOtherCosts,
                     'landing_cost' => $landingCostItem,
-                    'total_cost' => $landingCostItem,
+                    'total_cost'   => $landingCostItem,
                     'cost_per_unit' => $costPerUnit,
+                    'expiry_date'  => $item['expiry_date'] ?: null,
+                    'batch_number' => $item['batch_number'] ?: null,
                 ]);
 
                 $stock = Stock::firstOrCreate(
@@ -318,6 +369,12 @@ class Purchases extends Component
                 $stock->quantity_available = $quantity_before + $baseQuantity;
                 $stock->last_stock_take_date = now();
                 $stock->save();
+
+                // Create batch record and sync stock expiry
+                $purchaseItemModel->setRelation('purchase', $purchase);
+                app(StockBatchService::class)->createBatchFromPurchase(
+                    $stock, $purchaseItemModel, $baseQuantity, $baseCostPerUnit
+                );
 
                 StockMovement::create([
                     'stock_id' => $stock->id,
@@ -427,6 +484,7 @@ class Purchases extends Component
             // Create the purchase with draft status
             $purchase = Purchase::create([
                 'branch_id' => $branchId,
+                'supplier_id' => $this->supplierId,
                 'recorded_by_id' => $actor->id,
                 'recorded_by_type' => get_class($actor),
                 'purchase_number' => $purchaseNumber,
@@ -445,15 +503,17 @@ class Purchases extends Component
             // Add purchase items (no stock updates)
             foreach ($this->purchaseItems as $item) {
                 PurchaseItem::create([
-                    'purchase_id' => $purchase->id,
-                    'item_id' => $item['item_id'],
-                    'quantity' => $item['quantity'],
-                    'uom' => $item['uom'],
-                    'fob_fc' => $item['unit_price'],
-                    'fob_ngn' => $item['unit_price'],
-                    'other_costs' => 0, // Will be allocated on approval
-                    'total_cost' => $item['quantity'] * $item['unit_price'],
+                    'purchase_id'  => $purchase->id,
+                    'item_id'      => $item['item_id'],
+                    'quantity'     => $item['quantity'],
+                    'uom'          => $item['uom'],
+                    'fob_fc'       => $item['unit_price'],
+                    'fob_ngn'      => $item['unit_price'],
+                    'other_costs'  => 0, // Will be allocated on approval
+                    'total_cost'   => $item['quantity'] * $item['unit_price'],
                     'cost_per_unit' => $item['unit_price'],
+                    'expiry_date'  => $item['expiry_date'] ?: null,
+                    'batch_number' => $item['batch_number'] ?: null,
                 ]);
             }
 
@@ -598,6 +658,8 @@ class Purchases extends Component
     {
         $this->purchaseId = null;
         $this->purchase_date = now()->format('Y-m-d');
+        $this->supplierId = null;
+        $this->supplierSearch = '';
         $this->supplier_name = '';
         $this->supplier_contact = '';
         $this->other_costs = 0;

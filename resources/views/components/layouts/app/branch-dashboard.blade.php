@@ -417,6 +417,14 @@
                          {{ __('Helper') }}
                      </flux:navlist.item>
 
+                     @if($sidebarService::canSeeSuppliers($currentUser))
+                     <flux:navlist.item icon="building-storefront"
+                         :href="branch_route('branch-dashboard.suppliers.index')"
+                         :current="request()->routeIs('branch-dashboard.suppliers.*')" wire:navigate>
+                         {{ __('Suppliers') }}
+                     </flux:navlist.item>
+                     @endif
+
                  </flux:navlist.group>
                 @endif
 

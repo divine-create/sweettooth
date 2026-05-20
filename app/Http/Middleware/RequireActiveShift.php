@@ -57,6 +57,11 @@ class RequireActiveShift
             return true;
         }
 
+        // Skip for admin-level and back-office manager roles that don't work shift-based
+        if ($this->isBackOfficeUser(Auth::user())) {
+            return true;
+        }
+
         // Skip for API routes that don't require shift validation
         $apiRoutesToSkip = [
             'api/user/profile',
@@ -80,6 +85,34 @@ class RequireActiveShift
         }
 
         return false;
+    }
+
+    /**
+     * Admin-level and back-office manager roles that manage the system rather than
+     * working shift-based operational roles — they should not be gated by an active shift.
+     */
+    private function isBackOfficeUser($user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        // Admin level (4+) — General Managers, HR Managers, Finance Managers etc.
+        $role = $user->roles()->orderByDesc('level')->first();
+        if ($role && isset($role->level) && (int) $role->level >= 4) {
+            return true;
+        }
+
+        // Back-office manager roles at level 3 that do not work operational shifts
+        return $user->hasAnyRole([
+            'Inventory Manager',
+            'Procurement Manager',
+            'Procurement Officer',
+            'HR Manager',
+            'Finance Manager',
+            'Accountant',
+            'Cost Accountant',
+        ]);
     }
 
     private function isSuperAdminUser($user): bool

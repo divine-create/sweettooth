@@ -3,12 +3,21 @@
 namespace App\Livewire\BranchDashboard\Supplier;
 
 use App\Models\Supplier;
+use App\Services\AuditService;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use TallStackUi\Traits\Interactions;
 
+#[Layout('components.layouts.app.branch-dashboard')]
 class SupplierIndex extends Component
 {
-    use WithPagination;
+    use Interactions, WithPagination;
+
+    #[Url(keep: true)]
+    public ?string $b_id = null;
 
     public string $searchTerm = '';
     public string $statusFilter = 'all';
@@ -19,6 +28,18 @@ class SupplierIndex extends Component
     public bool $showCreateForm = false;
 
     protected $queryString = ['searchTerm', 'statusFilter', 'sortBy', 'sortDirection'];
+
+    public function mount(): void
+    {
+        $this->b_id = current_branch_id();
+    }
+
+    #[On('branch-changed')]
+    public function handleBranchChange($branchId): void
+    {
+        $this->b_id = $branchId;
+        $this->resetPage();
+    }
 
     public function updatedSearchTerm(): void
     {
@@ -33,6 +54,7 @@ class SupplierIndex extends Component
     public function getSuppliersProperty()
     {
         return Supplier::query()
+            ->where('branch_id', current_branch_id())
             ->when($this->searchTerm, fn ($q) => $q->search($this->searchTerm))
             ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
             ->orderBy($this->sortBy, $this->sortDirection)
@@ -47,7 +69,13 @@ class SupplierIndex extends Component
             'documents',
             'performanceHistory',
             'purchases',
-        ])->find($supplierId);
+        ])->where('branch_id', current_branch_id())->find($supplierId);
+
+        if (! $this->selectedSupplier) {
+            $this->toast()->error('Supplier not found.')->send();
+            return;
+        }
+
         $this->showDetails = true;
     }
 
@@ -67,25 +95,32 @@ class SupplierIndex extends Component
         $this->showCreateForm = false;
     }
 
+    #[On('supplierCreated')]
+    public function handleSupplierCreated(): void
+    {
+        $this->showCreateForm = false;
+        $this->toast()->success('Supplier created successfully.')->send();
+    }
+
     public function getStatusBadgeClass($status): string
     {
         return match($status) {
-            'active' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-            'inactive' => 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
+            'active'    => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+            'inactive'  => 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
             'suspended' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-            'pending' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-            default => 'bg-zinc-100 text-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400',
+            'pending'   => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+            default     => 'bg-zinc-100 text-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400',
         };
     }
 
     public function getStatusLabel($status): string
     {
         return match($status) {
-            'active' => 'Active',
-            'inactive' => 'Inactive',
+            'active'    => 'Active',
+            'inactive'  => 'Inactive',
             'suspended' => 'Suspended',
-            'pending' => 'Pending Verification',
-            default => ucfirst($status),
+            'pending'   => 'Pending Verification',
+            default     => ucfirst($status),
         };
     }
 

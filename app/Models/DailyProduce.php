@@ -127,6 +127,15 @@ class DailyProduce extends Model
             })
                 ->where('recipe_id', $recipeId)
                 ->first();
+        } elseif ($currentShiftType === 'night') {
+            // If current is night, previous is afternoon of same day
+            $previousShift = static::whereHas('shift', function ($q) use ($branchId, $currentShiftDate) {
+                $q->where('branch_id', $branchId)
+                    ->where('shift_date', $currentShiftDate)
+                    ->where('shift_type', 'afternoon');
+            })
+                ->where('recipe_id', $recipeId)
+                ->first();
         } else {
             // If current is morning, previous is afternoon of previous day
             $previousDate = \Carbon\Carbon::parse($currentShiftDate)->subDay();

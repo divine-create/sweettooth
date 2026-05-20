@@ -62,7 +62,9 @@ class PermissionSeeder extends Seeder
             // ===== INVENTORY PERMISSIONS =====
             ['name' => 'view-inventory', 'description' => 'View inventory module', 'category' => 'inventory'],
             ['name' => 'manage-inventory', 'description' => 'Manage inventory operations', 'category' => 'inventory'],
-            ['name' => 'manage-suppliers', 'description' => 'Manage suppliers', 'category' => 'inventory'],
+            ['name' => 'view-suppliers',   'description' => 'View supplier list and details', 'category' => 'inventory'],
+            ['name' => 'create-suppliers', 'description' => 'Create new suppliers',           'category' => 'inventory'],
+            ['name' => 'manage-suppliers', 'description' => 'Manage suppliers',               'category' => 'inventory'],
             ['name' => 'manage-purchases', 'description' => 'Manage purchases', 'category' => 'inventory'],
             ['name' => 'manage-stock-takes', 'description' => 'Manage stock takes', 'category' => 'inventory'],
             ['name' => 'view-inventory-reports', 'description' => 'View inventory reports', 'category' => 'inventory'],

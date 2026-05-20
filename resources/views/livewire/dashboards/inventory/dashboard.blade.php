@@ -191,5 +191,151 @@
                 </div>
             </div>
         </div>
+
+        <!-- Expiry Tracking -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Expiring Soon -->
+            <div class="bg-white dark:bg-zinc-800 rounded-lg border border-amber-200 dark:border-amber-700/50 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                            <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Expiring Soon</h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-zinc-500 dark:text-zinc-400">within {{ $expiryWarningDays }} days</span>
+                        <span class="text-sm font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                            {{ $expiringBatches->count() }}
+                        </span>
+                    </div>
+                </div>
+
+                @if($expiringBatches->isEmpty())
+                    <div class="flex flex-col items-center justify-center py-8 text-zinc-400 dark:text-zinc-500">
+                        <svg class="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-sm">No batches expiring within {{ $expiryWarningDays }} days</p>
+                    </div>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-zinc-100 dark:border-zinc-700">
+                                    <th class="text-left py-2 pr-3 font-semibold text-zinc-700 dark:text-zinc-300">Item</th>
+                                    <th class="text-left py-2 pr-3 font-semibold text-zinc-700 dark:text-zinc-300">Batch</th>
+                                    <th class="text-left py-2 pr-3 font-semibold text-zinc-700 dark:text-zinc-300">Expires</th>
+                                    <th class="text-right py-2 pr-3 font-semibold text-zinc-700 dark:text-zinc-300">Days</th>
+                                    <th class="text-right py-2 font-semibold text-zinc-700 dark:text-zinc-300">Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($expiringBatches as $batch)
+                                    @php
+                                        $daysLeft = (int) now()->startOfDay()->diffInDays($batch->expiry_date, false);
+                                        $urgency = $daysLeft <= 2
+                                            ? 'text-red-600 dark:text-red-400 font-semibold'
+                                            : 'text-amber-600 dark:text-amber-400 font-semibold';
+                                    @endphp
+                                    <tr class="border-b border-zinc-50 dark:border-zinc-700/50 hover:bg-amber-50/40 dark:hover:bg-amber-900/10">
+                                        <td class="py-2 pr-3 text-zinc-900 dark:text-zinc-100 truncate max-w-[120px]">
+                                            {{ $batch->stock?->item?->name ?? '—' }}
+                                        </td>
+                                        <td class="py-2 pr-3 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                                            {{ $batch->batch_number ?? '—' }}
+                                        </td>
+                                        <td class="py-2 pr-3 text-zinc-600 dark:text-zinc-400 text-xs">
+                                            {{ $batch->expiry_date?->format('d M Y') }}
+                                        </td>
+                                        <td class="py-2 pr-3 text-right">
+                                            <span class="{{ $urgency }}">{{ $daysLeft }}d</span>
+                                        </td>
+                                        <td class="py-2 text-right text-zinc-700 dark:text-zinc-300">
+                                            {{ number_format((float) $batch->quantity_remaining, 2) }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
+                <div class="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-700">
+                    <a href="{{ branch_route('branch-dashboard.inventory.health-checks') }}"
+                       wire:navigate
+                       class="text-xs text-amber-600 dark:text-amber-400 hover:underline">
+                        View all in Health Check →
+                    </a>
+                </div>
+            </div>
+
+            <!-- Already Expired -->
+            <div class="bg-white dark:bg-zinc-800 rounded-lg border border-red-200 dark:border-red-700/50 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/30">
+                            <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                            </svg>
+                        </div>
+                        <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Expired — Action Required</h2>
+                    </div>
+                    <span class="text-sm font-semibold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                        {{ $expiredBatches->count() }}
+                    </span>
+                </div>
+
+                @if($expiredBatches->isEmpty())
+                    <div class="flex flex-col items-center justify-center py-8 text-zinc-400 dark:text-zinc-500">
+                        <svg class="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-sm">No expired batches with remaining stock</p>
+                    </div>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-zinc-100 dark:border-zinc-700">
+                                    <th class="text-left py-2 pr-3 font-semibold text-zinc-700 dark:text-zinc-300">Item</th>
+                                    <th class="text-left py-2 pr-3 font-semibold text-zinc-700 dark:text-zinc-300">Batch</th>
+                                    <th class="text-left py-2 pr-3 font-semibold text-zinc-700 dark:text-zinc-300">Expired</th>
+                                    <th class="text-right py-2 font-semibold text-zinc-700 dark:text-zinc-300">Qty Left</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($expiredBatches as $batch)
+                                    <tr class="border-b border-zinc-50 dark:border-zinc-700/50 hover:bg-red-50/40 dark:hover:bg-red-900/10">
+                                        <td class="py-2 pr-3 text-zinc-900 dark:text-zinc-100 truncate max-w-[130px]">
+                                            {{ $batch->stock?->item?->name ?? '—' }}
+                                        </td>
+                                        <td class="py-2 pr-3 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                                            {{ $batch->batch_number ?? '—' }}
+                                        </td>
+                                        <td class="py-2 pr-3 text-red-600 dark:text-red-400 text-xs font-medium">
+                                            {{ $batch->expiry_date?->format('d M Y') }}
+                                        </td>
+                                        <td class="py-2 text-right font-semibold text-red-700 dark:text-red-300">
+                                            {{ number_format((float) $batch->quantity_remaining, 2) }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
+                <div class="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-700">
+                    <a href="{{ branch_route('branch-dashboard.inventory.health-checks') }}"
+                       wire:navigate
+                       class="text-xs text-red-600 dark:text-red-400 hover:underline">
+                        View all in Health Check →
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>

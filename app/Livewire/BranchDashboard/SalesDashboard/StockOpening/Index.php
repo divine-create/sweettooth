@@ -940,7 +940,7 @@ class Index extends BaseComponent
                         'notes' => $stockOpening['notes'],
                         'is_workflow_verified' => true,
                         'verified_at' => now(),
-                        'verified_by' => auth()->id() ?? auth()->id(),
+                        'verified_by' => auth()->id(),
                         'workflow_step' => 'opening_verified',
                     ]
                 );
@@ -1003,7 +1003,7 @@ class Index extends BaseComponent
                             'notes' => 'Auto-recorded - product not selected during stock opening',
                             'is_workflow_verified' => true,
                             'verified_at' => now(),
-                            'verified_by' => auth()->id() ?? auth()->id(),
+                            'verified_by' => auth()->id(),
                             'workflow_step' => 'opening_verified',
                         ])
                     );

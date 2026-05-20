@@ -430,6 +430,11 @@ class Index extends BaseComponent
             if (!$shift) {
                 throw new \Exception('Shift not found');
             }
+            if ($shift->workflow_state === 'completed') {
+                DB::rollBack();
+                $this->toast()->warning('Shift has already been closed.')->send();
+                return;
+            }
 
             $shiftStart = $shift->clock_in ?? Carbon::parse($this->shiftDate)->startOfDay();
             $shiftEnd = now();
@@ -463,19 +468,23 @@ class Index extends BaseComponent
                     // and is never updated when staff types a different actual_closing value.
                     $liveVariance = (float) $stockData['actual_closing'] - (float) $stockData['expected_closing'];
                     if (abs($liveVariance) > 0.001) {
-                        StockVariance::create([
-                            'branch_id'         => $this->branchId,
-                            'department_id'     => $this->departmentId,
-                            'product_id'        => $stockData['product_id'],
-                            'product_stock_id'  => $productStock->id,
-                            'quantity'          => abs($liveVariance),
-                            'expected_quantity' => $stockData['expected_closing'],
-                            'reason'            => $liveVariance < 0 ? 'shortage' : 'excess',
-                            'variance_date'     => $this->shiftDate,
-                            'shift_type'        => $this->getProductStockShiftType(),
-                            'notes'             => $stockData['notes'] . ' | Shift closing variance',
-                            'status'            => 'pending',
-                        ]);
+                        StockVariance::updateOrCreate(
+                            [
+                                'product_stock_id' => $productStock->id,
+                                'variance_date'    => $this->shiftDate,
+                                'shift_type'       => $this->getProductStockShiftType(),
+                            ],
+                            [
+                                'branch_id'         => $this->branchId,
+                                'department_id'     => $this->departmentId,
+                                'product_id'        => $stockData['product_id'],
+                                'quantity'          => abs($liveVariance),
+                                'expected_quantity' => $stockData['expected_closing'],
+                                'reason'            => $liveVariance < 0 ? 'shortage' : 'excess',
+                                'notes'             => $stockData['notes'] . ' | Shift closing variance',
+                                'status'            => 'pending',
+                            ]
+                        );
                     }
 
                     // Mark expired products
@@ -564,7 +573,7 @@ class Index extends BaseComponent
             ];
             $metadata['shift_closing_completed'] = true;
             $metadata['shift_closed_at'] = now()->toIso8601String();
-            $metadata['closed_by'] = auth()->id() ?? auth()->id();
+            $metadata['closed_by'] = auth()->id();
             $shift->metadata = $metadata;
             $shift->workflow_state = 'completed';
             $shift->shift_closed_at = now();

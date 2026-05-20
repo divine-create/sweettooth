@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Dashboards;
 
+use App\Helpers\Settings;
 use App\Models\Item;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Services\StockBatchService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -211,7 +213,58 @@ class InventoryDashboard extends BaseDashboard
             ];
         }
 
+        $batchService = app(StockBatchService::class);
+        $branchId = $this->getBranchId();
+        $warningDays = (int) Settings::inventoryManagement('expiry_warning_days', 7);
+
+        $expiredCount = $batchService->getExpiredBatchesWithStock($branchId)->count();
+        if ($expiredCount > 0) {
+            $alerts[] = [
+                'type' => 'danger',
+                'title' => 'Expired Batches',
+                'message' => "{$expiredCount} batch(es) have expired with remaining stock — action required",
+                'action' => 'view-expired-batches',
+            ];
+        }
+
+        $expiringCount = $batchService->getExpiringBatches($branchId, $warningDays)->count();
+        if ($expiringCount > 0) {
+            $alerts[] = [
+                'type' => 'warning',
+                'title' => 'Expiring Soon',
+                'message' => "{$expiringCount} batch(es) expire within {$warningDays} days",
+                'action' => 'view-expiring-batches',
+            ];
+        }
+
         return $alerts;
+    }
+
+    public function getExpiringBatches(int $limit = 10)
+    {
+        return $this->remember('expiring_batches_'.$limit, function () use ($limit) {
+            $branchId = $this->getBranchId();
+            $warningDays = (int) Settings::inventoryManagement('expiry_warning_days', 7);
+            return app(StockBatchService::class)
+                ->getExpiringBatches($branchId, $warningDays)
+                ->take($limit);
+        });
+    }
+
+    public function getExpiredBatches(int $limit = 10)
+    {
+        return $this->remember('expired_batches_'.$limit, function () use ($limit) {
+            return app(StockBatchService::class)
+                ->getExpiredBatchesWithStock($this->getBranchId())
+                ->take($limit);
+        });
+    }
+
+    public function getExpiryWarningDays(): int
+    {
+        return $this->remember('expiry_warning_days', function () {
+            return (int) Settings::inventoryManagement('expiry_warning_days', 7);
+        });
     }
 
     public function render()
@@ -226,6 +279,9 @@ class InventoryDashboard extends BaseDashboard
                 'recentMovements' => $this->getRecentMovements(),
                 'lowStockItems' => $this->getLowStockItems(),
                 'criticalAlerts' => $this->getCriticalAlerts(),
+                'expiringBatches' => $this->getExpiringBatches(),
+                'expiredBatches' => $this->getExpiredBatches(),
+                'expiryWarningDays' => $this->getExpiryWarningDays(),
             ]);
         } catch (\Exception $e) {
             $this->handleError('loading inventory dashboard', $e);

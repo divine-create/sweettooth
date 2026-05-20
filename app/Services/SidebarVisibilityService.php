@@ -185,7 +185,7 @@ class SidebarVisibilityService
         }
 
         $level = self::getRoleLevel($user);
-        $branchId = session('current_branch_id') ?? $user->branch_id;
+        $branchId = current_branch_id() ?? $user->branch_id;
 
         // Level 5: Super Admin sees all departments (across all branches if needed)
         if ($level >= self::LEVEL_SUPER_ADMIN) {
@@ -407,6 +407,12 @@ class SidebarVisibilityService
             self::getRoleLevel($user) >= self::LEVEL_MANAGER
             || self::hasAnyPermission($user, ['manage-inventory'])
         );
+    }
+
+    public static function canSeeSuppliers($user = null): bool
+    {
+        $user = $user ?? auth()->user();
+        return self::isSuperAdmin($user) || self::getRoleLevel($user) >= self::LEVEL_MANAGER;
     }
 
     public static function canSeeInventoryCallbacks($user = null): bool

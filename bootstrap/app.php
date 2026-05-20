@@ -93,6 +93,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ->everyFifteenMinutes()
             ->withoutOverlapping(10);
         // === END GL POSTING AUTOMATION ===
+
+        // === INVENTORY EXPIRY AUTOMATION ===
+        $schedule->command('inventory:check-batch-expiry')
+            ->dailyAt('00:05')
+            ->withoutOverlapping(10)
+            ->runInBackground();
+        // === END INVENTORY EXPIRY AUTOMATION ===
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

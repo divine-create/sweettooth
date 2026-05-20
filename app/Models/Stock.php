@@ -79,6 +79,26 @@ class Stock extends Model
     }
 
     /**
+     * Get all batches for this stock record
+     */
+    public function batches(): HasMany
+    {
+        return $this->hasMany(StockBatch::class);
+    }
+
+    /**
+     * Active batches ordered FEFO (earliest expiry first)
+     */
+    public function activeBatches(): HasMany
+    {
+        return $this->hasMany(StockBatch::class)
+            ->where('status', 'active')
+            ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END ASC')
+            ->orderBy('expiry_date', 'asc')
+            ->orderBy('received_at', 'asc');
+    }
+
+    /**
      * Get the stock movements for this stock
      */
     public function stockMovements(): HasMany

@@ -37,7 +37,9 @@ class DispatchVerification extends Component
             'progressFeedback' => function($q) {
                 $q->latest();
             }
-        ])->find($requestId);
+        ])->whereHas('productionDepartment', function ($q) {
+            $q->where('branch_id', current_branch_id());
+        })->find($requestId);
 
         if ($this->request) {
             $this->dispatches = $this->request->dispatches->where('status', 'pending_verification');

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BranchInventoryManagement extends Model
 {
+    protected $table = 'branch_inventory_managements';
+
     protected $fillable = ['branch_id', 'local_stock', 'stock_adjustment', 'purchase_returns', 'supplier_link', 'low_stock_alert', 'csv_import', 'is_overridden'];
 
     protected $casts = [

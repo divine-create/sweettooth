@@ -29,6 +29,76 @@
         :with-icons="true"
     />
 
+    <!-- Batch Expiry Alerts -->
+    @if($expiredBatchesWithStock->isNotEmpty())
+        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <h3 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+                Expired Batches with Remaining Stock ({{ $expiredBatchesWithStock->count() }})
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="border-b border-red-200 dark:border-red-700">
+                            <th class="text-left py-1.5 pr-3 font-semibold text-red-700 dark:text-red-300">Item</th>
+                            <th class="text-left py-1.5 pr-3 font-semibold text-red-700 dark:text-red-300">Batch No.</th>
+                            <th class="text-left py-1.5 pr-3 font-semibold text-red-700 dark:text-red-300">Expired</th>
+                            <th class="text-right py-1.5 font-semibold text-red-700 dark:text-red-300">Qty Remaining</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-red-100 dark:divide-red-900/30">
+                        @foreach($expiredBatchesWithStock as $batch)
+                            <tr>
+                                <td class="py-1.5 pr-3 text-red-900 dark:text-red-200">{{ $batch->stock?->item?->name ?? '—' }}</td>
+                                <td class="py-1.5 pr-3 text-red-700 dark:text-red-300">{{ $batch->batch_number ?? '—' }}</td>
+                                <td class="py-1.5 pr-3 text-red-700 dark:text-red-300">{{ $batch->expiry_date?->format('Y-m-d') }}</td>
+                                <td class="py-1.5 text-right font-semibold text-red-900 dark:text-red-200">{{ number_format($batch->quantity_remaining, 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-2 text-xs text-red-600 dark:text-red-400">Action required: dispose, quarantine, or write off these batches.</p>
+        </div>
+    @endif
+
+    @if($expiringBatches->isNotEmpty())
+        <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-2 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Batches Expiring Within {{ $expiryWarningDays }} Days ({{ $expiringBatches->count() }})
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="border-b border-amber-200 dark:border-amber-700">
+                            <th class="text-left py-1.5 pr-3 font-semibold text-amber-700 dark:text-amber-300">Item</th>
+                            <th class="text-left py-1.5 pr-3 font-semibold text-amber-700 dark:text-amber-300">Batch No.</th>
+                            <th class="text-left py-1.5 pr-3 font-semibold text-amber-700 dark:text-amber-300">Expires</th>
+                            <th class="text-right py-1.5 pr-3 font-semibold text-amber-700 dark:text-amber-300">Days Left</th>
+                            <th class="text-right py-1.5 font-semibold text-amber-700 dark:text-amber-300">Qty Remaining</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-amber-100 dark:divide-amber-900/30">
+                        @foreach($expiringBatches as $batch)
+                            <tr>
+                                <td class="py-1.5 pr-3 text-amber-900 dark:text-amber-200">{{ $batch->stock?->item?->name ?? '—' }}</td>
+                                <td class="py-1.5 pr-3 text-amber-700 dark:text-amber-300">{{ $batch->batch_number ?? '—' }}</td>
+                                <td class="py-1.5 pr-3 text-amber-700 dark:text-amber-300">{{ $batch->expiry_date?->format('Y-m-d') }}</td>
+                                <td class="py-1.5 pr-3 text-right font-semibold text-amber-900 dark:text-amber-200">{{ $batch->daysUntilExpiry() }}</td>
+                                <td class="py-1.5 text-right text-amber-900 dark:text-amber-200">{{ number_format($batch->quantity_remaining, 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
     <!-- Header with Action Buttons -->
     <div class="flex justify-end gap-2 mb-3">
         <button wire:click="exportCSV" 
@@ -284,7 +354,7 @@
                          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                              Quantity Affected
                              @php
-                                 $selectedStock = collect($stocks)->firstWhere('value', (string) $stock_id);
+                                 $selectedStock = collect($stocks)->firstWhere('value', (string) $this->stock_id);
                              @endphp
                              @if($selectedStock)
                                  <span class="text-xs font-normal text-zinc-500 dark:text-zinc-400">(Max: {{ number_format($selectedStock['quantity_available'], 2) }} {{ $selectedStock['uom'] }})</span>

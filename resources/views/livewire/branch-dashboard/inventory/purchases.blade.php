@@ -358,11 +358,43 @@
                             @enderror
                         </div>
 
-                        <div>
+                        <div x-data="{ open: false }" class="relative">
                             <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Supplier Name *</label>
-                            <input type="text" wire:model="supplier_name"
-                                class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
-                                placeholder="Enter supplier name">
+                            @if($supplierId)
+                                <div class="flex items-center gap-2">
+                                    <input type="text" wire:model="supplier_name" readonly
+                                        class="flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-zinc-50 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100">
+                                    <button type="button" wire:click="clearSupplier"
+                                        class="px-3 py-2 text-sm text-red-600 hover:text-red-800 dark:text-red-400 border border-red-300 dark:border-red-600 rounded-lg">
+                                        Clear
+                                    </button>
+                                </div>
+                            @else
+                                <input type="text" wire:model.live="supplierSearch"
+                                    @focus="open = true" @click.outside="open = false"
+                                    class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Search registered suppliers...">
+                                <div x-show="open && {{ count($suppliersList) }} > 0" x-cloak
+                                    class="absolute z-20 w-full mt-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                    @forelse($suppliersList as $s)
+                                        <button type="button"
+                                            wire:click="selectSupplier({{ $s->id }})"
+                                            @click="open = false"
+                                            class="w-full px-4 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-700 text-sm text-zinc-900 dark:text-zinc-100">
+                                            <span class="font-medium">{{ $s->name }}</span>
+                                            <span class="text-zinc-500 dark:text-zinc-400 text-xs ml-2">{{ $s->code }}</span>
+                                        </button>
+                                    @empty
+                                        <div class="px-4 py-2 text-sm text-zinc-500 dark:text-zinc-400">No suppliers found</div>
+                                    @endforelse
+                                </div>
+                                {{-- manual fallback when no supplier selected --}}
+                                @if(!$supplierId)
+                                    <input type="text" wire:model="supplier_name"
+                                        class="w-full mt-2 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Or type supplier name manually">
+                                @endif
+                            @endif
                             @error('supplier_name')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
                             @enderror
@@ -436,6 +468,8 @@
                                         <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">Quantity</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">UOM</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">Unit Price</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">Expiry Date</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">Batch No.</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">Action</th>
                                     </tr>
                                 </thead>
@@ -478,6 +512,18 @@
                                             @enderror
                                         </td>
                                         <td class="px-4 py-2">
+                                            <input type="date" wire:model="purchaseItems.{{ $index }}.expiry_date"
+                                                class="w-36 px-2 py-1 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500">
+                                            @error('purchaseItems.'.$index.'.expiry_date')
+                                                <span class="text-red-500 text-xs">{{ $message }}</span>
+                                            @enderror
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <span class="inline-block px-2 py-1 text-xs font-mono bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-600 whitespace-nowrap">
+                                                {{ $purchaseItems[$index]['batch_number'] ?? '—' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2">
                                             <button type="button" wire:click="removePurchaseItem({{ $index }})"
                                                 class="p-1 text-red-600 hover:text-red-800">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -488,7 +534,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="5" class="px-4 py-8 text-center text-zinc-500">No items added. Click "Add Item" to begin.</td>
+                                        <td colspan="7" class="px-4 py-8 text-center text-zinc-500">No items added. Click "Add Item" to begin.</td>
                                     </tr>
                                     @endforelse
                                 </tbody>

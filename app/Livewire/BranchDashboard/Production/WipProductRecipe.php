@@ -65,7 +65,7 @@ class WipProductRecipe extends Component
 
     public function getBranchId(): ?string
     {
-        return request()->query('b_id') ?? session('current_branch_id');
+        return request()->query('b_id') ?? current_branch_id();
     }
 
     protected function loadProduct()

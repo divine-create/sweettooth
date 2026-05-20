@@ -1,33 +1,13 @@
 <div class="p-6">
     <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Create New Supplier</h2>
 
-    @if($showSuccessMessage)
-        <div class="mb-6 p-4 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 rounded-lg">
-            <p class="flex items-center gap-2">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                </svg>
-                Supplier created successfully!
-            </p>
-        </div>
-    @endif
 
     <form wire:submit="createSupplier" class="space-y-6">
         <!-- Basic Information -->
         <div class="border-b border-zinc-200 dark:border-zinc-700 pb-6">
             <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-4">Basic Information</h3>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-4">Supplier code is generated automatically.</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Supplier Code *</label>
-                    <input
-                        type="text"
-                        wire:model="code"
-                        class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg dark:bg-zinc-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., SUP-001"
-                    />
-                    @error('code')<span class="text-red-600 dark:text-red-400 text-sm mt-1">{{ $message }}</span>@enderror
-                </div>
-
                 <div>
                     <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Supplier Name *</label>
                     <input
@@ -73,7 +53,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Tax ID *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Tax ID <span class="text-zinc-400 font-normal">(optional)</span></label>
                     <input
                         type="text"
                         wire:model="taxId"
@@ -151,12 +131,12 @@
             <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-4">Payment Terms</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Credit Limit *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Credit Limit <span class="text-zinc-400 font-normal">(optional)</span></label>
                     <input
                         type="number"
                         wire:model="creditLimit"
                         class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg dark:bg-zinc-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="0.00"
+                        placeholder="Defaults to 0"
                         min="0"
                         step="0.01"
                     />
@@ -164,12 +144,12 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Payment Terms (Days) *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Payment Terms (Days) <span class="text-zinc-400 font-normal">(optional)</span></label>
                     <input
                         type="number"
                         wire:model="paymentTermsDays"
                         class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg dark:bg-zinc-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="30"
+                        placeholder="Defaults to 30 days"
                         min="0"
                     />
                     @error('paymentTermsDays')<span class="text-red-600 dark:text-red-400 text-sm mt-1">{{ $message }}</span>@enderror

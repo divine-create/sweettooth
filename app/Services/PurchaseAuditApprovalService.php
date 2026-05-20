@@ -6,10 +6,12 @@ use App\Helpers\CleanError;
 use App\Models\ApprovalAuditRequest;
 use App\Models\Employee;
 use App\Models\Item;
+use App\Models\PurchaseItem;
 use App\Models\User;
 use App\Models\Purchase;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Services\StockBatchService;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseAuditApprovalService
@@ -92,7 +94,7 @@ class PurchaseAuditApprovalService
                     $baseCostPerUnit = $baseQuantity > 0 ? ($totalCost / $baseQuantity) : 0.0;
 
                     // Create purchase item
-                    $purchase->purchaseItems()->create([
+                    $purchaseItemModel = $purchase->purchaseItems()->create([
                         'item_id' => $itemId,
                         'quantity' => $quantity,
                         'uom' => $purchaseUom,
@@ -101,6 +103,8 @@ class PurchaseAuditApprovalService
                         'other_costs' => (float) ($item['other_costs'] ?? 0),
                         'total_cost' => $totalCost,
                         'cost_per_unit' => $costPerUnit,
+                        'expiry_date' => $item['expiry_date'] ?? null,
+                        'batch_number' => $item['batch_number'] ?? null,
                     ]);
 
                     // Create or get stock
@@ -118,14 +122,20 @@ class PurchaseAuditApprovalService
 
                     // Update average cost
                     $stock->updateAverageCost($baseQuantity, $baseCostPerUnit);
-                    
+
                     // Record quantity before update
                     $quantity_before = (float) $stock->quantity_available;
-                    
+
                     // Update stock quantity
                     $stock->quantity_available = $quantity_before + $baseQuantity;
                     $stock->last_stock_take_date = now();
                     $stock->save();
+
+                    // Create batch record and sync stock expiry
+                    $purchaseItemModel->load('purchase');
+                    app(StockBatchService::class)->createBatchFromPurchase(
+                        $stock, $purchaseItemModel, $baseQuantity, $baseCostPerUnit
+                    );
 
                     // Create stock movement record
                     StockMovement::create([
@@ -364,14 +374,20 @@ class PurchaseAuditApprovalService
 
                 // Update average cost
                 $stock->updateAverageCost($baseQuantity, $baseCostPerUnit);
-                
+
                 // Record quantity before update
                 $quantity_before = (float) $stock->quantity_available;
-                
+
                 // Update stock quantity
                 $stock->quantity_available = $quantity_before + $baseQuantity;
                 $stock->last_stock_take_date = now();
                 $stock->save();
+
+                // Create batch record and sync stock expiry
+                $purchaseItem->load('purchase');
+                app(StockBatchService::class)->createBatchFromPurchase(
+                    $stock, $purchaseItem, $baseQuantity, $baseCostPerUnit
+                );
 
                 // Create stock movement record
                 StockMovement::create([

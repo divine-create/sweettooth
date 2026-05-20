@@ -12,6 +12,7 @@ use App\Models\ProductionStoreStock;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Services\MaterialRequestService;
+use App\Services\StockBatchService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
@@ -147,6 +148,19 @@ class MaterialApprovals extends Component
                     $stock->quantity_available = $newQty;
                     $stock->save();
 
+                    // FEFO: consume from soonest-expiring batch first
+                    $batchService = app(StockBatchService::class);
+                    try {
+                        $consumed = $batchService->consumeFefo($stock, $quantityToDispatch);
+                        $fefoNote = $batchService->buildFefoNote($consumed);
+                    } catch (\RuntimeException $e) {
+                        Log::warning('FEFO consumption mismatch during dispatch: ' . $e->getMessage(), [
+                            'stock_id' => $stock->id,
+                            'quantity' => $quantityToDispatch,
+                        ]);
+                        $fefoNote = '';
+                    }
+
                     // Record stock movement
                     StockMovement::create([
                         'stock_id' => $stock->id,
@@ -160,6 +174,7 @@ class MaterialApprovals extends Component
                         'reference_id' => $detail->id,
                         'moved_by_id' => $actor?->id,
                         'moved_by_type' => get_class($actor),
+                        'notes' => $fefoNote ?: null,
                     ]);
                 }
 

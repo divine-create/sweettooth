@@ -2398,7 +2398,7 @@ class Index extends Component
     private function resolveDailyProduceForAction($produceId): ?DailyProduce
     {
         if ($this->selectedShiftId !== 'no-shift') {
-            return DailyProduce::find($produceId);
+            return DailyProduce::whereHas('shift', fn ($q) => $q->where('branch_id', $this->getBranchId()))->find($produceId);
         }
 
         $productionRequest = ProductionRequest::with('recipe')->find($produceId);

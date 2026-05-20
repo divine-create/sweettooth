@@ -211,6 +211,13 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
                 </button>
+                <button wire:click="openBatchPanel({{ $row->id }})"
+                    class="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    title="View Batches">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                </button>
             </div>
         @endinteract
     </x-table>
@@ -218,5 +225,6 @@
     <!-- Modals -->
     @include('livewire.branch-dashboard.inventory.partials.stocks-edit-modal')
     @include('livewire.branch-dashboard.inventory.partials.stocks-audit-modal')
+    @include('livewire.branch-dashboard.inventory.partials.stocks-batch-panel')
 
 </div>

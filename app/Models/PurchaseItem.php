@@ -23,6 +23,8 @@ class PurchaseItem extends Model
         'allocated_other_costs',
         'total_cost',
         'cost_per_unit',
+        'expiry_date',
+        'batch_number',
     ];
 
     protected $casts = [
@@ -34,6 +36,7 @@ class PurchaseItem extends Model
         'allocated_other_costs' => 'decimal:2',
         'total_cost' => 'decimal:2',
         'cost_per_unit' => 'decimal:2',
+        'expiry_date' => 'date',
     ];
 
     /**
