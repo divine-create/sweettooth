@@ -303,12 +303,28 @@ class SyncRecipesFromCatalog extends Command
         return self::DEPT_MAP[$first] ?? 1;
     }
 
+    // Catalog ingredient name → canonical DB item name
+    private const ALIASES = [
+        'PINEAPPLE JUICE STORE'        => 'PINEAPPLE JUICE',
+        'AVOCADO PEAR'                 => 'AVOCADO',
+        'EGG PRODUCTION'               => 'EGG',
+        'WILDBERRIES TOPPING (I27)'    => 'WILDBERRIES (E.72)',
+        'CHOCOLATE TOPPING (I06) - NEW'=> 'CHOCOLATE TOPPING',
+        'SEAMAN SCHNAPPS'              => 'SEAMAN SCHNAPPS',
+    ];
+
     private function resolveItem(string $name, array $lookup): ?int
     {
         // Exact match
         $key = strtoupper($name);
         if (isset($lookup[$key])) {
             return $lookup[$key];
+        }
+
+        // Alias map
+        $aliased = self::ALIASES[$key] ?? null;
+        if ($aliased && isset($lookup[strtoupper($aliased)])) {
+            return $lookup[strtoupper($aliased)];
         }
 
         // Remove trailing punctuation (e.g. "ALMOND MILK." → "ALMOND MILK")
