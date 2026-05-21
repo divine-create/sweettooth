@@ -63,7 +63,7 @@ class RoleSeeder extends Seeder
         $productionManager->syncPermissions([
             'view-production', 'manage-production', 'manage-recipes', 'manage-quality',
             'view-production-reports', 'view-inventory',
-            'view-reports', 'view-analytics',
+            'view-reports', 'view-analytics', 'send-reports-to-md',
         ]);
 
         $salesManager = Role::create([
@@ -76,7 +76,7 @@ class RoleSeeder extends Seeder
         $salesManager->syncPermissions([
             'view-sales', 'process-sales', 'manage-sales', 'manage-refunds', 'manage-discounts',
             'view-sales-reports', 'view-inventory',
-            'view-reports', 'view-analytics',
+            'view-reports', 'view-analytics', 'send-reports-to-md',
         ]);
 
         $hrManager = Role::create([
@@ -91,7 +91,7 @@ class RoleSeeder extends Seeder
             'view-departments', 'manage-departments',
             'manage-roles-assignments', 'manage-staff-schedule',
             'manage-leave', 'manage-payroll', 'view-hr-reports',
-            'view-reports', 'view-analytics',
+            'view-reports', 'view-analytics', 'send-reports-to-md',
         ]);
 
         $inventoryManager = Role::create([
@@ -104,7 +104,7 @@ class RoleSeeder extends Seeder
         $inventoryManager->syncPermissions([
             'view-inventory', 'manage-inventory', 'manage-suppliers',
             'manage-purchases', 'manage-stock-takes', 'view-inventory-reports',
-            'view-reports', 'view-analytics',
+            'view-reports', 'view-analytics', 'send-reports-to-md',
         ]);
 
         $accountingManager = Role::create([
@@ -117,7 +117,7 @@ class RoleSeeder extends Seeder
         $accountingManager->syncPermissions([
             'view-accounting', 'manage-accounting', 'reconcile-accounts',
             'manage-bank-accounts', 'manage-accounting-periods', 'view-financial-reports',
-            'view-reports', 'view-analytics',
+            'view-reports', 'view-analytics', 'send-reports-to-md',
         ]);
 
         $headChef = Role::create([

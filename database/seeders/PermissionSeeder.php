@@ -81,6 +81,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'view-reports', 'description' => 'View reports', 'category' => 'reporting'],
             ['name' => 'export-reports', 'description' => 'Export reports', 'category' => 'reporting'],
             ['name' => 'view-analytics', 'description' => 'View analytics', 'category' => 'reporting'],
+            ['name' => 'send-reports-to-md', 'description' => 'Send compiled reports to the Managing Director', 'category' => 'reporting'],
         ];
 
         // Create all permissions

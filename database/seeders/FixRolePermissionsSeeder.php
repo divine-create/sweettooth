@@ -25,29 +25,29 @@ class FixRolePermissionsSeeder extends Seeder
             'Production Manager' => [
                 'view-production', 'manage-production', 'manage-recipes', 'manage-quality',
                 'view-production-reports', 'view-inventory',
-                'view-reports', 'view-analytics',
+                'view-reports', 'view-analytics', 'send-reports-to-md',
             ],
             'Sales Manager' => [
                 'view-sales', 'process-sales', 'manage-sales', 'manage-refunds', 'manage-discounts',
                 'view-sales-reports', 'view-inventory',
-                'view-reports', 'view-analytics',
+                'view-reports', 'view-analytics', 'send-reports-to-md',
             ],
             'HR Manager' => [
                 'manage-organization', 'view-employees', 'manage-employees',
                 'view-departments', 'manage-departments',
                 'manage-roles-assignments', 'manage-staff-schedule',
                 'manage-leave', 'manage-payroll', 'view-hr-reports',
-                'view-reports', 'view-analytics',
+                'view-reports', 'view-analytics', 'send-reports-to-md',
             ],
             'Inventory Manager' => [
                 'view-inventory', 'manage-inventory', 'manage-suppliers',
                 'manage-purchases', 'manage-stock-takes', 'view-inventory-reports',
-                'view-reports', 'view-analytics',
+                'view-reports', 'view-analytics', 'send-reports-to-md',
             ],
             'Accounting Manager' => [
                 'view-accounting', 'manage-accounting', 'reconcile-accounts',
                 'manage-bank-accounts', 'manage-accounting-periods', 'view-financial-reports',
-                'view-reports', 'view-analytics',
+                'view-reports', 'view-analytics', 'send-reports-to-md',
             ],
             'Head Chef' => [
                 'view-production', 'manage-production', 'manage-recipes',

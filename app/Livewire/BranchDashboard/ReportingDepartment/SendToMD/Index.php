@@ -30,8 +30,8 @@ class Index extends Component
 
     public function mount()
     {
-        if (! is_super_admin()) {
-            abort(403, 'Only Super Admins can send reports to MD');
+        if (! is_super_admin() && ! auth()->user()?->can('send-reports-to-md')) {
+            abort(403, 'You do not have permission to send reports to the Managing Director');
         }
 
         $this->b_id = $this->b_id ?? current_branch_id();
