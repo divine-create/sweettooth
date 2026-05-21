@@ -358,6 +358,9 @@ trait QuickProduceTrait
                 // 5. Audit Log
                 \App\Services\ProductionAuditService::logBatchProduced($actor, $record);
 
+                // 5b. Track raw material utilization for reporting
+                $this->trackIngredientUtilization($shift, (float) $this->yieldOutput);
+
                 // 6. Only add APPROVED quantity to WIP stock if it's a WIP
                 if ($this->selectedRecipe->is_wip) {
                     if (!$this->selectedRecipe->product_id) {
@@ -591,6 +594,43 @@ trait QuickProduceTrait
     protected function loadPendingOrders()
     {
         $this->pendingOrders = [];
+    }
+
+    private function trackIngredientUtilization(\App\Models\Shift $shift, float $unitsProduced): void
+    {
+        foreach ($this->ingredients as $ing) {
+            $consumed = (float) $ing['quantity'];
+
+            if ($consumed <= 0) {
+                continue;
+            }
+
+            $existing = \App\Models\RawMaterialUtilization::where([
+                'shift_id'  => $shift->id,
+                'recipe_id' => $this->selectedRecipe->id,
+                'item_id'   => $ing['item_id'],
+            ])->first();
+
+            if ($existing) {
+                $existing->quantity_required = (float) $existing->quantity_required + $consumed;
+                $existing->quantity_used     = (float) $existing->quantity_used + $consumed;
+                $existing->units_produced    = (float) $existing->units_produced + $unitsProduced;
+                $existing->save();
+            } else {
+                \App\Models\RawMaterialUtilization::create([
+                    'shift_id'        => $shift->id,
+                    'recipe_id'       => $this->selectedRecipe->id,
+                    'item_id'         => $ing['item_id'],
+                    'quantity_required' => $consumed,
+                    'quantity_used'   => $consumed,
+                    'units_produced'  => $unitsProduced,
+                    'variance'        => 0,
+                    'variance_type'   => 'within_tolerance',
+                    'cost_impact'     => 0,
+                    'notes'           => 'Quick Produce',
+                ]);
+            }
+        }
     }
 
     public function getSalesDepartments()

@@ -99,15 +99,6 @@ class DepartmentObserver
                 'order' => 4,
             ],
 
-            // Production Operations
-            [
-                'name' => 'Production Requests',
-                'slug' => 'production-requests',
-                'route_name' => "branch-dashboard.production.request.index",
-                'icon' => 'clipboard',
-                'order' => 5,
-            ],
-
             // Inventory & Tracking
             [
                 'name' => 'Raw Material Tracking',

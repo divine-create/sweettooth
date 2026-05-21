@@ -554,8 +554,7 @@
                         $dept->pages = $dept->pages->reject(
                             fn($p) => str_contains($p->route_name, 'edit') ||
                                 str_contains($p->route_name, 'detail') ||
-                                str_contains($p->route_name, 'shift-closing') ||
-                                str_contains($p->route_name, 'daily-produce'),
+                                str_contains($p->route_name, 'shift-closing'),
                         );
                         return $dept;
                     });

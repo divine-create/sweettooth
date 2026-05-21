@@ -87,8 +87,8 @@
                     </div>
                 </a>
 
-                <!-- Production Requests -->
-                <a href="{{ route('branch-dashboard.production.request.index', $deptSlug ?? ($userDepartment?->slug ?? 'kitchen')) }}" 
+                <!-- Quick Produce -->
+                <a href="{{ route('branch-dashboard.production.quick-produce.finished-good', $deptSlug ?? ($userDepartment?->slug ?? 'kitchen')) }}"
                    class="p-4 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-300 transition flex items-center gap-3">
                     <div class="p-2 bg-green-100 rounded-lg">
                         <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -96,8 +96,8 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="font-medium text-gray-900">Production Requests</p>
-                        <p class="text-sm text-gray-600">View requests</p>
+                        <p class="font-medium text-gray-900">Quick Produce</p>
+                        <p class="text-sm text-gray-600">Produce finished goods</p>
                     </div>
                 </a>
 

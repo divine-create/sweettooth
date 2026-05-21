@@ -107,15 +107,6 @@ class DepartmentPageSeeder extends Seeder
                 'order' => 6,
             ],
 
-            // Production Operations
-            [
-                'name' => 'Production Requests',
-                'slug' => 'production-requests',
-                'route_name' => 'branch-dashboard.production.request.index',
-                'icon' => 'clipboard',
-                'order' => 7,
-            ],
-
             // Inventory & Tracking
             [
                 'name' => 'Raw Material Tracking',

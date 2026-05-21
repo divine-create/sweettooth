@@ -12,22 +12,10 @@ Route::prefix('production')->name('production.')->middleware(['department.scope'
         Route::get('product-types/{deptSlug?}', \App\Livewire\BranchDashboard\Production\ProductTypes::class)->name('product-types');
         Route::get('products/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Products::class)->name('products');
 
-        // Request Management
-        Route::prefix('request')->name('request.')->group(function () {
-            Route::get('/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Request\Index::class)->name('index');
-            Route::get('/{deptSlug}/create', \App\Livewire\BranchDashboard\Production\Request\Create::class)->name('create');
-            Route::get('/{deptSlug}/progress/{requestId}', \App\Livewire\BranchDashboard\Production\Request\ProductionProgressTracker::class)->name('progress');
-        });
-
         // Sales Request Review (dedicated production page)
         Route::prefix('sales-requests')->name('sales-requests.')->group(function () {
             Route::get('/workflow/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Request\SalesRequests::class)->name('workflow');
             Route::get('/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Request\SalesRequests::class)->name('index');
-        });
-
-        // Daily Produce
-        Route::prefix('daily-produce')->name('daily-produce.')->group(function () {
-            Route::get('/{deptSlug}', \App\Livewire\BranchDashboard\Production\DailyProduce\Index::class)->name('index');
         });
 
         // Production Records
