@@ -3,18 +3,57 @@
 namespace App\Services\Reports;
 
 use App\Models\User;
+use App\Services\Reports\Definitions\AccountingApAgingDefinition;
+use App\Services\Reports\Definitions\AccountingArAgingDefinition;
 use App\Services\Reports\Definitions\AccountingBalanceSheetDefinition;
+use App\Services\Reports\Definitions\AccountingBankStatementExceptionDefinition;
+use App\Services\Reports\Definitions\AccountingBudgetVsActualDefinition;
+use App\Services\Reports\Definitions\AccountingCashFlowDefinition;
+use App\Services\Reports\Definitions\AccountingCashPositionDefinition;
+use App\Services\Reports\Definitions\AccountingExpenseClaimsDefinition;
+use App\Services\Reports\Definitions\AccountingFixedAssetRegisterDefinition;
 use App\Services\Reports\Definitions\AccountingGeneralLedgerDefinition;
 use App\Services\Reports\Definitions\AccountingIncomeStatementDefinition;
+use App\Services\Reports\Definitions\AccountingSupplierInvoiceReconciliationDefinition;
 use App\Services\Reports\Definitions\AccountingTrialBalanceDefinition;
+use App\Services\Reports\Definitions\HRAppraisalRatingsDefinition;
+use App\Services\Reports\Definitions\HRAttendancePunctualityDefinition;
+use App\Services\Reports\Definitions\HRDepartmentStaffingWorkloadDefinition;
+use App\Services\Reports\Definitions\HRLeaveBalanceAccrualDefinition;
 use App\Services\Reports\Definitions\HRLeaveUtilizationDefinition;
+use App\Services\Reports\Definitions\HRPayrollCompensationDefinition;
+use App\Services\Reports\Definitions\HRTurnoverRetentionDefinition;
 use App\Services\Reports\Definitions\HRWorkforceOverviewDefinition;
+use App\Services\Reports\Definitions\InventoryExpiryDeadStockDefinition;
+use App\Services\Reports\Definitions\InventoryInterBranchTransferDefinition;
+use App\Services\Reports\Definitions\InventoryItemUsageDefinition;
+use App\Services\Reports\Definitions\InventoryReserveAllocationDefinition;
+use App\Services\Reports\Definitions\InventorySeasonalDemandDefinition;
+use App\Services\Reports\Definitions\InventoryStockLevelsDefinition;
+use App\Services\Reports\Definitions\InventoryStockMovementDefinition;
+use App\Services\Reports\Definitions\InventoryStockValuationDefinition;
+use App\Services\Reports\Definitions\InventoryStockVarianceDiscrepancyDefinition;
+use App\Services\Reports\Definitions\InventorySupplierPerformanceDefinition;
+use App\Services\Reports\Definitions\InventoryTurnoverAbcDefinition;
+use App\Services\Reports\Definitions\ProductionCapacityUtilizationDefinition;
 use App\Services\Reports\Definitions\ProductionCostAnalysisDefinition;
 use App\Services\Reports\Definitions\ProductionDailyProduceDefinition;
 use App\Services\Reports\Definitions\ProductionEfficiencyDefinition;
+use App\Services\Reports\Definitions\ProductionEmployeeThroughputDefinition;
+use App\Services\Reports\Definitions\ProductionForecastVsActualDefinition;
+use App\Services\Reports\Definitions\ProductionMaterialRequestVarianceDefinition;
 use App\Services\Reports\Definitions\ProductionQualityDefinition;
+use App\Services\Reports\Definitions\ProductionRecipeCostingDefinition;
+use App\Services\Reports\Definitions\ProductionSchedulingComplianceDefinition;
+use App\Services\Reports\Definitions\ProductionShiftHandoverDefinition;
 use App\Services\Reports\Definitions\ProductionWasteAnalysisDefinition;
+use App\Services\Reports\Definitions\SalesDiscountAnalysisDefinition;
+use App\Services\Reports\Definitions\SalesOrderTypeSegmentDefinition;
 use App\Services\Reports\Definitions\SalesPerformanceDefinition;
+use App\Services\Reports\Definitions\SalesProductMixDefinition;
+use App\Services\Reports\Definitions\SalesRefundCancellationDefinition;
+use App\Services\Reports\Definitions\SalesStaffProductivityDefinition;
+use App\Services\Reports\Definitions\SalesTablePerformanceDefinition;
 use App\Services\SidebarVisibilityService;
 use Illuminate\Support\Facades\Log;
 
@@ -47,8 +86,60 @@ class ReportRegistry
                 'service' => WasteAnalysisReportService::class,
             ],
             [
+                'definition' => ProductionRecipeCostingDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => ProductionCapacityUtilizationDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => ProductionMaterialRequestVarianceDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => ProductionSchedulingComplianceDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => ProductionForecastVsActualDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => ProductionShiftHandoverDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => ProductionEmployeeThroughputDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
                 'definition' => SalesPerformanceDefinition::class,
                 'service' => SalesPerformanceReportService::class,
+            ],
+            [
+                'definition' => SalesDiscountAnalysisDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => SalesProductMixDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => SalesStaffProductivityDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => SalesOrderTypeSegmentDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => SalesTablePerformanceDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => SalesRefundCancellationDefinition::class,
+                'service' => GenericDefinitionReportService::class,
             ],
             [
                 'definition' => AccountingIncomeStatementDefinition::class,
@@ -67,12 +158,72 @@ class ReportRegistry
                 'service' => GeneralLedgerReportService::class,
             ],
             [
+                'definition' => AccountingCashFlowDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => AccountingArAgingDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => AccountingApAgingDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => AccountingBudgetVsActualDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => AccountingCashPositionDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => AccountingFixedAssetRegisterDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => AccountingSupplierInvoiceReconciliationDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => AccountingExpenseClaimsDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => AccountingBankStatementExceptionDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
                 'definition' => HRWorkforceOverviewDefinition::class,
                 'service' => HRWorkforceOverviewReportService::class,
             ],
             [
                 'definition' => HRLeaveUtilizationDefinition::class,
                 'service' => HRLeaveUtilizationReportService::class,
+            ],
+            [
+                'definition' => HRAttendancePunctualityDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => HRPayrollCompensationDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => HRTurnoverRetentionDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => HRAppraisalRatingsDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => HRLeaveBalanceAccrualDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => HRDepartmentStaffingWorkloadDefinition::class,
+                'service' => GenericDefinitionReportService::class,
             ],
             [
                 'definition' => InventoryStockLevelsDefinition::class,
@@ -90,6 +241,34 @@ class ReportRegistry
                 'definition' => InventoryItemUsageDefinition::class,
                 'service' => InventoryItemUsageReportService::class,
             ],
+            [
+                'definition' => InventoryStockVarianceDiscrepancyDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => InventorySupplierPerformanceDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => InventoryExpiryDeadStockDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => InventoryTurnoverAbcDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => InventorySeasonalDemandDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => InventoryReserveAllocationDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
+            [
+                'definition' => InventoryInterBranchTransferDefinition::class,
+                'service' => GenericDefinitionReportService::class,
+            ],
         ];
     }
 
@@ -99,6 +278,7 @@ class ReportRegistry
     public static function availableForUser(?User $user = null): array
     {
         $user = $user ?? auth()->user();
+        $allowedCategories = self::userAllowedCategories($user);
         $reports = [];
 
         foreach (self::all() as $entry) {
@@ -111,6 +291,16 @@ class ReportRegistry
                 $definition = new $definitionClass;
                 $meta = $definition->meta();
                 $key = self::keyFromMeta($meta);
+
+                // Enforce category-level access (null = all allowed, [] = none allowed)
+                if ($allowedCategories !== null) {
+                    if (empty($allowedCategories)) {
+                        continue;
+                    }
+                    if (! in_array($meta['category'] ?? '', $allowedCategories, true)) {
+                        continue;
+                    }
+                }
 
                 if (! self::userCanAccess($user, $meta['permissions'] ?? [])) {
                     continue;
@@ -188,6 +378,45 @@ class ReportRegistry
         $type = $meta['type'] ?? 'generic';
 
         return "{$category}.{$type}";
+    }
+
+    /**
+     * Returns the set of report categories this user may access,
+     * or null if they may access all categories.
+     */
+    private static function userAllowedCategories(?User $user): ?array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        // Super admins and admins see everything
+        if (is_super_admin() || SidebarVisibilityService::isAdmin($user)) {
+            return null;
+        }
+
+        // HR role sees everything
+        if ($user->hasRole('HR')) {
+            return null;
+        }
+
+        // Manager roles are scoped to their own department category
+        $managerCategoryMap = [
+            'Production Manager'  => 'production',
+            'Sales Manager'       => 'sales',
+            'Inventory Manager'   => 'inventory',
+            'Accounting Manager'  => 'accounting',
+        ];
+
+        $allowed = [];
+        foreach ($managerCategoryMap as $role => $category) {
+            if ($user->hasRole($role)) {
+                $allowed[] = $category;
+            }
+        }
+
+        // Return matched categories, or empty array (no access) if no manager role matched
+        return $allowed;
     }
 
     private static function userCanAccess(?User $user, array $permissions): bool

@@ -73,6 +73,7 @@ class SidebarVisibilityService
             'Accounting Manager',
             'Production Manager',
             'Sales Manager',
+            'HR',
             'HR Manager',
             'Inventory Manager',
             'Head Chef',

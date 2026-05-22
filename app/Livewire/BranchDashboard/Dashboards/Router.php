@@ -117,7 +117,7 @@ class Router extends Component
         ];
 
         $hrRoles = [
-            'HR Manager', 'HR Officer', 'Data Processor',
+            'HR', 'HR Manager', 'HR Officer', 'Data Processor',
         ];
 
         $accountingRoles = [

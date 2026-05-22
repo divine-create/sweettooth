@@ -37,10 +37,10 @@ class InventoryItemUsageDefinition implements ReportDefinition
             ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
             ->get();
 
-        $dispatches = ItemDispatch::with(['item', 'item.category', 'department'])
+        $dispatches = ItemDispatch::with(['item', 'item.category', 'itemRequest.department'])
             ->where('branch_id', $branchId)
             ->whereBetween('dispatch_time', [$fromDate, $toDate])
-            ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
+            ->when($departmentId, fn ($q) => $q->whereHas('itemRequest', fn ($r) => $r->where('department_id', $departmentId)))
             ->get();
 
         return [

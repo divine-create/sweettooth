@@ -74,9 +74,19 @@
                 }
                 $isSuperAdmin = is_super_admin();
                 $sidebarService = \App\Services\SidebarVisibilityService::class;
-                $isHrRole = $currentUser && ($currentUser->hasRole('HR Officer') || $currentUser->hasRole('HR Manager'));
                 $isAdmin = $sidebarService::isAdmin($currentUser);
-                $isHrOnly = $isHrRole && !$isSuperAdmin && !$isAdmin;
+                // HR check: use permissions so any role with HR permissions qualifies
+                $isHrRole = $currentUser && !$isSuperAdmin && !$isAdmin && (
+                    $currentUser->hasRole(['HR', 'HR Manager', 'HR Officer'])
+                    || $currentUser->can('manage-leave')
+                    || $currentUser->can('manage-payroll')
+                    || $currentUser->can('manage-employees')
+                );
+                $isHrOnly = $isHrRole && !$isSuperAdmin && !$isAdmin
+                    && !$currentUser->can('view-sales')
+                    && !$currentUser->can('view-inventory')
+                    && !$currentUser->can('view-production')
+                    && !$currentUser->can('view-accounting');
 
             @endphp
 
@@ -127,7 +137,7 @@
             @endif
 
             {{-- ==================== SHIFT MANAGEMENT FOR HR STAFF AND SUPER ADMINS ==================== --}}
-            @if ($isHrRole || $isSuperAdmin)
+            @if ($isHrRole || $isSuperAdmin || ($currentUser && ($currentUser->can('manage-staff-schedule') || $currentUser->can('manage-organization'))))
             <flux:navlist.group :heading="__('Shift Management')" expandable
                 :expanded="request()->routeIs('branch-dashboard.shift-management.*')" class="grid">
                 <flux:navlist.item icon="clock" :href="branch_route('branch-dashboard.shift-management.index')"
@@ -232,8 +242,8 @@
                          {{ __('Appraisal Cycles') }}
                      </flux:navlist.item>
 
-                     <flux:navlist.item icon="chart-bar" :href="branch_route('branch-dashboard.hr.reports.workforce-overview')"
-                         :current="request()->routeIs('branch-dashboard.hr.reports.workforce-overview')" wire:navigate>
+                     <flux:navlist.item icon="chart-bar" :href="branch_route('branch-dashboard.hr.reports.index')"
+                         :current="request()->routeIs('branch-dashboard.hr.reports.*')" wire:navigate>
                          {{ __('HR Reports') }}
                      </flux:navlist.item>
 
@@ -266,22 +276,43 @@
                     :current="request()->routeIs('leave.balance')" wire:navigate>
                     {{ __('Leave Balance') }}
                 </flux:navlist.item>
-                @if (($sidebarService::canSeeLeaveManagement($currentUser) || $isHrRole) && ($isHrRole || $isSuperAdmin || $isAdmin))
+                @if ($isSuperAdmin || $isAdmin || $currentUser?->can('manage-leave'))
                     <flux:navlist.item icon="clipboard-document-check"
                         :href="branch_route('branch-dashboard.leave.approve')"
                         :current="request()->routeIs('branch-dashboard.leave.approve')" wire:navigate>
                         {{ __('Approve Leaves') }}
                     </flux:navlist.item>
-                @endif
-                @if (($sidebarService::canSeeEmployeeManagement($currentUser) || $isHrRole) && ($isHrRole || $isSuperAdmin || $isAdmin))
                     <flux:navlist.item icon="cog-6-tooth" :href="branch_route('branch-dashboard.leave.types')"
                         :current="request()->routeIs('branch-dashboard.leave.types')" wire:navigate>
                         {{ __('Leave Types') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="calendar-days" :href="branch_route('branch-dashboard.leave.manage-allocations')"
+                        :current="request()->routeIs('branch-dashboard.leave.manage-allocations')" wire:navigate>
+                        {{ __('Leave Allocations') }}
                     </flux:navlist.item>
                 @endif
             </flux:navlist.group>
             {{-- ==================== END LEAVE MANAGEMENT ==================== --}}
 
+            {{-- ==================== PAYROLL ==================== --}}
+            @if ($isSuperAdmin || $isAdmin || $isHrRole || ($currentUser && ($currentUser->can('manage-payroll') || $currentUser->can('access_accounting'))))
+            <flux:navlist.group :heading="__('Payroll')" icon="banknotes" expandable
+                :expanded="request()->routeIs('branch-dashboard.accounting.payroll.*')" class="grid">
+                <flux:navlist.item icon="list-bullet" :href="branch_route('branch-dashboard.accounting.payroll.index')"
+                    :current="request()->routeIs('branch-dashboard.accounting.payroll.index')" wire:navigate>
+                    {{ __('All Payroll') }}
+                </flux:navlist.item>
+                <flux:navlist.item icon="user-group" :href="branch_route('branch-dashboard.accounting.payroll.run.create')"
+                    :current="request()->routeIs('branch-dashboard.accounting.payroll.run.create')" wire:navigate>
+                    {{ __('New Payroll Run') }}
+                </flux:navlist.item>
+                <flux:navlist.item icon="document-plus" :href="branch_route('branch-dashboard.accounting.payroll.payslip.create')"
+                    :current="request()->routeIs('branch-dashboard.accounting.payroll.payslip.create')" wire:navigate>
+                    {{ __('New Payslip') }}
+                </flux:navlist.item>
+            </flux:navlist.group>
+            @endif
+            {{-- ==================== END PAYROLL ==================== --}}
 
             {{-- ==================== ACCOUNTING DASHBOARD ==================== --}}
             @if (!$isHrOnly && $sidebarService::canSeeAccounting($currentUser))
@@ -968,6 +999,10 @@
                     <flux:navlist.item icon="chart-bar" :href="branch_route('branch-dashboard.reporting.dashboard')"
                         :current="request()->routeIs('branch-dashboard.reporting.dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="document-chart-bar" :href="branch_route('branch-dashboard.reporting.generate')"
+                        :current="request()->routeIs('branch-dashboard.reporting.generate')" wire:navigate>
+                        {{ __('Generate Reports') }}
                     </flux:navlist.item>
                     <flux:navlist.item icon="clipboard-document-check"
                         :href="branch_route('branch-dashboard.reporting.review')"

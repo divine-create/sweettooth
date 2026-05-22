@@ -146,7 +146,7 @@ class DepartmentScopeMiddleware
         // Manager-level roles (old names)
         $managerRoles = [
             'Managing Director', 'Admin', 'Accounting Manager',
-            'Production Manager', 'Sales Manager', 'HR Manager',
+            'Production Manager', 'Sales Manager', 'HR', 'HR Manager',
             'Inventory Manager', 'Head Chef', 'Gelato Chef', 'Floor Manager',
         ];
         if ($user->hasAnyRole($managerRoles)) return 3;

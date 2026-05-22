@@ -603,6 +603,7 @@ class RolePermissionService
             // Level 3 - Managers
             'Production Manager' => 3,
             'Sales Manager' => 3,
+            'HR' => 3,
             'HR Manager' => 3,
             'Inventory Manager' => 3,
             'Head Chef' => 3,

@@ -119,6 +119,24 @@ class Index extends Component
         }
     }
 
+    public function submitForReview($reportId): void
+    {
+        try {
+            $report = DepartmentReport::where('branch_id', $this->b_id ?? current_branch_id())
+                ->findOrFail($reportId);
+
+            if ($report->status !== 'draft') {
+                $this->toast()->error('Only draft reports can be submitted for review.')->send();
+                return;
+            }
+
+            $report->update(['status' => 'pending_review']);
+            $this->toast()->success('Report submitted for review.')->send();
+        } catch (\Exception $e) {
+            $this->toast()->error('Error: ' . $e->getMessage())->send();
+        }
+    }
+
     public function approveReport()
     {
         if (! $this->selectedReport) {

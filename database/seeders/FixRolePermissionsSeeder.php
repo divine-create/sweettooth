@@ -24,15 +24,15 @@ class FixRolePermissionsSeeder extends Seeder
 
             'Production Manager' => [
                 'view-production', 'manage-production', 'manage-recipes', 'manage-quality',
-                'view-production-reports', 'view-inventory',
+                'view-production-reports', 'view-inventory', 'manage-staff-schedule',
                 'view-reports', 'view-analytics', 'send-reports-to-md',
             ],
             'Sales Manager' => [
                 'view-sales', 'process-sales', 'manage-sales', 'manage-refunds', 'manage-discounts',
-                'view-sales-reports', 'view-inventory',
+                'view-sales-reports', 'view-inventory', 'manage-staff-schedule',
                 'view-reports', 'view-analytics', 'send-reports-to-md',
             ],
-            'HR Manager' => [
+            'HR' => [
                 'manage-organization', 'view-employees', 'manage-employees',
                 'view-departments', 'manage-departments',
                 'manage-roles-assignments', 'manage-staff-schedule',
@@ -64,7 +64,7 @@ class FixRolePermissionsSeeder extends Seeder
             ],
 
             'HR Officer' => [
-                'view-employees', 'manage-employees', 'manage-leave', 'view-hr-reports',
+                'view-employees', 'manage-employees', 'manage-leave', 'manage-payroll', 'view-hr-reports',
             ],
             'Accountant' => [
                 'view-accounting', 'reconcile-accounts', 'view-financial-reports', 'view-reports',

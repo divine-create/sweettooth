@@ -108,6 +108,7 @@ class RequireActiveShift
             'Inventory Manager',
             'Procurement Manager',
             'Procurement Officer',
+            'HR',
             'HR Manager',
             'Finance Manager',
             'Accountant',

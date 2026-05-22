@@ -158,9 +158,11 @@
                                             View
                                         </a>
                                         @if($report->status === 'draft')
-                                            <span class="text-gray-600 dark:text-gray-300 text-xs">
-                                                Waiting for submission
-                                            </span>
+                                            <button wire:click="submitForReview('{{ $report->id }}')"
+                                                    wire:confirm="Submit this report for review?"
+                                                    class="inline-flex items-center px-3 py-1.5 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600">
+                                                Submit for Review
+                                            </button>
                                         @elseif($report->status === 'pending_review')
                                             <button wire:click="openReviewModal('{{ $report->id }}')"
                                                     class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">

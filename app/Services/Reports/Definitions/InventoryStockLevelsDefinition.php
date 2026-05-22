@@ -264,10 +264,11 @@ class InventoryStockLevelsDefinition implements ReportDefinition
 
     private function buildTurnoverAnalysis($stocks, $branchId, $from, $to): array
     {
-        $movements = StockMovement::where('branch_id', $branchId)
-            ->whereBetween('movement_date', [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()])
-            ->selectRaw('item_id, SUM(ABS(quantity)) as total_moved, COUNT(*) as movement_count')
-            ->groupBy('item_id')
+        $movements = StockMovement::where('stock_movements.branch_id', $branchId)
+            ->whereBetween('stock_movements.movement_date', [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()])
+            ->join('stocks', 'stock_movements.stock_id', '=', 'stocks.id')
+            ->selectRaw('stocks.item_id, SUM(ABS(stock_movements.quantity)) as total_moved, COUNT(*) as movement_count')
+            ->groupBy('stocks.item_id')
             ->orderByDesc('total_moved')
             ->limit(10)
             ->get();

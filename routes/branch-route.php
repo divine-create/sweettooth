@@ -70,11 +70,9 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
 
             });
 
-            Route::prefix('reports')->name('reports.')->group(function () {
-                Route::middleware('role_or_permission:manage-organization')->get(
-                    '/workforce-overview',
-                    \App\Livewire\BranchDashboard\HR\Reports\WorkforceOverview\Index::class
-                )->name('workforce-overview');
+            Route::prefix('reports')->name('reports.')->middleware('role_or_permission:manage-leave,manage-employees,view-hr-reports,manage-organization')->group(function () {
+                Route::get('/', \App\Livewire\BranchDashboard\HR\Reports\Index::class)->name('index');
+                Route::get('/workforce-overview', \App\Livewire\BranchDashboard\HR\Reports\WorkforceOverview\Index::class)->name('workforce-overview');
             });
         });
 
@@ -225,6 +223,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
         // Reporting Department Routes
         Route::prefix('reporting')->name('reporting.')->group(function () {
             Route::get('dashboard', \App\Livewire\BranchDashboard\ReportingDepartment\Dashboard\Index::class)->name('dashboard');
+            Route::get('generate', \App\Livewire\BranchDashboard\Reporting\Generate::class)->name('generate');
             Route::get('review', \App\Livewire\BranchDashboard\ReportingDepartment\ReviewReports\Index::class)->name('review');
             Route::get('compile', \App\Livewire\BranchDashboard\ReportingDepartment\CompileReports\Index::class)->name('compile');
             Route::get('report/{id}', \App\Livewire\BranchDashboard\ReportingDepartment\ReportDetail\Index::class)->name('report.view');
@@ -303,12 +302,6 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
                     ->name('accounting-entries');
             });
 
-            // Payroll
-            Route::middleware('role_or_permission:access_accounting,manage-organization,view_financial_reports')->group(function () {
-                Route::get('/payroll', \App\Livewire\BranchDashboard\Accounting\Simple\Payrolls::class)
-                    ->name('payroll');
-            });
-
             // Tax Payments
             Route::middleware('role_or_permission:access_accounting,view_financial_reports')->group(function () {
                 Route::get('/tax-payments', \App\Livewire\BranchDashboard\Accounting\Simple\TaxPayments::class)
@@ -345,6 +338,18 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
                 Route::middleware('role.level:5')->get('/branch-comparison', \App\Livewire\BranchDashboard\Accounting\Report\BranchComparisonReport::class)->name('branch-comparison');
             });
         });
+
+        // Payroll — accessible to HR and Accounting (outside accounting group so HR isn't blocked)
+        Route::middleware('role_or_permission:manage-payroll,access_accounting,manage-organization,view_financial_reports')
+            ->prefix('accounting/payroll')
+            ->name('accounting.payroll.')
+            ->group(function () {
+                Route::get('/', \App\Livewire\BranchDashboard\Payroll\Index::class)->name('index');
+                Route::get('/run/create', \App\Livewire\BranchDashboard\Payroll\RunCreate::class)->name('run.create');
+                Route::get('/run/{run}', \App\Livewire\BranchDashboard\Payroll\RunView::class)->name('run.view');
+                Route::get('/create', \App\Livewire\BranchDashboard\Payroll\PayslipCreate::class)->name('payslip.create');
+                Route::get('/{payroll}', \App\Livewire\BranchDashboard\Payroll\PayslipView::class)->name('payslip.view');
+            });
 
         // Sales Dashboard routes - Modular System
         // Protected by department.scope + workflow middleware for proper step validation

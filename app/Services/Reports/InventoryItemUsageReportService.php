@@ -31,10 +31,10 @@ class InventoryItemUsageReportService extends ReportService
             ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
             ->get();
 
-        $dispatches = ItemDispatch::with(['item', 'item.category', 'department'])
+        $dispatches = ItemDispatch::with(['item', 'item.category', 'itemRequest.department'])
             ->where('branch_id', $this->branchId)
             ->whereBetween('dispatch_time', [$fromDate, $toDate])
-            ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
+            ->when($this->departmentId, fn ($q) => $q->whereHas('itemRequest', fn ($r) => $r->where('department_id', $this->departmentId)))
             ->get();
 
         return [
