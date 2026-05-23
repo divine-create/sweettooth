@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Reporting;
 
+use App\Models\Department;
 use App\Models\DepartmentReport;
 use App\Services\Reports\ReportRegistry;
 use App\Services\SidebarVisibilityService;
@@ -59,16 +60,32 @@ class Generate extends Component
     private function loadDepartments(?string $category = null): void
     {
         $user = auth()->user();
-        $departments = SidebarVisibilityService::getAccessibleDepartments($user);
-        $filtered = $this->filterDepartmentsForCategory($departments, $category);
-        $knownCategory = in_array(strtolower((string) $category), ['sales', 'production', 'inventory', 'accounting'], true);
+        $branchId = $this->branchId ?? current_branch_id();
+        $category = strtolower((string) $category);
 
-        if ($knownCategory) {
-            $this->availableDepartments = $filtered->values()->all();
+        // Category → department category name mapping
+        $categoryNameMap = [
+            'production' => 'Production',
+            'sales'      => 'Sales',
+            'inventory'  => 'Support',
+            'accounting' => 'Support',
+        ];
+
+        if (isset($categoryNameMap[$category])) {
+            $categoryName = $categoryNameMap[$category];
+            $this->availableDepartments = Department::whereHas('category', fn ($q) => $q->where('name', $categoryName))
+                ->where(function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+                })
+                ->where('is_active', true)
+                ->with('category')
+                ->orderBy('name')
+                ->get()
+                ->values()
+                ->all();
         } else {
-            $this->availableDepartments = $filtered->isNotEmpty()
-                ? $filtered->values()->all()
-                : $departments->values()->all();
+            $departments = SidebarVisibilityService::getAccessibleDepartments($user);
+            $this->availableDepartments = $departments->values()->all();
         }
 
         $selected = $this->departmentId
@@ -82,7 +99,7 @@ class Generate extends Component
             return;
         }
 
-        $this->departmentId = $this->availableDepartments[0]->id ?? null;
+        $this->departmentId = collect($this->availableDepartments)->first()?->id ?? null;
     }
 
     private function loadReports(): void
