@@ -143,6 +143,54 @@
                 </button>
             </div>
         @endif
+
+        <!-- Pending Dispatch -->
+        @if(!empty($pendingProductionRecords))
+            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow border border-amber-200 dark:border-amber-700 p-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <h3 class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Pending Dispatch — Today's Batches</h3>
+                    <span class="ml-auto text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-semibold px-2 py-0.5 rounded-full">
+                        {{ count($pendingProductionRecords) }} batch{{ count($pendingProductionRecords) > 1 ? 'es' : '' }}
+                    </span>
+                </div>
+                <div class="space-y-2">
+                    @foreach($pendingProductionRecords as $pending)
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800">
+                            <div class="flex-1 min-w-0">
+                                <p class="font-medium text-zinc-800 dark:text-zinc-100 truncate">{{ $pending['recipe_name'] }}</p>
+                                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                    {{ $pending['batch_number'] }} &bull; Produced at {{ $pending['produced_at'] }}
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-3 ml-3 shrink-0">
+                                <div class="text-right">
+                                    <p class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                                        {{ number_format($pending['quantity_remaining'], 2) }}
+                                        @if($pending['dispatch_status'] === 'partial')
+                                            / {{ number_format($pending['quantity_approved'], 2) }}
+                                        @endif
+                                        units
+                                    </p>
+                                    <span class="text-xs px-1.5 py-0.5 rounded font-medium
+                                        {{ $pending['dispatch_status'] === 'partial'
+                                            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                                            : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' }}">
+                                        {{ $pending['dispatch_status'] === 'partial' ? 'Partially Dispatched' : 'Not Dispatched' }}
+                                    </span>
+                                </div>
+                                <button wire:click="redispatch({{ $pending['id'] }})"
+                                        class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
+                                    Dispatch
+                                </button>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     @endif
 
     <!-- Dispatch Modal -->
@@ -150,9 +198,11 @@
         <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-xl w-full max-w-md">
                 <div class="p-6">
-                    <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100 mb-4">Production Complete!</h3>
+                    <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100 mb-4">
+                        {{ $isRedispatch ? 'Dispatch Pending Batch' : 'Production Complete!' }}
+                    </h3>
                     <p class="text-zinc-600 dark:text-zinc-300 mb-4">
-                        Produced {{ number_format($yieldOutput, 2) }} units of {{ $selectedRecipe?->product_name }}
+                        {{ $isRedispatch ? 'Dispatching' : 'Produced' }} {{ number_format($yieldOutput, 2) }} units of {{ $selectedRecipe?->product_name }}
                     </p>
 
                     @if(!$selectedRecipe?->product_id)

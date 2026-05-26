@@ -64,6 +64,10 @@ trait QuickProduceTrait
 
     public ?int $lastProductionRecordId = null;
 
+    public array $pendingProductionRecords = [];
+
+    public bool $isRedispatch = false;
+
     abstract public function getBranchId(): ?string;
 
     abstract public function getRecipes();
@@ -85,6 +89,7 @@ trait QuickProduceTrait
             ->first();
 
         $this->loadPendingOrders();
+        $this->loadPendingProductionRecords();
     }
 
     protected function getCurrentShift(): ?Shift
@@ -419,6 +424,7 @@ trait QuickProduceTrait
                 $this->toast()->success("Produced {$this->approvedQuantity} units of {$this->selectedRecipe->product_name}")->send();
                 // Set quantity for dispatch to only the APPROVED amount
                 $this->yieldOutput = $this->approvedQuantity;
+                $this->isRedispatch = false;
                 $this->showDispatchModal = true;
             }
         } catch (\Exception $e) {
@@ -584,11 +590,17 @@ trait QuickProduceTrait
         $this->selectedOrderId = null;
         $this->lastProductionRecordId = null;
         $this->quantity = 1;
+        $this->yieldOutput = 0;
+        $this->approvedQuantity = 0;
+        $this->rejectedQuantity = 0;
+        $this->rejectionReason = null;
         $this->ingredients = [];
         $this->ingredientStock = [];
         $this->hasInsufficientStock = false;
         $this->insufficientItems = [];
         $this->pendingOrders = [];
+        $this->isRedispatch = false;
+        $this->loadPendingProductionRecords();
     }
 
     protected function loadPendingOrders()
@@ -631,6 +643,66 @@ trait QuickProduceTrait
                 ]);
             }
         }
+    }
+
+    public function loadPendingProductionRecords(): void
+    {
+        if (!$this->department) {
+            $this->pendingProductionRecords = [];
+            return;
+        }
+
+        $this->pendingProductionRecords = \App\Models\ProductionRecord::with('recipe')
+            ->whereHas('dailyProduce', function ($q) {
+                $q->whereHas('shift', function ($sq) {
+                    $sq->where('department_id', $this->department->id)
+                       ->whereDate('shift_date', today());
+                });
+            })
+            ->whereIn('dispatch_status', ['available', 'partial'])
+            ->where('quantity_remaining', '>', 0)
+            ->orderBy('production_time', 'desc')
+            ->get()
+            ->map(fn ($r) => [
+                'id'                 => $r->id,
+                'recipe_name'        => $r->recipe?->product_name ?? 'Unknown',
+                'recipe_id'          => $r->recipe_id,
+                'batch_number'       => $r->batch_number,
+                'quantity_remaining' => (float) $r->quantity_remaining,
+                'quantity_approved'  => (float) $r->quantity_approved,
+                'dispatch_status'    => $r->dispatch_status,
+                'produced_at'        => $r->production_time?->format('H:i'),
+            ])
+            ->toArray();
+    }
+
+    public function redispatch(int $recordId): void
+    {
+        $record = \App\Models\ProductionRecord::with('recipe')->find($recordId);
+
+        if (!$record || $record->quantity_remaining <= 0) {
+            $this->toast()->error('Record not found or already fully dispatched.')->send();
+            return;
+        }
+
+        $belongsToDept = \App\Models\DailyProduce::where('id', $record->daily_produce_id)
+            ->whereHas('shift', fn ($q) => $q->where('department_id', $this->department->id))
+            ->exists();
+
+        if (!$belongsToDept) {
+            $this->toast()->error('Unauthorized.')->send();
+            return;
+        }
+
+        $this->selectedRecipe        = $record->recipe;
+        $this->lastProductionRecordId = $record->id;
+        $this->yieldOutput           = (float) $record->quantity_remaining;
+        $this->dispatchType          = '';
+        $this->selectedSalesDepartmentId = null;
+        $this->selectedOrderId       = null;
+        $this->isRedispatch          = true;
+        $this->loadPendingOrders();
+        $this->showDispatchModal     = true;
     }
 
     public function getSalesDepartments()
