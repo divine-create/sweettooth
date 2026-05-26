@@ -53,13 +53,13 @@
                 <p class="mt-2 text-xs text-blue-600 dark:text-blue-500">* Col 5 is used only if no category columns are present. The column header row must be included (check the box below).</p>
             </div>
             <div class="flex-shrink-0">
-                <button wire:click="downloadSample"
+                <a href="/samples/expense_import_sample.csv" download
                     class="inline-flex items-center gap-2 rounded-full bg-blue-700 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>
                     Download Sample CSV
-                </button>
+                </a>
                 <p class="mt-2 text-xs text-blue-600 dark:text-blue-500 text-center">Opens in Excel / Google Sheets</p>
             </div>
         </div>
