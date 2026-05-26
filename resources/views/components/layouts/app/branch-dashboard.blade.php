@@ -372,8 +372,81 @@
                     :current="request()->routeIs('branch-dashboard.accounting.bank-reconciliation')" wire:navigate>
                     {{ __('Bank Reconciliation') }}
                 </flux:navlist.item>
+
+                <flux:navlist.item icon="scale" :href="branch_route('branch-dashboard.accounting.inventory-valuation')"
+                    :current="request()->routeIs('branch-dashboard.accounting.inventory-valuation')" wire:navigate>
+                    {{ __('Inventory Valuation') }}
+                </flux:navlist.item>
+
+                <flux:navlist.item icon="home-modern" :href="branch_route('branch-dashboard.accounting.fixed-assets')"
+                    :current="request()->routeIs('branch-dashboard.accounting.fixed-assets')" wire:navigate>
+                    {{ __('Fixed Assets') }}
+                </flux:navlist.item>
+
+                <flux:navlist.item icon="chart-bar" :href="branch_route('branch-dashboard.accounting.budgets')"
+                    :current="request()->routeIs('branch-dashboard.accounting.budgets')" wire:navigate>
+                    {{ __('Budgets') }}
+                </flux:navlist.item>
                 @endif
-                
+
+                @php
+                    $canSeePurchasePayments = $currentUser->can('view-purchase-payments');
+                    $canSeeTaxPayments      = $currentUser->can('view-tax-payments');
+                    $canSeeExpenseEntries   = $currentUser->can('view-expense-entries');
+                    $canSeeExpenseImports   = $currentUser->can('view-expense-imports');
+                    $canSeePosRemittances   = $currentUser->can('view-pos-remittances');
+                    $canSeeAnyTransaction   = $canSeePurchasePayments || $canSeeTaxPayments || $canSeeExpenseEntries || $canSeeExpenseImports || $canSeePosRemittances;
+                @endphp
+                @if ($isSuperAdmin || $currentUser->hasRole('Accounting Manager') || $currentUser->hasRole('Accountant'))
+                <flux:navlist.group :heading="__('Notes')" expandable
+                    :expanded="request()->routeIs('branch-dashboard.accounting.credit-notes', 'branch-dashboard.accounting.debit-notes')" class="grid">
+                    <flux:navlist.item icon="document-minus" :href="branch_route('branch-dashboard.accounting.credit-notes')"
+                        :current="request()->routeIs('branch-dashboard.accounting.credit-notes')" wire:navigate>
+                        {{ __('Credit Notes') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="document-plus" :href="branch_route('branch-dashboard.accounting.debit-notes')"
+                        :current="request()->routeIs('branch-dashboard.accounting.debit-notes')" wire:navigate>
+                        {{ __('Debit Notes') }}
+                    </flux:navlist.item>
+                </flux:navlist.group>
+                @endif
+
+                @if ($canSeeAnyTransaction || $isSuperAdmin)
+                <flux:navlist.group :heading="__('Transactions')" expandable
+                    :expanded="request()->routeIs('branch-dashboard.accounting.purchase-payments', 'branch-dashboard.accounting.tax-payments', 'branch-dashboard.accounting.accounting-entries', 'branch-dashboard.accounting.expense-imports', 'branch-dashboard.accounting.pos-remittances')" class="grid">
+                    @if ($canSeePurchasePayments || $isSuperAdmin)
+                    <flux:navlist.item icon="credit-card" :href="branch_route('branch-dashboard.accounting.purchase-payments')"
+                        :current="request()->routeIs('branch-dashboard.accounting.purchase-payments')" wire:navigate>
+                        {{ __('Purchase Payments') }}
+                    </flux:navlist.item>
+                    @endif
+                    @if ($canSeeTaxPayments || $isSuperAdmin)
+                    <flux:navlist.item icon="receipt-percent" :href="branch_route('branch-dashboard.accounting.tax-payments')"
+                        :current="request()->routeIs('branch-dashboard.accounting.tax-payments')" wire:navigate>
+                        {{ __('Tax Payments') }}
+                    </flux:navlist.item>
+                    @endif
+                    @if ($canSeeExpenseEntries || $isSuperAdmin)
+                    <flux:navlist.item icon="document-text" :href="branch_route('branch-dashboard.accounting.accounting-entries')"
+                        :current="request()->routeIs('branch-dashboard.accounting.accounting-entries')" wire:navigate>
+                        {{ __('Expense Entries') }}
+                    </flux:navlist.item>
+                    @endif
+                    @if ($canSeeExpenseImports || $isSuperAdmin)
+                    <flux:navlist.item icon="arrow-up-tray" :href="branch_route('branch-dashboard.accounting.expense-imports')"
+                        :current="request()->routeIs('branch-dashboard.accounting.expense-imports')" wire:navigate>
+                        {{ __('Expense Imports') }}
+                    </flux:navlist.item>
+                    @endif
+                    @if ($canSeePosRemittances || $isSuperAdmin)
+                    <flux:navlist.item icon="banknotes" :href="branch_route('branch-dashboard.accounting.pos-remittances')"
+                        :current="request()->routeIs('branch-dashboard.accounting.pos-remittances')" wire:navigate>
+                        {{ __('POS Remittances') }}
+                    </flux:navlist.item>
+                    @endif
+                </flux:navlist.group>
+                @endif
+
                 <flux:navlist.group :heading="__('Reports')" expandable
                     :expanded="request()->routeIs('branch-dashboard.accounting.reports.*')" class="grid">
                     <flux:navlist.item icon="list-bullet" :href="branch_route('branch-dashboard.accounting.reports.general-ledger')"
@@ -396,9 +469,22 @@
                         :current="request()->routeIs('branch-dashboard.accounting.reports.cash-flow-statement')" wire:navigate>
                         {{ __('Cash Flow') }}
                     </flux:navlist.item>
+                    <flux:navlist.item icon="presentation-chart-bar" :href="branch_route('branch-dashboard.accounting.reports.budget-vs-actual')"
+                        :current="request()->routeIs('branch-dashboard.accounting.reports.budget-vs-actual')" wire:navigate>
+                        {{ __('Budget vs Actual') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="clock" :href="branch_route('branch-dashboard.accounting.reports.ap-aging')"
+                        :current="request()->routeIs('branch-dashboard.accounting.reports.ap-aging')" wire:navigate>
+                        {{ __('AP Aging') }}
+                    </flux:navlist.item>
+                    @if ($isSuperAdmin || $isAdmin)
+                    <flux:navlist.item icon="building-office-2" :href="branch_route('branch-dashboard.accounting.reports.branch-comparison')"
+                        :current="request()->routeIs('branch-dashboard.accounting.reports.branch-comparison')" wire:navigate>
+                        {{ __('Branch Comparison') }}
+                    </flux:navlist.item>
+                    @endif
                 </flux:navlist.group>
 
-              
             </flux:navlist.group>
             @endif
             {{-- ==================== END ACCOUNTING DASHBOARD ==================== --}}

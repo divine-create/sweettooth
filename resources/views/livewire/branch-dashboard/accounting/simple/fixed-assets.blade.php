@@ -72,27 +72,57 @@
     </form>
 
     <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <x-table
-            :headers="[
-                ['index' => 'asset', 'label' => 'Asset'],
-                ['index' => 'tag', 'label' => 'Tag'],
-                ['index' => 'cost', 'label' => 'Cost'],
-                ['index' => 'life', 'label' => 'Life'],
-                ['index' => 'method', 'label' => 'Method'],
-                ['index' => 'status', 'label' => 'Status'],
-            ]"
-            :rows="$rows"
-            striped
-            paginate
-            persist
-            :quantity="[10, 25, 50]"
-        >
-            @interact('column_cost', $row)
-                <span class="font-semibold">{{ \App\Helpers\LocalizationHelper::formatCurrency((float) $row->asset_cost) }}</span>
-            @endinteract
-            @interact('column_method', $row)
-                <span class="text-xs text-zinc-600 dark:text-zinc-300">{{ str_replace('_', ' ', $row->depreciation_method) }}</span>
-            @endinteract
-        </x-table>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-zinc-100 dark:divide-zinc-800 text-sm">
+                <thead class="bg-zinc-50 dark:bg-zinc-800/50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Asset</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Tag</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Cost</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Acc. Depr.</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Book Value</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Method</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-zinc-500">Active</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-zinc-500">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-50 dark:divide-zinc-800">
+                    @forelse ($rows as $row)
+                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 {{ !$row->is_active ? 'opacity-50' : '' }}">
+                        <td class="px-4 py-3 font-medium text-zinc-900 dark:text-white">{{ $row->asset_name }}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-zinc-500">{{ $row->asset_tag ?? '—' }}</td>
+                        <td class="px-4 py-3 text-right">{{ \App\Helpers\LocalizationHelper::formatCurrency((float) $row->asset_cost) }}</td>
+                        <td class="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400">{{ \App\Helpers\LocalizationHelper::formatCurrency((float) $row->accumulated_depreciation) }}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-white">
+                            {{ \App\Helpers\LocalizationHelper::formatCurrency(max(0, (float)$row->asset_cost - (float)$row->accumulated_depreciation)) }}
+                        </td>
+                        <td class="px-4 py-3 text-xs text-zinc-600 dark:text-zinc-300">{{ str_replace('_', ' ', $row->depreciation_method) }}</td>
+                        <td class="px-4 py-3 text-center">
+                            @if ($row->is_active)
+                                <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Active</span>
+                            @else
+                                <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-zinc-100 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400">Disposed</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            @if ($row->is_active)
+                            <button wire:click="confirmDispose({{ $row->id }})"
+                                class="text-xs font-semibold text-rose-600 hover:text-rose-800 dark:text-rose-400">
+                                Dispose
+                            </button>
+                            @endif
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="8" class="px-4 py-10 text-center text-sm text-zinc-400">No assets recorded yet.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div class="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
+                {{ $rows->links() }}
+            </div>
+        </div>
     </div>
 </div>

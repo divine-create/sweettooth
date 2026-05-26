@@ -19,6 +19,9 @@ class ExpenseEntry extends Model
         'amount',
         'notes',
         'created_by_id',
+        'gl_posting_status',
+        'gl_posted_at',
+        'gl_posting_error',
     ];
 
     protected $casts = [

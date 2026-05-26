@@ -245,8 +245,8 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             // Accounting Overview (now home)
             Route::get('/overview', \App\Livewire\BranchDashboard\Accounting\Simple\Home::class)->name('overview');
 
-            // Chart of Accounts Management (Super Admin, Managing Director, Admin)
-            Route::middleware('role_or_permission:manage_accounts')->group(function () {
+            // Chart of Accounts Management (Super Admin, Managing Director, Admin, Accounting Manager)
+            Route::middleware('role_or_permission:manage-accounting,Accounting Manager')->group(function () {
                 Route::get('/accounts', \App\Livewire\BranchDashboard\Accounting\Simple\ChartOfAccounts::class)->name('accounts');
             });
 
@@ -278,38 +278,38 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
                 ->name('inventory-valuation-manage');
 
             // Bank Reconciliation
-            Route::middleware('role_or_permission:reconcile_bank_accounts')->group(function () {
+            Route::middleware('role_or_permission:reconcile-accounts,Accounting Manager')->group(function () {
                 Route::get('/bank-reconciliation', \App\Livewire\BranchDashboard\Accounting\Simple\CashBank::class)->name('bank-reconciliation');
                 Route::get('/bank-reconciliation/manage', \App\Livewire\BranchDashboard\Accounting\BankReconciliation::class)
                     ->name('bank-reconciliation-manage');
             });
 
             // POS Remittances
-            Route::middleware('role_or_permission:access_accounting,view_financial_reports')->group(function () {
+            Route::middleware('role_or_permission:view-pos-remittances')->group(function () {
                 Route::get('/pos-remittances', \App\Livewire\BranchDashboard\Accounting\Simple\PosRemittances::class)
                     ->name('pos-remittances');
             });
 
             // Expense Imports
-            Route::middleware('role_or_permission:access_accounting,view_financial_reports')->group(function () {
+            Route::middleware('role_or_permission:view-expense-imports')->group(function () {
                 Route::get('/expense-imports', \App\Livewire\BranchDashboard\Accounting\Simple\ExpenseImports::class)
                     ->name('expense-imports');
             });
 
             // Accounting Entries (General)
-            Route::middleware('role_or_permission:access_accounting,view_financial_reports')->group(function () {
+            Route::middleware('role_or_permission:view-expense-entries')->group(function () {
                 Route::get('/accounting-entries', \App\Livewire\BranchDashboard\Accounting\Simple\AccountingEntries::class)
                     ->name('accounting-entries');
             });
 
             // Tax Payments
-            Route::middleware('role_or_permission:access_accounting,view_financial_reports')->group(function () {
+            Route::middleware('role_or_permission:view-tax-payments')->group(function () {
                 Route::get('/tax-payments', \App\Livewire\BranchDashboard\Accounting\Simple\TaxPayments::class)
                     ->name('tax-payments');
             });
 
             // Fixed Assets
-            Route::middleware('role_or_permission:access_accounting,view_financial_reports')->group(function () {
+            Route::middleware('role_or_permission:manage-accounting,Accounting Manager')->group(function () {
                 Route::get('/fixed-assets', \App\Livewire\BranchDashboard\Accounting\Simple\FixedAssets::class)
                     ->name('fixed-assets');
             });
@@ -321,9 +321,17 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             });
 
             // Purchase Payments (AP settlement)
-            Route::middleware('role_or_permission:access_accounting,view_financial_reports')->group(function () {
+            Route::middleware('role_or_permission:view-purchase-payments')->group(function () {
                 Route::get('/purchase-payments', \App\Livewire\BranchDashboard\Accounting\Simple\PurchasePayments::class)
                     ->name('purchase-payments');
+            });
+
+            // Credit Notes
+            Route::middleware('role_or_permission:manage-accounting,Accounting Manager')->group(function () {
+                Route::get('/credit-notes', \App\Livewire\BranchDashboard\Accounting\Simple\CreditNotes::class)
+                    ->name('credit-notes');
+                Route::get('/debit-notes', \App\Livewire\BranchDashboard\Accounting\Simple\DebitNotes::class)
+                    ->name('debit-notes');
             });
 
             // Financial Reports
@@ -335,6 +343,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
                 Route::get('/balance-sheet', \App\Livewire\BranchDashboard\Accounting\Report\BalanceSheetReport::class)->name('balance-sheet');
                 Route::get('/cash-flow-statement', \App\Livewire\BranchDashboard\Accounting\Report\CashFlowStatementReport::class)->name('cash-flow-statement');
                 Route::get('/budget-vs-actual', \App\Livewire\BranchDashboard\Accounting\Report\BudgetVsActualReport::class)->name('budget-vs-actual');
+                Route::get('/ap-aging', \App\Livewire\BranchDashboard\Accounting\Report\ApAgingReport::class)->name('ap-aging');
                 Route::middleware('role.level:5')->get('/branch-comparison', \App\Livewire\BranchDashboard\Accounting\Report\BranchComparisonReport::class)->name('branch-comparison');
             });
         });

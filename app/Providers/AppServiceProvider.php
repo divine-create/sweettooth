@@ -21,6 +21,7 @@ use App\Models\PurchasePayment;
 use App\Models\TaxPayment;
 use App\Models\FixedAsset;
 use App\Models\AssetDepreciation;
+use App\Models\ExpenseEntry;
 use App\Models\GlEntry;
 use App\Observers\DepartmentObserver;
 use App\Observers\SalesPageObserver;
@@ -41,6 +42,7 @@ use App\Observers\PurchasePaymentObserver;
 use App\Observers\TaxPaymentObserver;
 use App\Observers\FixedAssetObserver;
 use App\Observers\AssetDepreciationObserver;
+use App\Observers\ExpenseEntryObserver;
 use App\Observers\GlEntryObserver;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
@@ -88,6 +90,7 @@ class AppServiceProvider extends ServiceProvider
         TaxPayment::observe(TaxPaymentObserver::class);
         FixedAsset::observe(FixedAssetObserver::class);
         AssetDepreciation::observe(AssetDepreciationObserver::class);
+        ExpenseEntry::observe(ExpenseEntryObserver::class);
         GlEntry::observe(GlEntryObserver::class);
 
         // Register morph aliases for polymorphic relationships

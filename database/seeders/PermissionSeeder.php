@@ -76,6 +76,11 @@ class PermissionSeeder extends Seeder
             ['name' => 'manage-bank-accounts', 'description' => 'Manage bank accounts', 'category' => 'accounting'],
             ['name' => 'manage-accounting-periods', 'description' => 'Manage accounting periods', 'category' => 'accounting'],
             ['name' => 'view-financial-reports', 'description' => 'View financial reports', 'category' => 'accounting'],
+            ['name' => 'view-purchase-payments', 'description' => 'View purchase payments', 'category' => 'accounting'],
+            ['name' => 'view-tax-payments', 'description' => 'View tax payments', 'category' => 'accounting'],
+            ['name' => 'view-expense-entries', 'description' => 'View expense entries', 'category' => 'accounting'],
+            ['name' => 'view-expense-imports', 'description' => 'View expense imports', 'category' => 'accounting'],
+            ['name' => 'view-pos-remittances', 'description' => 'View POS remittances', 'category' => 'accounting'],
 
             // ===== REPORTING/ANALYTICS PERMISSIONS =====
             ['name' => 'view-reports', 'description' => 'View reports', 'category' => 'reporting'],

@@ -1580,6 +1580,174 @@ class GlPostingService
     }
 
     /**
+     * Post asset disposal.
+     * Debit: Accumulated Depreciation (removes contra-asset)
+     * Debit: Loss on Disposal (remaining book value, if any)
+     * Credit: Fixed Asset account (removes asset at cost)
+     */
+    public function postAssetDisposal(FixedAsset $asset): bool
+    {
+        try {
+            DB::beginTransaction();
+            $this->branchId = $asset->branch_id;
+
+            if ($this->alreadyPosted(FixedAsset::class, (int) $asset->id, ['asset_disposal'])) {
+                DB::commit();
+                return true;
+            }
+
+            $period = $this->getCurrentPeriod();
+            if (! $period) {
+                throw new Exception('No open accounting period found');
+            }
+
+            $assetCost         = (float) $asset->asset_cost;
+            $accumulatedDepr   = (float) $asset->accumulated_depreciation;
+            $bookValue         = max(0, $assetCost - $accumulatedDepr);
+            $today             = now()->toDateString();
+            $ref               = $asset->asset_tag ?? "ASSET-{$asset->id}";
+
+            $assetAccount      = $this->getGlAccount('1500'); // Fixed Assets
+            $accumAccount      = $this->getGlAccount('1510'); // Accumulated Depreciation
+            $lossAccount       = $this->getGlAccount('7100'); // Loss on Disposal / Other Expenses
+
+            // Remove the accumulated depreciation (debit the contra-asset to zero it out)
+            if ($accumulatedDepr > 0) {
+                $this->createEntry([
+                    'gl_account_id'        => $accumAccount->id,
+                    'accounting_period_id' => $period->id,
+                    'entry_type'           => 'asset_disposal',
+                    'reference_type'       => FixedAsset::class,
+                    'reference_id'         => $asset->id,
+                    'reference_number'     => $ref,
+                    'description'          => "Disposal - Remove Accumulated Depreciation: {$asset->asset_name}",
+                    'debit'                => $accumulatedDepr,
+                    'credit'               => 0,
+                    'entry_date'           => $today,
+                    'status'               => 'draft',
+                    'entered_by_id'        => auth()->id(),
+                ])->post(auth()->id());
+            }
+
+            // Recognise loss on disposal (remaining book value)
+            if ($bookValue > 0) {
+                $this->createEntry([
+                    'gl_account_id'        => $lossAccount->id,
+                    'accounting_period_id' => $period->id,
+                    'entry_type'           => 'asset_disposal',
+                    'reference_type'       => FixedAsset::class,
+                    'reference_id'         => $asset->id,
+                    'reference_number'     => $ref,
+                    'description'          => "Disposal - Loss on Disposal: {$asset->asset_name}",
+                    'debit'                => $bookValue,
+                    'credit'               => 0,
+                    'entry_date'           => $today,
+                    'status'               => 'draft',
+                    'entered_by_id'        => auth()->id(),
+                ])->post(auth()->id());
+            }
+
+            // Remove the asset at full cost (credit)
+            $this->createEntry([
+                'gl_account_id'        => $assetAccount->id,
+                'accounting_period_id' => $period->id,
+                'entry_type'           => 'asset_disposal',
+                'reference_type'       => FixedAsset::class,
+                'reference_id'         => $asset->id,
+                'reference_number'     => $ref,
+                'description'          => "Disposal - Remove Asset at Cost: {$asset->asset_name}",
+                'debit'                => 0,
+                'credit'               => $assetCost,
+                'entry_date'           => $today,
+                'status'               => 'draft',
+                'entered_by_id'        => auth()->id(),
+            ])->post(auth()->id());
+
+            DB::commit();
+            return true;
+        } catch (Exception $e) {
+            DB::rollBack();
+            \Log::error('GL Posting Error - Asset Disposal', [
+                'asset_id' => $asset->id,
+                'error'    => $e->getMessage(),
+            ]);
+            $this->dispatchGlFailureNotification('fixed_asset', (string) $asset->id, $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Post a direct expense entry.
+     * Debit: specified GL expense account, Credit: Cash/Bank
+     */
+    public function postExpenseEntry(\App\Models\ExpenseEntry $entry): bool
+    {
+        try {
+            DB::beginTransaction();
+            $this->branchId = $entry->branch_id;
+
+            if ($this->alreadyPosted(\App\Models\ExpenseEntry::class, (int) $entry->id, ['expense_entry'])) {
+                DB::commit();
+                return true;
+            }
+
+            $period = $this->getCurrentPeriod();
+            if (! $period) {
+                throw new Exception('No open accounting period found');
+            }
+
+            $expenseAccount = $entry->gl_account_id
+                ? $this->getGlAccount($entry->glAccount->account_number)
+                : $this->getGlAccount('6000');
+
+            $cashAccount = $entry->bankAccount?->glAccount ?? $this->getGlAccount('1050');
+
+            $ref = $entry->reference ?? "EXP-{$entry->id}";
+
+            $this->createEntry([
+                'gl_account_id' => $expenseAccount->id,
+                'accounting_period_id' => $period->id,
+                'entry_type' => 'expense_entry',
+                'reference_type' => \App\Models\ExpenseEntry::class,
+                'reference_id' => $entry->id,
+                'reference_number' => $ref,
+                'description' => $entry->description ?? "Expense Entry {$ref}",
+                'debit' => $entry->amount,
+                'credit' => 0,
+                'entry_date' => $entry->entry_date,
+                'status' => 'draft',
+                'entered_by_id' => auth()->id(),
+            ])->post(auth()->id());
+
+            $this->createEntry([
+                'gl_account_id' => $cashAccount->id,
+                'accounting_period_id' => $period->id,
+                'entry_type' => 'expense_entry',
+                'reference_type' => \App\Models\ExpenseEntry::class,
+                'reference_id' => $entry->id,
+                'reference_number' => $ref,
+                'description' => "Cash/Bank - {$entry->description}",
+                'debit' => 0,
+                'credit' => $entry->amount,
+                'entry_date' => $entry->entry_date,
+                'status' => 'draft',
+                'entered_by_id' => auth()->id(),
+            ])->post(auth()->id());
+
+            DB::commit();
+            return true;
+        } catch (Exception $e) {
+            DB::rollBack();
+            \Log::error('GL Posting Error - Expense Entry', [
+                'entry_id' => $entry->id,
+                'error' => $e->getMessage(),
+            ]);
+            $this->dispatchGlFailureNotification('expense_entry', (string) $entry->id, $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
      * Select a department for a sale, falling back to the branch default.
      */
     protected function getDepartmentForSale(Sale $sale)
