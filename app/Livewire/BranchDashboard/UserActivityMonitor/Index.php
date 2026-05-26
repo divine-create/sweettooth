@@ -73,12 +73,12 @@ class Index extends Component
         abort_unless(is_super_admin(), 403);
 
         // KPIs — always computed (fast indexed counts)
-        $todayLogins       = UserActivityLog::today()->where('event_type', 'login')->count();
+        $todayLogins       = UserActivityLog::nonDeveloper()->today()->where('event_type', 'login')->count();
         $onlineCount       = $this->onlineUsersQuery()->distinct('user_id')->count('user_id');
-        $failedToday       = UserActivityLog::today()->where('event_type', 'failed_login')->count();
-        $totalActionsToday = UserActivityLog::today()->where('event_type', 'component_action')->count();
+        $failedToday       = UserActivityLog::nonDeveloper()->today()->where('event_type', 'failed_login')->count();
+        $totalActionsToday = UserActivityLog::nonDeveloper()->today()->where('event_type', 'component_action')->count();
 
-        $topModuleRaw = UserActivityLog::today()
+        $topModuleRaw = UserActivityLog::nonDeveloper()->today()
             ->whereNotNull('module')
             ->selectRaw('module, COUNT(*) as cnt')
             ->groupBy('module')
@@ -87,19 +87,19 @@ class Index extends Component
         $topModule = ActivityDescriptionService::moduleLabel($topModuleRaw);
 
         // Alert badge — cheap query, runs every render
-        $alertBadgeCount = UserActivityLog::today()
+        $alertBadgeCount = UserActivityLog::nonDeveloper()->today()
             ->where('event_type', 'failed_login')
             ->selectRaw('ip_address, COUNT(*) as c')
             ->groupBy('ip_address')
             ->having('c', '>=', 3)
             ->count()
-            + UserActivityLog::today()
+            + UserActivityLog::nonDeveloper()->today()
                 ->where('event_type', 'login')
                 ->whereRaw('HOUR(created_at) < 5')
                 ->count();
 
-        $allUsers   = User::orderBy('name')->get(['id', 'name', 'email']);
-        $modules    = UserActivityLog::distinct('module')->whereNotNull('module')->pluck('module')->sort()->values();
+        $allUsers   = User::visible()->orderBy('name')->get(['id', 'name', 'email']);
+        $modules    = UserActivityLog::nonDeveloper()->distinct('module')->whereNotNull('module')->pluck('module')->sort()->values();
         $eventTypes = ['login', 'logout', 'failed_login', 'page_view', 'component_action'];
 
         return view('livewire.branch-dashboard.user-activity-monitor.index', [
@@ -130,7 +130,7 @@ class Index extends Component
 
     protected function getChartData(): array
     {
-        $rows = UserActivityLog::today()
+        $rows = UserActivityLog::nonDeveloper()->today()
             ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
             ->groupBy('hour')
             ->pluck('count', 'hour')
@@ -148,7 +148,7 @@ class Index extends Component
 
     protected function getModuleBreakdown(): array
     {
-        return UserActivityLog::today()
+        return UserActivityLog::nonDeveloper()->today()
             ->whereNotNull('module')
             ->selectRaw('module, COUNT(*) as count')
             ->groupBy('module')
@@ -162,7 +162,7 @@ class Index extends Component
 
     protected function getRecentActivity(): Collection
     {
-        return UserActivityLog::with('user')
+        return UserActivityLog::nonDeveloper()->with('user')
             ->orderBy('created_at', 'desc')
             ->limit(20)
             ->get()
@@ -177,7 +177,7 @@ class Index extends Component
 
     protected function feedQuery(): \Illuminate\Database\Eloquent\Builder
     {
-        $q = UserActivityLog::with('user')->orderBy('created_at', 'desc');
+        $q = UserActivityLog::nonDeveloper()->with('user')->orderBy('created_at', 'desc');
 
         if ($this->feedSearch) {
             $q->where(function ($sub) {
@@ -247,7 +247,7 @@ class Index extends Component
 
     protected function timelineQuery(): \Illuminate\Database\Eloquent\Builder
     {
-        $q = UserActivityLog::with('user')
+        $q = UserActivityLog::nonDeveloper()->with('user')
             ->orderBy('created_at', 'desc')
             ->limit(500);
 
@@ -262,12 +262,12 @@ class Index extends Component
 
     protected function onlineUsersQuery(): \Illuminate\Database\Eloquent\Builder
     {
-        return UserActivityLog::online($this->onlineMinutes);
+        return UserActivityLog::nonDeveloper()->online($this->onlineMinutes);
     }
 
     protected function onlineUsersData(): Collection
     {
-        $rows = UserActivityLog::online($this->onlineMinutes)
+        $rows = UserActivityLog::nonDeveloper()->online($this->onlineMinutes)
             ->whereNotNull('user_id')
             ->orderBy('created_at', 'desc')
             ->get(['user_id', 'module', 'event_type', 'action_name', 'route_name', 'url', 'ip_address', 'created_at']);
@@ -299,7 +299,7 @@ class Index extends Component
         $now    = Carbon::now();
 
         // 1. Multiple failed logins from same IP (3+ in last hour)
-        $failedRows = UserActivityLog::where('event_type', 'failed_login')
+        $failedRows = UserActivityLog::nonDeveloper()->where('event_type', 'failed_login')
             ->where('created_at', '>=', $now->copy()->subHour())
             ->whereNotNull('ip_address')
             ->selectRaw('ip_address, COUNT(*) as c, MAX(created_at) as last_at')
@@ -318,7 +318,7 @@ class Index extends Component
         }
 
         // 2. After-hours logins (before 5am today)
-        $earlyLogins = UserActivityLog::today()
+        $earlyLogins = UserActivityLog::nonDeveloper()->today()
             ->where('event_type', 'login')
             ->whereRaw('HOUR(created_at) < 5')
             ->get(['user_id', 'created_at']);
@@ -338,7 +338,7 @@ class Index extends Component
         }
 
         // 3. High deletion activity (5+ deletes by same user in 30 min)
-        $deletionRows = UserActivityLog::where('event_type', 'component_action')
+        $deletionRows = UserActivityLog::nonDeveloper()->where('event_type', 'component_action')
             ->where('created_at', '>=', $now->copy()->subMinutes(30))
             ->where(function ($q) {
                 $q->where('action_name', 'like', 'delete%')
@@ -366,14 +366,14 @@ class Index extends Component
         }
 
         // 4. Unusual accounting access — accessed today but no history in past 30 days
-        $todayAccountingUsers = UserActivityLog::today()
+        $todayAccountingUsers = UserActivityLog::nonDeveloper()->today()
             ->where('module', 'accounting')
             ->whereNotNull('user_id')
             ->distinct()
             ->pluck('user_id');
 
         if ($todayAccountingUsers->isNotEmpty()) {
-            $recentUsers = UserActivityLog::where('module', 'accounting')
+            $recentUsers = UserActivityLog::nonDeveloper()->where('module', 'accounting')
                 ->where('created_at', '>=', $now->copy()->subDays(30))
                 ->where('created_at', '<', Carbon::today())
                 ->whereIn('user_id', $todayAccountingUsers)

@@ -218,7 +218,7 @@ class DeleteBranch extends BaseComponent
     public function render()
     {
         $rows = $this->getFilteredQuery()->orderBy('created_at', 'DESC')->paginate((int) ($this->quantity ?? 10));
-        $users = User::all();
+        $users = User::visible()->get();
 
         return view('livewire.branch-dashboard.branches.delete-branch', [
             'headers' => [

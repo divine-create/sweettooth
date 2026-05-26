@@ -303,7 +303,7 @@ class Index extends BaseComponent
     public function render()
     {
         $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
-        $users = User::all();
+        $users = User::visible()->get();
 
         return view('livewire.super-admin.branch-module.index', [
             'headers' => [

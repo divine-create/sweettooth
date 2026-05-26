@@ -53,6 +53,7 @@ class User extends Authenticatable
         'last_performance_review_date',
         'performance_rating',
         'bank_name',
+        'is_developer',
     ];
 
     /**
@@ -77,6 +78,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'branch_id' => 'string',
             'is_active' => 'boolean',
+            'is_developer' => 'boolean',
             'hire_date' => 'datetime',
             'last_performance_review_date' => 'datetime',
         ];
@@ -112,6 +114,11 @@ class User extends Authenticatable
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeVisible(Builder $query): Builder
+    {
+        return $query->where('is_developer', false);
     }
 
     public function scopeByRole(Builder $query, string $role): Builder

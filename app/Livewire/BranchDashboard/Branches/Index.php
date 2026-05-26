@@ -314,7 +314,7 @@ class Index extends BaseComponent
         $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
 
         // Only load users when modal is open to avoid loading on every render
-        $users = $this->showBranchModal ? User::select('id', 'name')->get() : collect();
+        $users = $this->showBranchModal ? User::visible()->select('id', 'name')->get() : collect();
 
         return view('livewire.branch-dashboard.branches.index', [
             'headers' => [

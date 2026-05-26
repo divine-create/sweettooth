@@ -74,6 +74,16 @@ class UserActivityLog extends Model
         return $query->whereDate('created_at', today());
     }
 
+    public function scopeNonDeveloper(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereNull('user_id')
+              ->orWhereNotIn('user_id', function ($sub) {
+                  $sub->select('id')->from('users')->where('is_developer', true);
+              });
+        });
+    }
+
     // ── Accessors ────────────────────────────────────────────────────────────
 
     public function getReadableComponentAttribute(): string
