@@ -237,6 +237,11 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             Route::get('inventory-approvals', \App\Livewire\BranchDashboard\AuditManagement\InventoryApprovals::class)->name('inventory-approvals');
         });
 
+        // User Activity Monitor (super admin only)
+        Route::middleware('role.level:5')
+            ->get('audit/user-activity', \App\Livewire\BranchDashboard\UserActivityMonitor\Index::class)
+            ->name('audit.user-activity');
+
         // Accounting Routes - Role Based Access
         Route::prefix('accounting')->name('accounting.')->middleware('role_or_permission:view-accounting|view-financial-reports|manage-accounting|Accounting Manager|Accounting Staff|MD')->group(function () {
             // Accounting Home

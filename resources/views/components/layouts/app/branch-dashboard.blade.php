@@ -124,7 +124,13 @@
                 :current="request()->routeIs('branch-dashboard.audit.index')" wire:navigate>
                 {{ __('Audit Management') }}
                 </flux:navlist.item>
-<!--                  branch-dashboard.audit.index  -->
+
+                @if ($isSuperAdmin)
+                <flux:navlist.item icon="eye" :href="branch_route('branch-dashboard.audit.user-activity')"
+                    :current="request()->routeIs('branch-dashboard.audit.user-activity')" wire:navigate>
+                    {{ __('User Activity Monitor') }}
+                </flux:navlist.item>
+                @endif
             </flux:navlist.group>
             @endif
             @if ($isHrOnly)

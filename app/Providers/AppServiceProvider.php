@@ -44,11 +44,20 @@ use App\Observers\FixedAssetObserver;
 use App\Observers\AssetDepreciationObserver;
 use App\Observers\ExpenseEntryObserver;
 use App\Observers\GlEntryObserver;
+use App\Listeners\LogSuccessfulLogin;
+use App\Listeners\LogFailedLogin;
+use App\Listeners\LogLogout;
+use App\Livewire\Hooks\ActivityTrackingHook;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Logout;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -92,6 +101,14 @@ class AppServiceProvider extends ServiceProvider
         AssetDepreciation::observe(AssetDepreciationObserver::class);
         ExpenseEntry::observe(ExpenseEntryObserver::class);
         GlEntry::observe(GlEntryObserver::class);
+
+        // Register auth event listeners for user activity monitoring
+        Event::listen(Login::class, LogSuccessfulLogin::class);
+        Event::listen(Failed::class, LogFailedLogin::class);
+        Event::listen(Logout::class, LogLogout::class);
+
+        // Register Livewire component hook for action tracking
+        Livewire::componentHook(ActivityTrackingHook::class);
 
         // Register morph aliases for polymorphic relationships
         Relation::morphMap([

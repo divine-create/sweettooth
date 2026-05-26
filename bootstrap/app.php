@@ -18,6 +18,7 @@ use App\Http\Middleware\RecoverAuthUser;
 use App\Http\Middleware\RequireActiveShift;
 use App\Http\Middleware\DepartmentScopeMiddleware;
 use App\Http\Middleware\RoleLevelMiddleware;
+use App\Http\Middleware\TrackPageActivity;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -41,12 +42,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'recover-auth' => RecoverAuthUser::class,
             'require_active_shift' => RequireActiveShift::class,
             'department.scope' => DepartmentScopeMiddleware::class,
-            'role.level' => RoleLevelMiddleware::class,
+            'role.level'          => RoleLevelMiddleware::class,
+            'track-page-activity' => TrackPageActivity::class,
         ]);
 
-        // Apply SetBranchContext to web middleware group
+        // Apply SetBranchContext and page activity tracking to web middleware group
         $middleware->web(append: [
             SetBranchContext::class,
+            TrackPageActivity::class,
         ]);
     })
     ->withSchedule(function (Schedule $schedule) {
@@ -87,6 +90,14 @@ return Application::configure(basePath: dirname(__DIR__))
             ->runInBackground();
 
         // === END SHIFT SYSTEM AUTOMATION ===
+
+        // === ACTIVITY LOG RETENTION ===
+        $schedule->command('activity:prune --days=90')
+            ->weekly()
+            ->sundays()
+            ->at('03:00')
+            ->runInBackground();
+        // === END ACTIVITY LOG RETENTION ===
 
         // === GL POSTING AUTOMATION ===
         $schedule->job(new \App\Jobs\RetryFailedGlPostingsJob)
