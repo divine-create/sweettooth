@@ -237,8 +237,8 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             Route::get('inventory-approvals', \App\Livewire\BranchDashboard\AuditManagement\InventoryApprovals::class)->name('inventory-approvals');
         });
 
-        // Accounting Routes - Role Based Access (Super Admin, Managing Director, Accountant)
-        Route::prefix('accounting')->name('accounting.')->middleware('role_or_permission:access_accounting|view_financial_reports|Accounting Manager|Accountant|Cost Accountant|Managing Director')->group(function () {
+        // Accounting Routes - Role Based Access
+        Route::prefix('accounting')->name('accounting.')->middleware('role_or_permission:view-accounting|view-financial-reports|manage-accounting|Accounting Manager|Accounting Staff|MD')->group(function () {
             // Accounting Home
             Route::get('/dashboard', \App\Livewire\BranchDashboard\Accounting\Simple\Home::class)->name('dashboard');
 
@@ -251,7 +251,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             });
 
             // Bank Accounts Management
-            Route::middleware('role_or_permission:Super Admin,Managing Director,Admin,Accountant,Accounting Manager,view_bank_accounts,create_bank_accounts,edit_bank_accounts')->group(function () {
+            Route::middleware('role_or_permission:manage-bank-accounts,Accounting Manager,MD')->group(function () {
                 Route::get('/bank-accounts', \App\Livewire\BranchDashboard\Accounting\Simple\CashBank::class)->name('bank-accounts');
             });
 
@@ -260,8 +260,8 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
                 Route::get('/periods', \App\Livewire\BranchDashboard\Accounting\Simple\PeriodControl::class)->name('periods');
             });
 
-            // Manual Journal Entry (Super Admin, Managing Director, Accountant, Admin)
-            Route::middleware('role_or_permission:create_journal_entries|Accounting Manager|Accountant|Cost Accountant|Managing Director|Admin|Super Admin')->group(function () {
+            // Manual Journal Entry
+            Route::middleware('role_or_permission:manage-accounting,Accounting Manager,MD')->group(function () {
                 Route::get('/journal-entry', \App\Livewire\BranchDashboard\Accounting\Simple\Journals::class)->name('journal-entry');
             });
 
@@ -349,7 +349,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
         });
 
         // Payroll — accessible to HR and Accounting (outside accounting group so HR isn't blocked)
-        Route::middleware('role_or_permission:manage-payroll,access_accounting,manage-organization,view_financial_reports')
+        Route::middleware('role_or_permission:manage-payroll,manage-organization,view-financial-reports,MD')
             ->prefix('accounting/payroll')
             ->name('accounting.payroll.')
             ->group(function () {
