@@ -453,6 +453,32 @@ class ExpenseImports extends Component
         return $fallback;
     }
 
+    public function downloadSample(): mixed
+    {
+        $rows = [
+            ['Date', 'Particulars', 'Source', 'Bank', 'Fuel & Diesel', 'Staff Welfare', 'Utilities', 'Repairs & Maintenance', 'Cleaning Supplies', 'Office Expenses'],
+            ['2026-05-01', 'Diesel for generator', 'Cash', 'GTBank', '45000', '', '', '', '', ''],
+            ['2026-05-02', 'Staff lunch allowance', 'Cash', 'GTBank', '', '12000', '', '', '', ''],
+            ['2026-05-03', 'Electricity bill - AEDC', 'Transfer', 'First Bank', '', '', '38500', '', '', ''],
+            ['2026-05-05', 'AC servicing - TechFix Ltd', 'Cheque', 'GTBank', '', '', '', '25000', '', ''],
+            ['2026-05-06', 'Fuel for delivery van', 'Cash', 'GTBank', '18000', '', '', '', '', ''],
+            ['2026-05-07', 'Cleaning materials', 'Cash', 'First Bank', '', '', '', '', '8500', ''],
+            ['2026-05-08', 'Printer paper & toner', 'Transfer', 'GTBank', '', '', '', '', '', '6200'],
+            ['2026-05-10', 'Generator diesel top-up', 'Cash', 'GTBank', '32000', '', '', '', '', ''],
+            ['2026-05-12', 'Staff birthday welfare', 'Cash', 'GTBank', '', '5000', '', '', '', ''],
+            ['2026-05-14', 'Water bill', 'Transfer', 'First Bank', '', '', '4800', '', '', ''],
+            ['2026-05-15', 'Plumbing repair - kitchen', 'Cash', 'GTBank', '', '', '', '15000', '', ''],
+        ];
+
+        $csv = implode("\n", array_map(fn($row) => implode(',', array_map(fn($cell) => '"' . str_replace('"', '""', $cell) . '"', $row)), $rows));
+
+        return response()->streamDownload(function () use ($csv) {
+            echo $csv;
+        }, 'expense_import_sample.csv', [
+            'Content-Type' => 'text/csv',
+        ]);
+    }
+
     #[Computed]
     public function glAccounts()
     {

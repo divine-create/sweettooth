@@ -9,6 +9,62 @@
         </div>
     </div>
 
+    {{-- Format Guide & Sample Download --}}
+    <div class="rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-900/40 dark:bg-blue-950/30">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+                <p class="text-sm font-semibold text-blue-800 dark:text-blue-300">Expected Spreadsheet Format</p>
+                <p class="mt-1 text-xs text-blue-700 dark:text-blue-400">
+                    Your sheet must be <strong>wide format</strong>: fixed columns in positions 1–5, then one column per expense category from column 6 onwards.
+                    Each row is one transaction; put the amount in the matching category column and leave the rest blank.
+                </p>
+                <div class="mt-3 overflow-x-auto rounded-lg border border-blue-200 bg-white dark:border-blue-800 dark:bg-zinc-900">
+                    <table class="min-w-max text-xs">
+                        <thead class="bg-blue-100 dark:bg-blue-900/40">
+                            <tr>
+                                <th class="px-3 py-1.5 text-left font-semibold text-blue-700 dark:text-blue-300">Col 1 — Date</th>
+                                <th class="px-3 py-1.5 text-left font-semibold text-blue-700 dark:text-blue-300">Col 2 — Particulars</th>
+                                <th class="px-3 py-1.5 text-left font-semibold text-blue-700 dark:text-blue-300">Col 3 — Source</th>
+                                <th class="px-3 py-1.5 text-left font-semibold text-blue-700 dark:text-blue-300">Col 4 — Bank</th>
+                                <th class="px-3 py-1.5 text-left font-semibold text-blue-700 dark:text-blue-300">Col 5 — Amount*</th>
+                                <th class="px-3 py-1.5 text-left font-semibold text-emerald-700 dark:text-emerald-400">Col 6+ — Category Names</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-blue-100 dark:divide-blue-900/30">
+                            <tr>
+                                <td class="px-3 py-1.5 text-zinc-600 dark:text-zinc-400">2026-05-01</td>
+                                <td class="px-3 py-1.5 text-zinc-600 dark:text-zinc-400">Diesel for generator</td>
+                                <td class="px-3 py-1.5 text-zinc-600 dark:text-zinc-400">Cash</td>
+                                <td class="px-3 py-1.5 text-zinc-600 dark:text-zinc-400">GTBank</td>
+                                <td class="px-3 py-1.5 text-zinc-400">—</td>
+                                <td class="px-3 py-1.5 font-semibold text-emerald-700 dark:text-emerald-400">45000 (Fuel & Diesel col)</td>
+                            </tr>
+                            <tr>
+                                <td class="px-3 py-1.5 text-zinc-600 dark:text-zinc-400">2026-05-03</td>
+                                <td class="px-3 py-1.5 text-zinc-600 dark:text-zinc-400">Electricity bill</td>
+                                <td class="px-3 py-1.5 text-zinc-600 dark:text-zinc-400">Transfer</td>
+                                <td class="px-3 py-1.5 text-zinc-600 dark:text-zinc-400">First Bank</td>
+                                <td class="px-3 py-1.5 text-zinc-400">—</td>
+                                <td class="px-3 py-1.5 font-semibold text-emerald-700 dark:text-emerald-400">38500 (Utilities col)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="mt-2 text-xs text-blue-600 dark:text-blue-500">* Col 5 is used only if no category columns are present. The column header row must be included (check the box below).</p>
+            </div>
+            <div class="flex-shrink-0">
+                <button wire:click="downloadSample"
+                    class="inline-flex items-center gap-2 rounded-full bg-blue-700 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Download Sample CSV
+                </button>
+                <p class="mt-2 text-xs text-blue-600 dark:text-blue-500 text-center">Opens in Excel / Google Sheets</p>
+            </div>
+        </div>
+    </div>
+
     <div class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div class="grid gap-4 md:grid-cols-2">
             <div>
