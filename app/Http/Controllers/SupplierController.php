@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SupplierController extends Controller
 {
@@ -70,8 +71,8 @@ class SupplierController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'code' => 'required|string|unique:suppliers',
-            'name' => 'required|string|max:255',
+            'code' => 'nullable|string|unique:suppliers',
+            'name' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:suppliers',
             'phone' => 'nullable|string|max:20',
             'website' => 'nullable|url',
@@ -81,11 +82,23 @@ class SupplierController extends Controller
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
             'tax_id' => 'nullable|string|max:50',
-            'status' => 'required|in:active,inactive,blacklisted',
-            'credit_limit' => 'required|numeric|min:0',
-            'payment_terms_days' => 'required|integer|min:0',
+            'status' => 'nullable|in:active,inactive,blacklisted',
+            'credit_limit' => 'nullable|numeric|min:0',
+            'payment_terms_days' => 'nullable|integer|min:0',
             'branch_id' => 'nullable|uuid|exists:branches,id',
         ]);
+
+        // Apply safe defaults for columns that cannot be null / must stay unique.
+        if (empty($validated['code'])) {
+            do {
+                $validated['code'] = 'SUP-' . strtoupper(Str::random(8));
+            } while (Supplier::where('code', $validated['code'])->exists());
+        }
+        $validated['name'] = $validated['name'] ?? '';
+        $validated['email'] = ($validated['email'] ?? '') ?: null;
+        $validated['status'] = $validated['status'] ?? 'active';
+        $validated['credit_limit'] = $validated['credit_limit'] ?? 0;
+        $validated['payment_terms_days'] = $validated['payment_terms_days'] ?? 30;
 
         $validated['created_by'] = auth()->id();
 
@@ -141,8 +154,8 @@ class SupplierController extends Controller
     public function update(Request $request, Supplier $supplier): RedirectResponse
     {
         $validated = $request->validate([
-            'code' => "required|string|unique:suppliers,code,{$supplier->id}",
-            'name' => 'required|string|max:255',
+            'code' => "nullable|string|unique:suppliers,code,{$supplier->id}",
+            'name' => 'nullable|string|max:255',
             'email' => "nullable|email|unique:suppliers,email,{$supplier->id}",
             'phone' => 'nullable|string|max:20',
             'website' => 'nullable|url',
@@ -152,11 +165,19 @@ class SupplierController extends Controller
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
             'tax_id' => 'nullable|string|max:50',
-            'status' => 'required|in:active,inactive,blacklisted',
-            'credit_limit' => 'required|numeric|min:0',
-            'payment_terms_days' => 'required|integer|min:0',
+            'status' => 'nullable|in:active,inactive,blacklisted',
+            'credit_limit' => 'nullable|numeric|min:0',
+            'payment_terms_days' => 'nullable|integer|min:0',
             'branch_id' => 'nullable|uuid|exists:branches,id',
         ]);
+
+        // Keep existing values for columns that cannot be null / must stay unique.
+        $validated['code'] = ($validated['code'] ?? '') ?: $supplier->code;
+        $validated['name'] = $validated['name'] ?? $supplier->name;
+        $validated['email'] = ($validated['email'] ?? '') ?: null;
+        $validated['status'] = $validated['status'] ?? $supplier->status;
+        $validated['credit_limit'] = $validated['credit_limit'] ?? $supplier->credit_limit;
+        $validated['payment_terms_days'] = $validated['payment_terms_days'] ?? $supplier->payment_terms_days;
 
         $supplier->update($validated);
 

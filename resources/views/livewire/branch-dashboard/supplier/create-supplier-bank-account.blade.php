@@ -1,6 +1,6 @@
 <form wire:submit="createBankAccount" class="space-y-4">
     <div>
-        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Bank Name *</label>
+        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Bank Name</label>
         <input
             type="text"
             wire:model="bankName"
@@ -12,7 +12,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Account Number *</label>
+            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Account Number</label>
             <input
                 type="text"
                 wire:model="accountNumber"
@@ -23,7 +23,7 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Account Type *</label>
+            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Account Type</label>
             <select
                 wire:model="accountType"
                 class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg dark:bg-zinc-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -37,7 +37,7 @@
     </div>
 
     <div>
-        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Account Holder Name *</label>
+        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Account Holder Name</label>
         <input
             type="text"
             wire:model="accountHolderName"

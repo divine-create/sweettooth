@@ -9,7 +9,7 @@
             <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-4">Supplier code is generated automatically.</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Supplier Name *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Supplier Name</label>
                     <input
                         type="text"
                         wire:model="name"
@@ -20,7 +20,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Email *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Email</label>
                     <input
                         type="email"
                         wire:model="email"
@@ -31,7 +31,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Phone *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Phone</label>
                     <input
                         type="tel"
                         wire:model="phone"
@@ -70,7 +70,7 @@
             <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-4">Address</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Street Address *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Street Address</label>
                     <input
                         type="text"
                         wire:model="address"
@@ -81,7 +81,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">City *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">City</label>
                     <input
                         type="text"
                         wire:model="city"
@@ -92,7 +92,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">State *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">State</label>
                     <input
                         type="text"
                         wire:model="state"
@@ -103,7 +103,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Postal Code *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Postal Code</label>
                     <input
                         type="text"
                         wire:model="postalCode"
@@ -114,7 +114,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Country *</label>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Country</label>
                     <input
                         type="text"
                         wire:model="country"
