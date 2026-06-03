@@ -25,6 +25,7 @@ class Index extends BaseComponent
     public ?string $search = null;
     public ?string $filterReason = null;
     public ?string $filterStatus = 'pending';
+    public ?string $filterStage = null; // null = all, 'opening', 'closing'
     public string $startDate = '';
     public string $endDate = '';
 
@@ -45,8 +46,9 @@ class Index extends BaseComponent
         ['index' => 'product', 'label' => 'Product'],
         ['index' => 'callback_date', 'label' => 'Date'],
         ['index' => 'shift_type', 'label' => 'Shift'],
-        ['index' => 'expected_qty', 'label' => 'Expected Closing'],
-        ['index' => 'actual_qty', 'label' => 'Actual Closing'],
+        ['index' => 'stage', 'label' => 'Stage'],
+        ['index' => 'expected_qty', 'label' => 'Expected'],
+        ['index' => 'actual_qty', 'label' => 'Actual'],
         ['index' => 'variance', 'label' => 'Variance'],
         ['index' => 'reason', 'label' => 'Reason'],
         ['index' => 'status', 'label' => 'Status'],
@@ -119,9 +121,11 @@ class Index extends BaseComponent
             ->whereIn('reason', ['shortage', 'excess'])
             ->when($this->filterReason, fn ($q) => $q->where('reason', $this->filterReason))
             ->when($this->filterStatus, fn ($q) => $q->where('status', $this->filterStatus))
+            ->when($this->filterStage, fn ($q) => $q->where('stage', $this->filterStage))
             ->when($this->search, fn ($q) => $q->whereHas('product', fn ($pq) => $pq->where('name', 'like', "%{$this->search}%")))
             ->when($this->startDate, fn ($q) => $q->whereDate('variance_date', '>=', $this->startDate))
             ->when($this->endDate, fn ($q) => $q->whereDate('variance_date', '<=', $this->endDate))
+            ->orderByRaw("stage = 'opening' DESC")
             ->orderBy('variance_date', 'desc');
     }
 

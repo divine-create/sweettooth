@@ -257,8 +257,8 @@ class Create extends BaseComponent
             return;
         }
 
-        if (is_super_admin()) {
-            // Super admin: proceed directly
+        if (should_bypass_approval()) {
+            // Bypass approval (super admin, or approvals disabled): proceed directly
             $this->saveEmployee();
         } else {
             // Employee: show reason modal
@@ -327,8 +327,8 @@ class Create extends BaseComponent
                 'profile_photo' => 'nullable|image|max:2048',
                 'last_performance_review_date' => 'nullable|date',
                 'performance_rating' => 'nullable|numeric|min:0|max:5',
-                // Reason required for employees
-                'creationReason' => is_super_admin() ? 'nullable|string' : 'required|string|min:5',
+                // Reason required for employees (unless approval is bypassed)
+                'creationReason' => should_bypass_approval() ? 'nullable|string' : 'required|string|min:5',
             ]);
 
             $data = [
@@ -375,7 +375,7 @@ class Create extends BaseComponent
                 ->pluck('name')
                 ->toArray();
 
-            if (! is_super_admin()) {
+            if (! should_bypass_approval()) {
                 // EMPLOYEE: Create approval request using EmployeeApprovalService
                 $approvalPayload = array_merge($data, [
                     'branch_id' => $this->b_id,

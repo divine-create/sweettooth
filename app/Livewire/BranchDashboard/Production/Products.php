@@ -477,8 +477,8 @@ class Products extends BaseComponent
             'linked_item_id' => $this->linked_item_id ?: null,
         ];
 
-        // Super admin bypass - save directly without audit
-        if (is_super_admin()) {
+        // Bypass approval (super admin, or approvals disabled) - save directly
+        if (should_bypass_approval()) {
             $this->saveProduct($productData);
 
             return;
@@ -531,8 +531,8 @@ class Products extends BaseComponent
             return;
         }
 
-        // Super admin bypass - delete directly with audit log
-        if (is_super_admin()) {
+        // Bypass approval (super admin, or approvals disabled) - delete directly with audit log
+        if (should_bypass_approval()) {
             try {
                 $product = Product::withTrashed()->find($this->productId); // Use find() instead of findOrFail to avoid exception
                 if ($product) {
@@ -573,8 +573,8 @@ class Products extends BaseComponent
 
     public function bulkDeleteItems(): void
     {
-        // Super admin - proceed directly
-        if (is_super_admin()) {
+        // Bypass approval (super admin, or approvals disabled) - proceed directly
+        if (should_bypass_approval()) {
             $this->dialog()
                 ->question('Warning!', 'Are you sure you want to delete '.count($this->selectedIds).' product(s)?')
                 ->confirm('Confirm', 'confirmedBulkDelete', 'Confirmed Successfully')
@@ -591,8 +591,8 @@ class Products extends BaseComponent
 
     public function confirmedBulkDelete(string $message): void
     {
-        // This is for super admin bulk delete
-        if (! is_super_admin()) {
+        // Direct bulk delete path (super admin, or approvals disabled)
+        if (! should_bypass_approval()) {
             return;
         }
 

@@ -3,6 +3,7 @@
 namespace App\Livewire\BranchDashboard\ReportingDepartment\ReviewReports;
 
 use App\Models\DepartmentReport;
+use App\Services\Reports\ReportRegistry;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
@@ -202,6 +203,11 @@ class Index extends Component
             ->with(['department', 'generatedBy', 'reviewedBy'])
             ->forBranch($branchId)
             ->whereIn('status', $this->visibleStatuses());
+
+        $allowedCategories = ReportRegistry::userAllowedCategories(auth()->user());
+        if ($allowedCategories !== null) {
+            $query->whereIn('report_category', $allowedCategories);
+        }
 
         if ($this->filterCategory !== 'all') {
             $query->byCategory($this->filterCategory);

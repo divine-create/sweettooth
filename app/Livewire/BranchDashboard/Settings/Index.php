@@ -12,6 +12,7 @@ class Index extends Component
         ['id' => 'business-config', 'name' => 'Business Configuration'],
         ['id' => 'currency-localization', 'name' => 'Currency & Localization'],
         ['id' => 'appearance', 'name' => 'Appearance & Theme'],
+        ['id' => 'security-approvals', 'name' => 'Security & Approvals'],
     ];
 
     public function mount()

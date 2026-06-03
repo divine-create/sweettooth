@@ -146,7 +146,7 @@ class ProductAssignments extends BaseComponent
             'department_id' => $this->department?->id,
         ];
 
-        if (is_super_admin()) {
+        if (should_bypass_approval()) {
             $this->executeSalesDepartmentAssignment($payload);
             return;
         }
@@ -180,7 +180,7 @@ class ProductAssignments extends BaseComponent
             'department_id' => $this->department?->id,
         ];
 
-        if (is_super_admin()) {
+        if (should_bypass_approval()) {
             $this->executeRecipeAssignment($payload);
             return;
         }

@@ -98,6 +98,39 @@ if (!function_exists('is_super_admin')) {
     }
 }
 
+if (!function_exists('approvals_required')) {
+    /**
+     * Whether the system-wide approval workflow is currently enabled.
+     *
+     * Controlled by super admins via the global Security & Access settings
+     * (global_security_accesses.approval_required). Defaults to enabled when
+     * no setting row exists, so the system stays safe out of the box.
+     *
+     * @return bool
+     */
+    function approvals_required(): bool
+    {
+        return (bool) \App\Helpers\Settings::securityAccess('approval_required', true);
+    }
+}
+
+if (!function_exists('should_bypass_approval')) {
+    /**
+     * Whether the current actor may perform sensitive actions directly,
+     * skipping the approval request workflow.
+     *
+     * True when the actor is a super admin, OR when approvals have been
+     * globally disabled by a super admin. In both cases the action is still
+     * audit-logged; it simply executes immediately.
+     *
+     * @return bool
+     */
+    function should_bypass_approval(): bool
+    {
+        return is_super_admin() || ! approvals_required();
+    }
+}
+
 if (!function_exists('is_admin')) {
     /**
      * Check if current user is an admin (but not super-admin).

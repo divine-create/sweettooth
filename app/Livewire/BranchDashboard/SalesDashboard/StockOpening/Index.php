@@ -250,9 +250,10 @@ class Index extends BaseComponent
             ->whereIn('reason', ['shortage', 'excess'])
             ->where('status', 'pending')
             ->whereDate('variance_date', '>=', now()->subDays(7))
+            ->orderByRaw("stage = 'opening' DESC") // opening variances first — they affect today's baseline
             ->orderBy('variance_date', 'desc')
             ->limit(10)
-            ->get(['id', 'product_id', 'quantity', 'reason', 'variance_date', 'shift_type'])
+            ->get(['id', 'product_id', 'quantity', 'reason', 'variance_date', 'shift_type', 'stage'])
             ->toArray();
     }
 
@@ -925,7 +926,7 @@ class Index extends BaseComponent
                     $lookup['department_id'] = $primarySalesDepartmentId;
                 }
 
-                ProductStock::updateOrCreate(
+                $productStock = ProductStock::updateOrCreate(
                     $lookup,
                     [
                         'sales_shift_id' => null, // Nullable - we use shifts table instead
@@ -944,6 +945,38 @@ class Index extends BaseComponent
                         'workflow_step' => 'opening_verified',
                     ]
                 );
+
+                // Record opening variance when actual differs from expected
+                $expectedOpening = (float) ($stockOpening['expected_opening'] ?? 0);
+                $openingVariance = $actualOpening - $expectedOpening;
+                if (abs($openingVariance) > 0.001) {
+                    StockVariance::updateOrCreate(
+                        [
+                            'product_stock_id' => $productStock->id,
+                            'variance_date'    => $this->stockDate,
+                            'shift_type'       => $this->getProductStockShiftType(),
+                            'stage'            => 'opening',
+                        ],
+                        [
+                            'branch_id'         => $this->getBranchId(),
+                            'department_id'     => $primarySalesDepartmentId,
+                            'product_id'        => $stockOpening['product_id'],
+                            'quantity'          => abs($openingVariance),
+                            'expected_quantity' => $expectedOpening,
+                            'reason'            => $openingVariance < 0 ? 'shortage' : 'excess',
+                            'notes'             => trim((string) ($stockOpening['notes'] ?? '')) !== ''
+                                ? $stockOpening['notes']
+                                : null,
+                            'status'            => 'pending',
+                        ]
+                    );
+                } else {
+                    // Clear any prior opening variance if staff corrected back to expected
+                    StockVariance::where('product_stock_id', $productStock->id)
+                        ->where('stage', 'opening')
+                        ->where('status', 'pending')
+                        ->delete();
+                }
             }
 
             // Get tracked products (selected + dispatch-linked + existing stock rows) to find unselected ones.

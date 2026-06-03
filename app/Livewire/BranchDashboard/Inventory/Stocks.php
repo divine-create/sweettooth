@@ -212,8 +212,8 @@ class Stocks extends BaseComponent
             'notes' => 'nullable|string|max:500',
         ]);
 
-        // For non-super admins, show audit modal instead of updating directly
-        if (! is_super_admin()) {
+        // When approval is required (and not a super admin), show audit modal instead of updating directly
+        if (! should_bypass_approval()) {
             $this->pendingStockId = $this->editingStockId;
             $this->auditAction = 'stock_adjustment';
             $this->auditReason = '';

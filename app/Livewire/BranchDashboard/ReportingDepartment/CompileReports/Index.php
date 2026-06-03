@@ -4,6 +4,7 @@ namespace App\Livewire\BranchDashboard\ReportingDepartment\CompileReports;
 
 use App\Models\DepartmentReport;
 use App\Services\Reports\ReportCompilationService;
+use App\Services\Reports\ReportRegistry;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -231,6 +232,11 @@ class Index extends Component
             ->with(['department', 'generatedBy'])
             ->forBranch($this->b_id ?? current_branch_id())
             ->whereBetween('report_date', [$this->periodFrom, $this->periodTo]);
+
+        $allowedCategories = ReportRegistry::userAllowedCategories(auth()->user());
+        if ($allowedCategories !== null) {
+            $query->whereIn('report_category', $allowedCategories);
+        }
 
         if ($this->filterCategory !== 'all') {
             $query->byCategory($this->filterCategory);

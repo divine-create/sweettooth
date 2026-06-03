@@ -398,6 +398,7 @@ class Index extends BaseComponent
 
     public function updatedDiscount(): void
     {
+        $this->discount = (float) ($this->discount ?: 0);
         $this->recalculateTotals();
     }
 
@@ -573,7 +574,7 @@ class Index extends BaseComponent
                 'sale_time' => Carbon::now(),
                 'subtotal' => $this->subtotal,
                 'tax' => $this->tax,
-                'discount' => $this->discount,
+                'discount' => (float) ($this->discount ?: 0),
                 'total' => $this->total,
                 'status' => 'completed',
                 'order_type' => $this->orderType,
@@ -759,7 +760,7 @@ class Index extends BaseComponent
             'sale_time' => Carbon::now(),
             'subtotal' => $this->subtotal,
             'tax' => $this->tax,
-            'discount' => $this->discount,
+            'discount' => (float) ($this->discount ?: 0),
             'total' => $this->total,
             'status' => 'hold',
             'order_type' => $this->orderType,
@@ -1401,7 +1402,7 @@ class Index extends BaseComponent
                 $existingSale->update([
                     'subtotal' => $this->subtotal,
                     'tax' => $this->tax,
-                    'discount' => $this->discount,
+                    'discount' => (float) ($this->discount ?: 0),
                     'total' => $this->total,
                     'order_type' => $this->orderType,
                 ]);
@@ -1426,7 +1427,7 @@ class Index extends BaseComponent
                     'sale_time' => Carbon::now(),
                     'subtotal' => $this->subtotal,
                     'tax' => $this->tax,
-                    'discount' => $this->discount,
+                    'discount' => (float) ($this->discount ?: 0),
                     'total' => $this->total,
                     'status' => 'hold',
                     'order_type' => $this->orderType,

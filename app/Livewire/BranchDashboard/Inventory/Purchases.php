@@ -246,8 +246,8 @@ class Purchases extends Component
             throw $e;
         }
 
-        // Super admins create immediately with stock updates
-        if (is_super_admin()) {
+        // Bypass approval (super admin, or approvals disabled) - create immediately with stock updates
+        if (should_bypass_approval()) {
             $this->executeImmediatePurchaseCreation();
 
             return;

@@ -129,8 +129,8 @@ class Index extends BaseComponent
     {
         $this->selectedDepartmentId = $departmentId;
 
-        if (is_super_admin()) {
-            // Super admin: show confirmation dialog for immediate deletion
+        if (should_bypass_approval()) {
+            // Bypass approval (super admin, or approvals disabled): show confirmation dialog for immediate deletion
             $this->dialog()
                 ->question('Warning!', 'Are you sure you want to delete this department?')
                 ->confirm('Confirm', 'confirmedDeleteDepartment', 'Confirmed Successfully')
@@ -181,10 +181,10 @@ class Index extends BaseComponent
             // Get current authenticated user (employee or super admin)
             $user = auth()->user() ?? auth()->user();
             
-            if (is_super_admin()) {
-                // ===== SUPER ADMIN DELETION =====
+            if (should_bypass_approval()) {
+                // ===== DIRECT DELETION (super admin, or approvals disabled) =====
                 // Log the deletion action as completed
-                AuditService::log($user, 'delete', $department, 'Department deleted by super admin', 'completed');
+                AuditService::log($user, 'delete', $department, 'Department deleted directly (approval bypassed)', 'completed');
                 // Immediately delete the department from database
                 $department->delete();
                 // Show success confirmation
@@ -236,8 +236,8 @@ class Index extends BaseComponent
      */
     public function bulkDeleteDepartments(): void
     {
-        if (is_super_admin()) {
-            // Super admin: show confirmation with count
+        if (should_bypass_approval()) {
+            // Bypass approval (super admin, or approvals disabled): show confirmation with count
             $this->dialog()
                 ->question('Warning!', 'Are you sure you want to delete ' . count($this->selectedIds) . ' department(s)?')
                 ->confirm('Confirm', 'confirmedBulkDelete', 'Confirmed Successfully')
@@ -274,8 +274,8 @@ class Index extends BaseComponent
         // Get current authenticated user (employee or super admin)
         $user = auth()->user() ?? auth()->user();
         
-        if (is_super_admin()) {
-            // ===== SUPER ADMIN BULK DELETE =====
+        if (should_bypass_approval()) {
+            // ===== DIRECT BULK DELETE (super admin, or approvals disabled) =====
             $departments = Department::whereIn('id', $this->selectedIds)
                 ->withCount([
                     'productTypes',

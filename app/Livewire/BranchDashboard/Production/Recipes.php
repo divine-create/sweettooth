@@ -293,8 +293,8 @@ class Recipes extends BaseComponent
             return;
         }
 
-        // Super admin bypass - delete directly with audit
-        if (is_super_admin()) {
+        // Bypass approval (super admin, or approvals disabled) - delete directly with audit
+        if (should_bypass_approval()) {
             try {
                 $recipe = Recipe::findOrFail($this->recipeId);
                 $actor = current_actor();
@@ -328,8 +328,8 @@ class Recipes extends BaseComponent
 
     public function bulkDeleteItems(): void
     {
-        // Super admin - proceed directly
-        if (is_super_admin()) {
+        // Bypass approval (super admin, or approvals disabled) - proceed directly
+        if (should_bypass_approval()) {
             $this->dialog()
                 ->question('Warning!', 'Are you sure you want to delete '.count($this->selectedIds).' recipe(s)?')
                 ->confirm('Confirm', 'confirmedBulkDelete', 'Confirmed Successfully')
@@ -347,8 +347,8 @@ class Recipes extends BaseComponent
 
     public function confirmedBulkDelete(string $message): void
     {
-        // This is for super admin bulk delete
-        if (! is_super_admin()) {
+        // Direct bulk delete path (super admin, or approvals disabled)
+        if (! should_bypass_approval()) {
             return;
         }
 

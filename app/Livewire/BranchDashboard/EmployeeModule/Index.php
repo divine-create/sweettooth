@@ -331,7 +331,7 @@ class Index extends BaseComponent
 
     public function initiateDeleteEmployee(string $message): void
     {
-        if (! is_super_admin()) {
+        if (! should_bypass_approval()) {
             $this->showDeleteReasonModal = true;
         } else {
             $this->confirmedDeleteEmployee($message);
@@ -370,7 +370,7 @@ class Index extends BaseComponent
                 $employee = Employee::findOrFail($this->selectedEmployeeId);
                 $user = current_actor();
 
-                if (! is_super_admin()) {
+                if (! should_bypass_approval()) {
                     // EMPLOYEE: Create approval request using EmployeeApprovalService
                     EmployeeApprovalService::requestDelete(
                         $employee,
@@ -412,7 +412,7 @@ class Index extends BaseComponent
 
     public function initiateBulkDelete(string $message): void
     {
-        if (! is_super_admin()) {
+        if (! should_bypass_approval()) {
             $this->showDeleteReasonModal = true;
         } else {
             $this->confirmedBulkDelete($message);
@@ -431,7 +431,7 @@ class Index extends BaseComponent
             $user = current_actor();
             $employees = Employee::whereIn('id', $this->selectedIds)->get();
 
-            if (! is_super_admin()) {
+            if (! should_bypass_approval()) {
                 // EMPLOYEE: Create approval requests for each employee
                 foreach ($employees as $employee) {
                     EmployeeApprovalService::requestDelete(
@@ -484,7 +484,7 @@ class Index extends BaseComponent
 
     public function initiateRoleSave(): void
     {
-        if (! is_super_admin()) {
+        if (! should_bypass_approval()) {
             $this->showRoleReasonModal = true;
         } else {
             $this->saveRoles();
@@ -540,7 +540,7 @@ class Index extends BaseComponent
                 \App\Services\RolePermissionService::validateRoleForDepartment($employee, $roleName);
             }
 
-            if (! is_super_admin()) {
+            if (! should_bypass_approval()) {
                 // EMPLOYEE: Create approval request using EmployeeApprovalService
                 EmployeeApprovalService::requestRoleSync(
                     $employee,

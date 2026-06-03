@@ -41,6 +41,8 @@
                          @livewire('branch-dashboard.settings.currency-localization')
                      @elseif($activeTab === 'appearance')
                          @livewire('branch-dashboard.settings.appearance')
+                     @elseif($activeTab === 'security-approvals')
+                         @livewire('branch-dashboard.settings.security-access')
                      @endif
                  </div>
             </div>

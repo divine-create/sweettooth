@@ -303,8 +303,8 @@ class Edit extends Component
             'ingredients' => $this->ingredients,
         ];
 
-        // Super admin bypass - save directly without audit
-        if (is_super_admin()) {
+        // Bypass approval (super admin, or approvals disabled) - save directly
+        if (should_bypass_approval()) {
             $this->saveRecipe($recipeData);
 
             return;
@@ -426,8 +426,8 @@ class Edit extends Component
     {
         $recipe = Recipe::findOrFail($this->recipe_id);
 
-        // Super admin bypass - delete directly without audit
-        if (is_super_admin()) {
+        // Bypass approval (super admin, or approvals disabled) - delete directly
+        if (should_bypass_approval()) {
             $this->deleteRecipe($recipe);
 
             return;

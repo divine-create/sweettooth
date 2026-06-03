@@ -332,8 +332,8 @@ class CreateOrUpdate extends Component
             return;
         }
 
-        if (is_super_admin()) {
-            // Super admin: proceed directly to save (no approval needed)
+        if (should_bypass_approval()) {
+            // Bypass approval (super admin, or approvals disabled): proceed directly to save
             $this->saveDepartment();
         } else {
             // Employees: must provide reason for approval workflow
@@ -411,8 +411,8 @@ class CreateOrUpdate extends Component
             'category_id' => 'required|exists:department_categories,id',
             'description' => 'nullable|string',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
-            // Reason is required for employees, optional for super admin
-            'creationReason' => is_super_admin() ? 'nullable|string' : 'required|string|min:5',
+            // Reason is required for employees, optional when approval is bypassed
+            'creationReason' => should_bypass_approval() ? 'nullable|string' : 'required|string|min:5',
         ]);
 
         // Determine branch_id based on user role:
@@ -460,7 +460,7 @@ class CreateOrUpdate extends Component
 
         if ($this->isEditing && $this->selectedDepartmentId) {
             // ===== EDIT MODE =====
-            if (!is_super_admin()) {
+            if (!should_bypass_approval()) {
                 // EMPLOYEE: Create approval request for update
                 $department = Department::find($this->selectedDepartmentId);
                 
@@ -502,7 +502,7 @@ class CreateOrUpdate extends Component
             }
         } else {
             // ===== CREATE MODE =====
-            if (!is_super_admin()) {
+            if (!should_bypass_approval()) {
                 // EMPLOYEE: Create approval request (don't create department)
                 $approvalRequest = ApprovalAuditRequest::create([
                     'branch_id' => $branch_id,

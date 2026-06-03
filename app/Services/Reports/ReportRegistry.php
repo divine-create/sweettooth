@@ -384,7 +384,7 @@ class ReportRegistry
      * Returns the set of report categories this user may access,
      * or null if they may access all categories.
      */
-    private static function userAllowedCategories(?User $user): ?array
+    public static function userAllowedCategories(?User $user): ?array
     {
         if (! $user) {
             return [];

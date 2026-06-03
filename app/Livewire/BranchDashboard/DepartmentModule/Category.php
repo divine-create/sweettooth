@@ -66,7 +66,7 @@ class Category extends BaseComponent
         // Close the Alpine delete modal once the backend knows which item to delete
         $this->dispatch('close-delete-modal');
         
-        if (is_super_admin()) {
+        if (should_bypass_approval()) {
             $this->dialog()
                 ->question('Warning!', 'Are you sure you want to delete this category?')
                 ->confirm('Confirm', 'confirmedDelete', 'Confirmed Successfully')
@@ -90,7 +90,7 @@ class Category extends BaseComponent
             return;
         }
 
-        if (is_super_admin()) {
+        if (should_bypass_approval()) {
             $category->delete();
             $this->bumpCategoryCacheVersion();
             $this->dialog()->success('Success', 'Category deleted successfully!')->send();

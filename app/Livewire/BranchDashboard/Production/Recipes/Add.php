@@ -375,9 +375,9 @@ class Add extends Component
             ];
 
             \Log::info('🔵 [RECIPE ADD] Checking admin status...');
-            // Super admin bypass - save directly without audit
-            if (is_super_admin()) {
-                \Log::info('✅ [RECIPE ADD] Super admin detected - saving directly without audit');
+            // Bypass approval (super admin, or approvals disabled) - save directly
+            if (should_bypass_approval()) {
+                \Log::info('✅ [RECIPE ADD] Approval bypassed - saving directly');
                 $this->saveRecipe($recipeData);
                 return;
             }

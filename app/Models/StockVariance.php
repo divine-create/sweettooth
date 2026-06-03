@@ -17,6 +17,7 @@ class StockVariance extends Model
         'reason',
         'variance_date',
         'shift_type',
+        'stage',
         'notes',
         'status',
         'resolution_type',

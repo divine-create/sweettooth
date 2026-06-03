@@ -375,7 +375,7 @@ class Items extends BaseComponent
         // Gather related data that will be deleted
         $this->relatedDataToDelete = $this->gatherRelatedDataForDeletion($item);
 
-        if (is_super_admin()) {
+        if (should_bypass_approval()) {
             $this->showDeletionConfirmationDialog($item);
         } else {
             $this->auditAction = 'delete_item';

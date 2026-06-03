@@ -187,7 +187,7 @@ class Index extends BaseComponent
         ]);
 
         $actor = current_actor();
-        $isAdmin = is_super_admin();
+        $isAdmin = should_bypass_approval();
 
         // If non-admin, show reason modal instead of saving directly
         if (! $isAdmin) {
@@ -346,7 +346,7 @@ class Index extends BaseComponent
             }
 
             $actor = current_actor();
-            $isAdmin = is_super_admin();
+            $isAdmin = should_bypass_approval();
 
             // If non-admin, show reason modal instead of deleting directly
             if (! $isAdmin) {
@@ -448,7 +448,7 @@ class Index extends BaseComponent
         ]);
 
         $actor = current_actor();
-        $isAdmin = is_super_admin();
+        $isAdmin = should_bypass_approval();
 
         // If non-admin, show reason modal instead
         if (! $isAdmin) {
@@ -508,7 +508,7 @@ class Index extends BaseComponent
         ]);
 
         $actor = current_actor();
-        $isAdmin = is_super_admin();
+        $isAdmin = should_bypass_approval();
 
         // If non-admin, show reason modal instead
         if (! $isAdmin) {

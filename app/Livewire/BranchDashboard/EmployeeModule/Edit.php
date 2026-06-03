@@ -260,7 +260,7 @@ class Edit extends BaseComponent
             return;
         }
 
-        if (is_super_admin()) {
+        if (should_bypass_approval()) {
             $this->saveEmployee();
         } else {
             $this->showUpdateReasonModal = true;
@@ -320,7 +320,7 @@ class Edit extends BaseComponent
                 'profile_photo' => 'nullable|image|max:2048',
                 'last_performance_review_date' => 'nullable|date',
                 'performance_rating' => 'nullable|numeric|min:0|max:5',
-                'updateReason' => is_super_admin() ? 'nullable|string' : 'required|string|min:5',
+                'updateReason' => should_bypass_approval() ? 'nullable|string' : 'required|string|min:5',
             ]);
 
             $employee = Employee::findOrFail($this->employeeId);
@@ -360,7 +360,7 @@ class Edit extends BaseComponent
 
             $user = current_actor();
 
-            if (! is_super_admin()) {
+            if (! should_bypass_approval()) {
                 // EMPLOYEE: Create approval request using EmployeeApprovalService
                 $selectedRolesNames = Role::where('guard_name', 'web')
                     ->whereIn('id', (array) $this->selectedRoles)
