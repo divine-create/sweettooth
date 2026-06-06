@@ -13,6 +13,7 @@ class AccountingPeriod extends Model
     protected $table = 'accounting_periods';
 
     protected $fillable = [
+        'branch_id',
         'year',
         'month',
         'period_start',
