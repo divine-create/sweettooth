@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\CreditNote;
 use App\Models\Sale;
 use Livewire\Attributes\Layout;
@@ -12,7 +13,7 @@ use TallStackUi\Traits\Interactions;
 #[Layout('components.layouts.app.branch-dashboard')]
 class CreditNotes extends Component
 {
-    use Interactions, WithPagination;
+    use Interactions, WithPagination, ExportsCsv;
 
     public bool $showCreateModal = false;
     public bool $showDetailModal = false;
@@ -133,6 +134,35 @@ class CreditNotes extends Component
     {
         $this->viewingId = $id;
         $this->showDetailModal = true;
+    }
+
+    public function exportToCsv()
+    {
+        $branchId = current_branch_id();
+
+        $rows = CreditNote::where('branch_id', $branchId)
+            ->when($this->search, fn($q) => $q->where('credit_note_number', 'like', "%{$this->search}%")
+                ->orWhere('reason', 'like', "%{$this->search}%"))
+            ->with('customer')
+            ->orderByDesc('credit_note_date')
+            ->get()
+            ->map(fn ($n) => [
+                $n->credit_note_number,
+                $n->credit_note_date ? \Illuminate\Support\Carbon::parse($n->credit_note_date)->format('Y-m-d') : '',
+                $n->customer?->name ?? '',
+                $n->reason ?? '',
+                number_format((float) $n->subtotal, 2, '.', ''),
+                number_format((float) $n->tax_amount, 2, '.', ''),
+                number_format((float) $n->total, 2, '.', ''),
+                number_format((float) $n->amount_applied, 2, '.', ''),
+                ucfirst((string) $n->status),
+            ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('credit_notes'),
+            ['Credit Note #', 'Date', 'Customer', 'Reason', 'Subtotal', 'Tax', 'Total', 'Amount Applied', 'Status'],
+            $rows
+        );
     }
 
     public function render()

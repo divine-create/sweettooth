@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\BankAccount;
 use App\Models\FixedAsset;
 use App\Services\GlPostingService;
@@ -14,7 +15,7 @@ use TallStackUi\Traits\Interactions;
 #[Layout('components.layouts.app.branch-dashboard')]
 class FixedAssets extends Component
 {
-    use Interactions, WithPagination;
+    use Interactions, WithPagination, ExportsCsv;
 
     public string $asset_name = '';
     public ?string $asset_tag = null;
@@ -117,6 +118,30 @@ class FixedAssets extends Component
     public function cancelDispose(string $message): void
     {
         $this->disposingId = null;
+    }
+
+    public function exportToCsv()
+    {
+        $rows = FixedAsset::where('branch_id', current_branch_id())
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn ($a) => [
+                $a->asset_tag ?? '',
+                $a->asset_name,
+                number_format((float) $a->asset_cost, 2, '.', ''),
+                number_format((float) $a->salvage_value, 2, '.', ''),
+                $a->useful_life_months,
+                $a->depreciation_method,
+                $a->acquisition_date ? \Illuminate\Support\Carbon::parse($a->acquisition_date)->format('Y-m-d') : '',
+                number_format((float) $a->accumulated_depreciation, 2, '.', ''),
+                $a->is_active ? 'Yes' : 'No',
+            ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('fixed_assets'),
+            ['Asset Tag', 'Asset Name', 'Cost', 'Salvage Value', 'Useful Life (months)', 'Depreciation Method', 'Acquisition Date', 'Accumulated Depreciation', 'Active'],
+            $rows
+        );
     }
 
     public function render()

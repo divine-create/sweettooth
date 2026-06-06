@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\AccountingPeriod;
 use App\Models\Item;
 use App\Models\Stock;
@@ -13,12 +14,37 @@ use Livewire\Component;
 #[Layout('components.layouts.app.branch-dashboard')]
 class InventoryValuation extends Component
 {
+    use ExportsCsv;
+
     #[Url(keep: true)]
     public ?string $b_id = null;
 
     private function getBranchId(): ?string
     {
         return $this->b_id ?: request()->query('b_id') ?: current_branch_id();
+    }
+
+    public function exportToCsv()
+    {
+        $branchId = $this->getBranchId();
+
+        $rows = Stock::query()
+            ->with('item')
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->where('quantity_available', '>', 0)
+            ->get()
+            ->map(fn ($stock) => [
+                $stock->item?->name ?? '',
+                number_format((float) $stock->quantity_available, 2, '.', ''),
+                number_format((float) $stock->average_cost, 4, '.', ''),
+                number_format((float) $stock->quantity_available * (float) $stock->average_cost, 2, '.', ''),
+            ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('inventory_valuation'),
+            ['Item', 'Quantity Available', 'Average Cost', 'Total Value'],
+            $rows
+        );
     }
 
     public function render()

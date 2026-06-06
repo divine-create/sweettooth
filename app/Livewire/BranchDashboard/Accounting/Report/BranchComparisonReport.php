@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Report;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\AccountingPeriod;
 use App\Models\Branch;
 use App\Models\GlEntry;
@@ -11,6 +12,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app.branch-dashboard')]
 class BranchComparisonReport extends Component
 {
+    use ExportsCsv;
+
     public ?int $periodId = null;
 
     public function mount(): void
@@ -21,10 +24,11 @@ class BranchComparisonReport extends Component
         }
     }
 
-    public function render()
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildRows(): array
     {
-        $periods = AccountingPeriod::orderBy('year', 'desc')->orderBy('month', 'desc')->get();
-
         $branches = Branch::where('is_active', true)->orderBy('name')->get();
 
         $rows = [];
@@ -61,6 +65,37 @@ class BranchComparisonReport extends Component
 
         // Sort by revenue descending
         usort($rows, fn ($a, $b) => $b['revenue'] <=> $a['revenue']);
+
+        return $rows;
+    }
+
+    public function exportToCsv()
+    {
+        $rows = $this->buildRows();
+
+        $header = ['Branch', 'Revenue', 'COGS', 'Gross Profit', 'Operating Expenses', 'Net Income', 'Net Margin %'];
+        $csvRows = [];
+
+        foreach ($rows as $row) {
+            $csvRows[] = [
+                $row['branch'],
+                number_format($row['revenue'], 2, '.', ''),
+                number_format($row['cogs'], 2, '.', ''),
+                number_format($row['gross_profit'], 2, '.', ''),
+                number_format($row['opex'], 2, '.', ''),
+                number_format($row['net_income'], 2, '.', ''),
+                $row['net_margin'] === null ? '' : number_format($row['net_margin'], 2, '.', ''),
+            ];
+        }
+
+        return $this->streamCsv($this->csvFilename('branch_comparison'), $header, $csvRows);
+    }
+
+    public function render()
+    {
+        $periods = AccountingPeriod::orderBy('year', 'desc')->orderBy('month', 'desc')->get();
+
+        $rows = $this->buildRows();
 
         $totals = [
             'revenue' => array_sum(array_column($rows, 'revenue')),

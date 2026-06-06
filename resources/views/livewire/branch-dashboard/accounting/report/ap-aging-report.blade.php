@@ -12,6 +12,9 @@
                     <input type="date" wire:model.live="asOfDate"
                         class="mt-1 block w-44 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-white" />
                 </div>
+                <button wire:click="exportToCsv" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                    Export CSV
+                </button>
             </div>
         </div>
     </div>

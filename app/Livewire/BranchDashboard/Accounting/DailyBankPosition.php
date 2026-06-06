@@ -3,6 +3,7 @@
 namespace App\Livewire\BranchDashboard\Accounting;
 
 use App\Helpers\Settings;
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\BankAccount;
 use App\Models\DailyBankPosition as DailyBankPositionModel;
 use App\Models\DailyBankTransaction;
@@ -14,6 +15,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app.branch-dashboard')]
 class DailyBankPosition extends Component
 {
+    use ExportsCsv;
+
     public ?int $selectedBankAccountId = null;
 
     public ?string $selectedDate = null;
@@ -43,6 +46,28 @@ class DailyBankPosition extends Component
             'transactions' => $this->transactions,
             'summary' => $this->summary,
         ]);
+    }
+
+    public function exportToCsv()
+    {
+        $this->loadPositions();
+
+        $rows = array_map(fn ($t) => [
+            $t['date'],
+            $t['type'],
+            $t['subtype'] ?? '',
+            number_format((float) $t['amount'], 2, '.', ''),
+            $t['description'] ?? '',
+            $t['reference'] ?? '',
+            $t['status'] ?? '',
+            ! empty($t['reconciled']) ? 'Yes' : 'No',
+        ], $this->transactions);
+
+        return $this->streamCsv(
+            'bank_transactions_'.($this->selectedDate ?? now()->format('Y-m-d')),
+            ['Date', 'Type', 'Subtype', 'Amount', 'Description', 'Reference', 'Status', 'Reconciled'],
+            $rows
+        );
     }
 
     public function loadBankAccounts()

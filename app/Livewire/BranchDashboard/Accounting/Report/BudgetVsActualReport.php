@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Report;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\AccountingPeriod;
 use App\Models\Budget;
 use App\Models\GlEntry;
@@ -11,6 +12,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app.branch-dashboard')]
 class BudgetVsActualReport extends Component
 {
+    use ExportsCsv;
+
     public ?int $periodId = null;
 
     public string $category = '';
@@ -46,6 +49,29 @@ class BudgetVsActualReport extends Component
             'totalActual' => $totalActual,
             'totalVariance' => $totalVariance,
         ]);
+    }
+
+    public function exportToCsv()
+    {
+        $rows = $this->buildReport(current_branch_id());
+
+        $header = ['Account #', 'Account Name', 'Account Type', 'Category', 'Budget', 'Actual', 'Variance', 'Variance %'];
+        $csvRows = [];
+
+        foreach ($rows as $row) {
+            $csvRows[] = [
+                $row['account_number'],
+                $row['account_name'],
+                $row['account_type'],
+                $row['category'],
+                number_format($row['budget'], 2, '.', ''),
+                number_format($row['actual'], 2, '.', ''),
+                number_format($row['variance'], 2, '.', ''),
+                $row['variance_pct'] === null ? '' : number_format($row['variance_pct'], 2, '.', ''),
+            ];
+        }
+
+        return $this->streamCsv($this->csvFilename('budget_vs_actual'), $header, $csvRows);
     }
 
     private function buildReport(string $branchId): array

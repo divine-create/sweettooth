@@ -1,14 +1,19 @@
 <div class="p-6">
     <!-- Header -->
     <div class="mb-6">
-        <div class="flex items-center gap-3 mb-2">
-            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-            </svg>
-            <div>
-                <h1 class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Bank Reconciliation</h1>
-                <p class="text-sm text-zinc-600 dark:text-zinc-400">Match General Ledger entries with bank transactions</p>
+        <div class="flex items-start justify-between gap-3 mb-2">
+            <div class="flex items-center gap-3">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+                <div>
+                    <h1 class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Bank Reconciliation</h1>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-400">Match General Ledger entries with bank transactions</p>
+                </div>
             </div>
+            @if($selectedReconciliationId)
+                <button type="button" wire:click="exportToCsv" class="self-start px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold">Export CSV</button>
+            @endif
         </div>
     </div>
 

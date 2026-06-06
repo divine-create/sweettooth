@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\Payroll;
 use App\Models\User;
 use App\Models\BankAccount;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 class Payrolls extends Component
 {
     use WithPagination;
+    use ExportsCsv;
 
     public string $pay_period_start = '';
     public string $pay_period_end = '';
@@ -87,6 +89,33 @@ class Payrolls extends Component
 
         $this->status = 'approved';
         $this->dispatch('notify', message: 'Payroll created.');
+    }
+
+    public function exportToCsv()
+    {
+        $rows = Payroll::with(['employee', 'bankAccount'])
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn ($p) => [
+                $p->employee?->name ?? '',
+                $p->pay_period_start ? \Illuminate\Support\Carbon::parse($p->pay_period_start)->format('Y-m-d') : '',
+                $p->pay_period_end ? \Illuminate\Support\Carbon::parse($p->pay_period_end)->format('Y-m-d') : '',
+                $p->payment_date ? \Illuminate\Support\Carbon::parse($p->payment_date)->format('Y-m-d') : '',
+                number_format((float) $p->base_salary, 2, '.', ''),
+                number_format((float) $p->allowances, 2, '.', ''),
+                number_format((float) $p->tax_deductions, 2, '.', ''),
+                number_format((float) $p->other_deductions, 2, '.', ''),
+                number_format((float) $p->gross_salary, 2, '.', ''),
+                number_format((float) $p->net_salary, 2, '.', ''),
+                $p->bankAccount?->bank_name ?? '',
+                ucfirst((string) $p->status),
+            ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('payrolls'),
+            ['Employee', 'Period Start', 'Period End', 'Payment Date', 'Base Salary', 'Allowances', 'Tax Deductions', 'Other Deductions', 'Gross Salary', 'Net Salary', 'Bank', 'Status'],
+            $rows
+        );
     }
 
     public function render()

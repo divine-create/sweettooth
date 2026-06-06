@@ -6,6 +6,9 @@
                 <h1 class="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">Fixed Assets</h1>
                 <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Log new assets and track depreciation details.</p>
             </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" wire:click="exportToCsv" class="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-emerald-700">Export CSV</button>
+            </div>
         </div>
     </div>
 

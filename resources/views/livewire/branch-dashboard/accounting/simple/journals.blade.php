@@ -7,6 +7,7 @@
                 <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Record manual entries with balanced debits and credits.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
+                <button type="button" wire:click="exportToCsv" class="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-emerald-700">Export CSV</button>
                 <label class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Status</label>
                 <select class="rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200" wire:model="status">
                     <option value="posted">Posted</option>

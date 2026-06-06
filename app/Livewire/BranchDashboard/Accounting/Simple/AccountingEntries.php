@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\AccountingEntry;
 use App\Models\AccountingPeriod;
 use App\Models\GlAccount;
@@ -18,6 +19,7 @@ use Livewire\WithPagination;
 class AccountingEntries extends Component
 {
     use WithPagination;
+    use ExportsCsv;
 
     #[Url(keep: true)]
     public ?string $b_id = null;
@@ -204,6 +206,41 @@ class AccountingEntries extends Component
         $this->showForm = false;
         $this->resetPage();
         session()->flash('message', 'Entry saved.');
+    }
+
+    public function exportToCsv()
+    {
+        $branchId = $this->b_id ?: request()->query('b_id') ?: current_branch_id();
+
+        $rows = AccountingEntry::query()
+            ->with(['debitGlAccount', 'creditGlAccount'])
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($this->search, function ($q) {
+                $q->where('description', 'like', "%{$this->search}%")
+                    ->orWhere('source', 'like', "%{$this->search}%")
+                    ->orWhere('reference', 'like', "%{$this->search}%");
+            })
+            ->when($this->dateFrom, fn ($q) => $q->whereDate('entry_date', '>=', $this->dateFrom))
+            ->when($this->dateTo, fn ($q) => $q->whereDate('entry_date', '<=', $this->dateTo))
+            ->when($this->entryTypeFilter, fn ($q) => $q->where('entry_type', $this->entryTypeFilter))
+            ->when($this->debitFilter, fn ($q) => $q->where('debit_gl_account_id', $this->debitFilter))
+            ->when($this->creditFilter, fn ($q) => $q->where('credit_gl_account_id', $this->creditFilter))
+            ->orderBy('entry_date', 'desc')
+            ->get()
+            ->map(fn ($e) => [
+                $e->entry_date ? \Illuminate\Support\Carbon::parse($e->entry_date)->format('Y-m-d') : '',
+                $e->entry_type,
+                $e->description,
+                number_format((float) $e->amount, 2, '.', ''),
+                $e->debitGlAccount?->account_name ?? '',
+                $e->creditGlAccount?->account_name ?? '',
+            ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('accounting_entries'),
+            ['Date', 'Type', 'Description', 'Amount', 'Debit Account', 'Credit Account'],
+            $rows
+        );
     }
 
     public function render()

@@ -7,6 +7,7 @@
                 <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Capture and review expense ledger entries.</p>
             </div>
             <div class="flex flex-wrap gap-2">
+                <button type="button" wire:click="exportToCsv" class="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-emerald-700">Export CSV</button>
                 <!-- Help Button -->
                 <button 
                     class="rounded-full border border-blue-600 bg-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-blue-700" 

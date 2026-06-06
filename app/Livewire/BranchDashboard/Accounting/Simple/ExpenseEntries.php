@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\BankAccount;
 use App\Models\ExpenseEntry;
 use App\Models\GlAccount;
@@ -18,6 +19,7 @@ use Livewire\WithPagination;
 class ExpenseEntries extends Component
 {
     use WithPagination;
+    use ExportsCsv;
 
     #[Url(keep: true)]
     public ?string $b_id = null;
@@ -187,11 +189,11 @@ class ExpenseEntries extends Component
         session()->flash('message', 'Expense saved.');
     }
 
-    public function render()
+    private function entriesQuery()
     {
         $branchId = $this->b_id ?: request()->query('b_id');
 
-        $rows = ExpenseEntry::query()
+        return ExpenseEntry::query()
             ->with(['glAccount', 'bankAccount'])
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($this->search, function ($q) {
@@ -203,8 +205,30 @@ class ExpenseEntries extends Component
             ->when($this->dateTo, fn ($q) => $q->whereDate('entry_date', '<=', $this->dateTo))
             ->when($this->bankAccountId, fn ($q) => $q->where('bank_account_id', $this->bankAccountId))
             ->when($this->glAccountId, fn ($q) => $q->where('gl_account_id', $this->glAccountId))
-            ->orderBy('entry_date', 'desc')
-            ->paginate((int) ($this->quantity ?? 20));
+            ->orderBy('entry_date', 'desc');
+    }
+
+    public function exportToCsv()
+    {
+        $rows = $this->entriesQuery()->get()->map(fn ($e) => [
+            $e->entry_date ? \Illuminate\Support\Carbon::parse($e->entry_date)->format('Y-m-d') : '',
+            $e->description ?? '',
+            $e->source ?? '',
+            number_format((float) $e->amount, 2, '.', ''),
+            $e->glAccount ? trim($e->glAccount->account_number.' - '.$e->glAccount->account_name) : '',
+            $e->bankAccount?->bank_name ?? '',
+        ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('expense_entries'),
+            ['Date', 'Particulars', 'Source', 'Amount', 'Category', 'Bank'],
+            $rows
+        );
+    }
+
+    public function render()
+    {
+        $rows = $this->entriesQuery()->paginate((int) ($this->quantity ?? 20));
 
         $bankAccounts = BankAccount::orderBy('bank_name')->get(['id', 'bank_name', 'account_number']);
         $glAccounts = GlAccount::where('account_type', 'expense')

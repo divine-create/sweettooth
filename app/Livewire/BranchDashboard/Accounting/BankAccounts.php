@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\BankAccount;
 use App\Models\GlAccount;
 use Illuminate\Validation\Rule;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 class BankAccounts extends Component
 {
     use WithPagination;
+    use ExportsCsv;
 
     public string $search = '';
     public string $filterStatus = '';
@@ -53,8 +55,7 @@ class BankAccounts extends Component
         }
     }
 
-    #[Computed]
-    public function bankAccounts()
+    private function bankAccountsQuery()
     {
         return BankAccount::query()
             ->when($this->search, function ($q) {
@@ -65,8 +66,32 @@ class BankAccounts extends Component
             ->when($this->filterStatus, function ($q) {
                 return $q->where('is_active', $this->filterStatus === 'active');
             })
-            ->orderBy($this->sortBy, $this->sortDirection)
-            ->paginate(15);
+            ->orderBy($this->sortBy, $this->sortDirection);
+    }
+
+    #[Computed]
+    public function bankAccounts()
+    {
+        return $this->bankAccountsQuery()->paginate(15);
+    }
+
+    public function exportToCsv()
+    {
+        $rows = $this->bankAccountsQuery()->with('glAccount')->get()->map(fn ($a) => [
+            $a->bank_name,
+            $a->bank_code ?? '',
+            $a->account_number,
+            $a->account_type,
+            $a->glAccount ? trim($a->glAccount->account_number.' - '.$a->glAccount->account_name) : '',
+            number_format((float) ($a->getCurrentBalance() ?? 0), 2, '.', ''),
+            $a->is_active ? 'Active' : 'Inactive',
+        ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('bank_accounts'),
+            ['Bank Name', 'Bank Code', 'Account Number', 'Type', 'GL Account', 'Balance', 'Status'],
+            $rows
+        );
     }
 
     #[Computed]

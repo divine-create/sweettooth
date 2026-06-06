@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\GlAccount;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -12,6 +13,7 @@ use Livewire\WithPagination;
 class ChartOfAccounts extends Component
 {
     use WithPagination;
+    use ExportsCsv;
 
     #[Url(keep: true)]
     public ?string $b_id = null;
@@ -87,7 +89,7 @@ class ChartOfAccounts extends Component
         session()->flash('success', 'GL account created.');
     }
 
-    public function render()
+    private function accountsQuery()
     {
         $query = GlAccount::query();
 
@@ -102,7 +104,31 @@ class ChartOfAccounts extends Component
             });
         }
 
-        $accounts = $query->orderBy('account_number')->paginate($this->perPage);
+        return $query->orderBy('account_number');
+    }
+
+    public function exportToCsv()
+    {
+        $rows = $this->accountsQuery()->get()->map(fn ($a) => [
+            $a->account_number,
+            $a->account_name,
+            $a->account_type,
+            $a->account_category ?? '',
+            $a->normal_balance ?? '',
+            $a->is_header ? 'Yes' : 'No',
+            $a->is_active ? 'Yes' : 'No',
+        ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('chart_of_accounts'),
+            ['Account Number', 'Account Name', 'Type', 'Category', 'Normal Balance', 'Is Header', 'Active'],
+            $rows
+        );
+    }
+
+    public function render()
+    {
+        $accounts = $this->accountsQuery()->paginate($this->perPage);
 
         return view('livewire.branch-dashboard.accounting.simple.chart-of-accounts', [
             'accounts' => $accounts,

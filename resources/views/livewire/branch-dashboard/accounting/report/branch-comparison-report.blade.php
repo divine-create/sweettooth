@@ -13,6 +13,9 @@
                         <option value="{{ $period->id }}">{{ $period->name ?? "{$period->month}/{$period->year}" }}</option>
                     @endforeach
                 </select>
+                <button wire:click="exportToCsv" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                    Export CSV
+                </button>
             </div>
         </div>
     </div>

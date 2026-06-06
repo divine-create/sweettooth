@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\BankAccount;
 use App\Models\CashPosition as CashPositionModel;
 use App\Models\DailyBankPosition;
@@ -16,6 +17,7 @@ use TallStackUi\Traits\Interactions;
 class CashPosition extends Component
 {
     use Interactions;
+    use ExportsCsv;
 
     #[Url(keep: true)]
     public ?string $b_id = null;
@@ -63,6 +65,44 @@ class CashPosition extends Component
         $this->loadCashPositions();
         $this->loadBankPositions();
         $this->calculateSummary();
+    }
+
+    public function exportToCsv()
+    {
+        $this->loadData();
+
+        $header = ['Type', 'Name', 'Account/Date', 'Opening Balance', 'Inflows', 'Outflows', 'Closing/Available Balance'];
+        $rows = [];
+
+        foreach ($this->cashPositions as $pos) {
+            $rows[] = [
+                'Cash',
+                $pos['cash_type_label'],
+                $pos['position_date'],
+                number_format($pos['opening_balance'], 2, '.', ''),
+                number_format($pos['sales_receipts'], 2, '.', ''),
+                number_format($pos['withdrawals'], 2, '.', ''),
+                number_format($pos['closing_balance'], 2, '.', ''),
+            ];
+        }
+
+        foreach ($this->bankPositions as $pos) {
+            $rows[] = [
+                'Bank',
+                $pos['bank_name'],
+                $pos['account_number'],
+                number_format($pos['opening_balance'], 2, '.', ''),
+                number_format($pos['inflows_total'], 2, '.', ''),
+                number_format($pos['outflows_total'], 2, '.', ''),
+                number_format($pos['available_balance'], 2, '.', ''),
+            ];
+        }
+
+        return $this->streamCsv(
+            'cash_position_'.($this->selectedDate ?? now()->format('Y-m-d')),
+            $header,
+            $rows
+        );
     }
 
     private function loadCashPositions()

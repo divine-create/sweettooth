@@ -6,6 +6,7 @@
                 <p class="text-zinc-600 dark:text-zinc-400">Create, edit, and manage bank accounts used for reconciliation and postings</p>
             </div>
             <div class="flex items-center gap-2">
+                <button type="button" wire:click="exportToCsv" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold">Export CSV</button>
                 <button wire:click="toggleForm" class="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-sm font-semibold">
                     {{ $showForm ? 'Close Form' : 'New Account' }}
                 </button>
