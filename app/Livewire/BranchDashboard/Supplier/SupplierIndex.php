@@ -85,6 +85,47 @@ class SupplierIndex extends Component
         $this->selectedSupplier = null;
     }
 
+    public function deleteSupplier($supplierId): void
+    {
+        $supplier = Supplier::where('branch_id', current_branch_id())->find($supplierId);
+
+        if (! $supplier) {
+            $this->toast()->error('Supplier not found.')->send();
+            return;
+        }
+
+        $name = $supplier->name;
+        $code = $supplier->code;
+        $hasPurchases = $supplier->purchases()->exists();
+
+        if ($hasPurchases) {
+            // Preserve financial history: archive (soft delete) instead of removing.
+            $supplier->delete();
+            $action = 'archive';
+            $message = "Archived supplier '{$name}' (has purchase history and cannot be permanently deleted).";
+        } else {
+            // No linked purchases: safe to remove permanently.
+            $supplier->forceDelete();
+            $action = 'delete';
+            $message = "Permanently deleted supplier '{$name}'.";
+        }
+
+        AuditService::log(
+            current_actor(),
+            $action,
+            $supplier,
+            "{$message} (code: {$code})",
+            'completed'
+        );
+
+        if ($this->selectedSupplier?->id === $supplier->id) {
+            $this->closeDetails();
+        }
+
+        $this->resetPage();
+        $this->toast()->success($message)->send();
+    }
+
     public function openCreateForm(): void
     {
         $this->showCreateForm = true;

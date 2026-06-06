@@ -129,12 +129,21 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4">
-                                <button
-                                    wire:click="viewDetails({{ $supplier->id }})"
-                                    class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                                >
-                                    View Details
-                                </button>
+                                <div class="flex items-center gap-4">
+                                    <button
+                                        wire:click="viewDetails({{ $supplier->id }})"
+                                        class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                                    >
+                                        View Details
+                                    </button>
+                                    <button
+                                        wire:click="deleteSupplier({{ $supplier->id }})"
+                                        wire:confirm="Delete this supplier? Suppliers with purchase history will be archived; those without any purchases will be permanently removed."
+                                        class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -169,14 +178,23 @@
             <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg max-w-4xl w-full mx-4 max-h-screen overflow-y-auto">
                 <div class="sticky top-0 bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 px-6 py-4 flex justify-between items-center">
                     <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">{{ $selectedSupplier->name }}</h2>
-                    <button
-                        wire:click="closeDetails"
-                        class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-                    >
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <button
+                            wire:click="deleteSupplier({{ $selectedSupplier->id }})"
+                            wire:confirm="Delete this supplier? Suppliers with purchase history will be archived; those without any purchases will be permanently removed."
+                            class="text-sm font-semibold text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                        >
+                            Delete
+                        </button>
+                        <button
+                            wire:click="closeDetails"
+                            class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                        >
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="p-6">
