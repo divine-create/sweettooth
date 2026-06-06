@@ -35,10 +35,21 @@ class PeriodControl extends Component
 
     public function mount(): void
     {
+        $this->b_id = $this->b_id ?: request()->query('b_id');
         $this->year = (int) now()->year;
         $this->month = (int) now()->month;
         $this->period_start = now()->startOfMonth()->toDateString();
         $this->period_end = now()->endOfMonth()->toDateString();
+    }
+
+    /**
+     * Resolve the active branch the same way the rest of the accounting module
+     * does. Using the raw session key here caused periods to be saved under one
+     * branch and listed under another, so created periods would not appear.
+     */
+    private function branchId(): ?string
+    {
+        return $this->b_id ?: request()->query('b_id') ?: current_branch_id();
     }
 
     public function updatedYear(): void
@@ -77,7 +88,7 @@ class PeriodControl extends Component
             'status' => 'required|string|in:open,closed,locked',
         ]);
 
-        $branchId = session('selected_branch_id');
+        $branchId = $this->branchId();
 
         $exists = AccountingPeriod::query()
             ->where('branch_id', $branchId)
@@ -154,7 +165,7 @@ class PeriodControl extends Component
 
     public function createCurrentMonthPeriod(): void
     {
-        $branchId = session('selected_branch_id');
+        $branchId = $this->branchId();
         $now = now();
 
         $exists = AccountingPeriod::query()
@@ -182,7 +193,7 @@ class PeriodControl extends Component
 
     public function render()
     {
-        $branchId = session('selected_branch_id');
+        $branchId = $this->branchId();
         $now = now();
         $currentMonthExists = AccountingPeriod::query()
             ->where('branch_id', $branchId)
