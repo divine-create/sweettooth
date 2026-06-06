@@ -3,6 +3,7 @@
 namespace App\Livewire\BranchDashboard\Accounting;
 
 use App\Helpers\Settings;
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\BankAccount;
 use App\Models\BankReconciliation as BankReconciliationModel;
 use App\Services\BankReconciliationService;
@@ -15,6 +16,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app.branch-dashboard')]
 class BankReconciliation extends Component
 {
+    use ExportsCsv;
+
     protected ?BankReconciliationService $service = null;
 
     // Tab control
@@ -60,6 +63,41 @@ class BankReconciliation extends Component
         }
         
         return $this->service;
+    }
+
+    public function exportToCsv()
+    {
+        $rows = [];
+
+        foreach ($this->glEntries as $entry) {
+            $rows[] = [
+                'GL Entry',
+                $entry['date'] ?? '',
+                $entry['account_name'] ?? '',
+                $entry['reference'] ?? '',
+                $entry['description'] ?? '',
+                $entry['type'] ?? '',
+                number_format((float) ($entry['amount'] ?? 0), 2, '.', ''),
+            ];
+        }
+
+        foreach ($this->bankTransactions as $transaction) {
+            $rows[] = [
+                'Bank Transaction',
+                $transaction['date'] ?? '',
+                '',
+                $transaction['reference'] ?? '',
+                $transaction['description'] ?? '',
+                $transaction['type'] ?? '',
+                number_format((float) ($transaction['amount'] ?? 0), 2, '.', ''),
+            ];
+        }
+
+        return $this->streamCsv(
+            'bank_reconciliation_'.($this->reconciliationDate ?? now()->format('Y-m-d')),
+            ['Source', 'Date', 'Account', 'Reference', 'Description', 'Type', 'Amount'],
+            $rows
+        );
     }
 
     public function render()

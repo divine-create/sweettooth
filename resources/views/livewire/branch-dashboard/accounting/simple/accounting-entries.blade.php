@@ -27,6 +27,7 @@
                         <option value="{{ $acct->id }}">{{ $acct->account_number }} · {{ $acct->account_name }}</option>
                     @endforeach
                 </select>
+                <button type="button" wire:click="exportToCsv" class="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-emerald-700">Export CSV</button>
                 <button class="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-emerald-700" type="button" wire:click="toggleForm">
                     {{ $showForm ? 'Close Form' : 'New Entry' }}
                 </button>

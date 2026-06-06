@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\Purchase;
 use App\Models\PurchasePayment;
 use App\Models\BankAccount;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 class PurchasePayments extends Component
 {
     use WithPagination;
+    use ExportsCsv;
 
     public ?string $purchase_id = null;
     public float $amount = 0;
@@ -119,6 +121,28 @@ class PurchasePayments extends Component
         $this->reset(['purchase_id', 'amount', 'purchase_total', 'purchase_balance', 'bank_account_id', 'reference_number', 'status']);
         $this->status = 'pending';
         $this->dispatch('notify', message: 'Purchase payment recorded.');
+    }
+
+    public function exportToCsv()
+    {
+        $rows = PurchasePayment::with(['purchase', 'bankAccount'])
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn ($p) => [
+                $p->purchase?->purchase_number ?? '',
+                $p->purchase?->supplier_name ?? '',
+                number_format((float) $p->amount, 2, '.', ''),
+                $p->payment_date ? \Illuminate\Support\Carbon::parse($p->payment_date)->format('Y-m-d') : '',
+                $p->bankAccount?->bank_name ?? '',
+                $p->reference_number ?? '',
+                ucfirst((string) $p->status),
+            ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('purchase_payments'),
+            ['Purchase #', 'Supplier', 'Amount', 'Payment Date', 'Bank', 'Reference', 'Status'],
+            $rows
+        );
     }
 
     public function render()

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Report;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\Purchase;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
@@ -10,6 +11,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app.branch-dashboard')]
 class ApAgingReport extends Component
 {
+    use ExportsCsv;
+
     public string $asOfDate = '';
 
     public function mount(): void
@@ -17,9 +20,13 @@ class ApAgingReport extends Component
         $this->asOfDate = now()->toDateString();
     }
 
-    public function render()
+    /**
+     * Build the aging buckets for the given as-of date.
+     *
+     * @return array<string, array{label: string, items: \Illuminate\Support\Collection, total: float}>
+     */
+    private function buildBuckets(Carbon $asOf): array
     {
-        $asOf = Carbon::parse($this->asOfDate);
         $branchId = session('selected_branch_id');
 
         $unpaid = Purchase::query()
@@ -61,6 +68,44 @@ class ApAgingReport extends Component
             $buckets[$key]['items']->push($purchase);
             $buckets[$key]['total'] += $balance;
         }
+
+        return $buckets;
+    }
+
+    public function exportToCsv()
+    {
+        $asOf = Carbon::parse($this->asOfDate);
+        $buckets = $this->buildBuckets($asOf);
+
+        $header = ['Aging Bucket', 'Purchase #', 'Supplier', 'Purchase Date', 'Due Date', 'Days Overdue', 'Outstanding Balance', 'Payment Status'];
+        $rows = [];
+
+        foreach ($buckets as $bucket) {
+            foreach ($bucket['items'] as $purchase) {
+                $rows[] = [
+                    $bucket['label'],
+                    $purchase->purchase_number ?? '',
+                    $purchase->supplier?->name ?? $purchase->supplier_name ?? '',
+                    optional($purchase->purchase_date ? Carbon::parse($purchase->purchase_date) : null)?->format('Y-m-d') ?? '',
+                    optional($purchase->due_date ? Carbon::parse($purchase->due_date) : null)?->format('Y-m-d') ?? '',
+                    $purchase->days_overdue,
+                    number_format($purchase->outstanding_balance, 2, '.', ''),
+                    ucfirst((string) $purchase->payment_status),
+                ];
+            }
+        }
+
+        return $this->streamCsv(
+            'ap_aging_'.$asOf->format('Y-m-d'),
+            $header,
+            $rows
+        );
+    }
+
+    public function render()
+    {
+        $asOf = Carbon::parse($this->asOfDate);
+        $buckets = $this->buildBuckets($asOf);
 
         $grandTotal = collect($buckets)->sum('total');
 

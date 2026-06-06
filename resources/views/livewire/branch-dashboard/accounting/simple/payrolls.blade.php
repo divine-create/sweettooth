@@ -1,9 +1,12 @@
 <div class="space-y-6">
     <div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Accounting</p>
-            <h1 class="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">Payroll</h1>
-            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Record payroll periods and payout amounts.</p>
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Accounting</p>
+                <h1 class="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">Payroll</h1>
+                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Record payroll periods and payout amounts.</p>
+            </div>
+            <button type="button" wire:click="exportToCsv" class="self-start rounded-full border border-emerald-600 bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-emerald-700">Export CSV</button>
         </div>
     </div>
 

@@ -1,9 +1,12 @@
 <div class="container-fluid p-4">
     <!-- Header -->
     <div class="row mb-4">
-        <div class="col-12">
-            <h1 class="h3 mb-0">Daily Bank Position</h1>
-            <p class="text-muted mb-0">Monitor cash flow by bank account</p>
+        <div class="col-12 d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="h3 mb-0">Daily Bank Position</h1>
+                <p class="text-muted mb-0">Monitor cash flow by bank account</p>
+            </div>
+            <button type="button" wire:click="exportToCsv" class="btn btn-success">Export CSV</button>
         </div>
     </div>
 

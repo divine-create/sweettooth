@@ -19,10 +19,10 @@ class CreateSupplierBankAccount extends Component
     protected function rules()
     {
         return [
-            'bankName' => 'required|string|max:255',
-            'accountNumber' => 'required|string|max:50',
-            'accountHolderName' => 'required|string|max:255',
-            'accountType' => 'required|in:checking,savings,business',
+            'bankName' => 'nullable|string|max:255',
+            'accountNumber' => 'nullable|string|max:50',
+            'accountHolderName' => 'nullable|string|max:255',
+            'accountType' => 'nullable|in:checking,savings,business',
             'swiftCode' => 'nullable|string|max:20',
             'isPrimary' => 'boolean',
         ];
@@ -39,11 +39,11 @@ class CreateSupplierBankAccount extends Component
 
         SupplierBankAccount::create([
             'supplier_id' => $this->supplier->id,
-            'bank_name' => $validated['bankName'],
-            'account_number' => $validated['accountNumber'],
-            'account_holder_name' => $validated['accountHolderName'],
-            'account_type' => $validated['accountType'],
-            'swift_code' => $validated['swiftCode'],
+            'bank_name' => $validated['bankName'] ?? '',
+            'account_number' => $validated['accountNumber'] ?? '',
+            'account_holder_name' => $validated['accountHolderName'] ?? '',
+            'account_type' => ($validated['accountType'] ?? '') ?: 'checking',
+            'swift_code' => ($validated['swiftCode'] ?? '') ?: null,
             'is_primary' => $validated['isPrimary'],
             'is_active' => true,
         ]);

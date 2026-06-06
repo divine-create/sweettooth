@@ -1,6 +1,6 @@
 <form wire:submit="createContact" class="space-y-4">
     <div>
-        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Contact Name *</label>
+        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Contact Name</label>
         <input
             type="text"
             wire:model="name"
@@ -12,7 +12,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Email *</label>
+            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Email</label>
             <input
                 type="email"
                 wire:model="email"
@@ -23,7 +23,7 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Phone *</label>
+            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Phone</label>
             <input
                 type="tel"
                 wire:model="phone"
@@ -35,7 +35,7 @@
     </div>
 
     <div>
-        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Role *</label>
+        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Role</label>
         <input
             type="text"
             wire:model="role"

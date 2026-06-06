@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\TaxPayment;
 use App\Models\BankAccount;
 use Carbon\Carbon;
@@ -13,6 +14,7 @@ use Livewire\WithPagination;
 class TaxPayments extends Component
 {
     use WithPagination;
+    use ExportsCsv;
 
     public string $tax_type = 'general';
     public float $amount = 0;
@@ -54,6 +56,27 @@ class TaxPayments extends Component
         $this->tax_type = 'general';
         $this->status = 'paid';
         $this->dispatch('notify', message: 'Tax payment recorded.');
+    }
+
+    public function exportToCsv()
+    {
+        $rows = TaxPayment::with('bankAccount')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn ($t) => [
+                $t->tax_type,
+                number_format((float) $t->amount, 2, '.', ''),
+                $t->payment_date ? \Illuminate\Support\Carbon::parse($t->payment_date)->format('Y-m-d') : '',
+                $t->bankAccount?->bank_name ?? '',
+                $t->reference_number ?? '',
+                ucfirst((string) $t->status),
+            ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('tax_payments'),
+            ['Tax Type', 'Amount', 'Payment Date', 'Bank', 'Reference', 'Status'],
+            $rows
+        );
     }
 
     public function render()

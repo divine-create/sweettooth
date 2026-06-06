@@ -6,11 +6,14 @@
                 <h1 class="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">Credit Notes</h1>
                 <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Issue credit notes to customers against completed sales.</p>
             </div>
-            <button wire:click="openCreateModal"
-                class="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                New Credit Note
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" wire:click="exportToCsv" class="rounded-full border border-emerald-600 bg-emerald-600 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-emerald-700">Export CSV</button>
+                <button wire:click="openCreateModal"
+                    class="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                    New Credit Note
+                </button>
+            </div>
         </div>
     </div>
 

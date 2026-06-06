@@ -8,6 +8,7 @@ use App\Models\Sale;
 use App\Models\StockMovement;
 use App\Services\GlPostingService;
 use App\Models\AccountingPostingFailure;
+use App\Livewire\Concerns\ExportsCsv;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -17,6 +18,7 @@ use Livewire\WithPagination;
 class Transactions extends Component
 {
     use WithPagination;
+    use ExportsCsv;
 
     #[Url(keep: true)]
     public ?string $b_id = null;
@@ -78,6 +80,11 @@ class Transactions extends Component
 
     private function getTransactions()
     {
+        return $this->transactionsQuery()->paginate((int) ($this->quantity ?? 25));
+    }
+
+    private function transactionsQuery()
+    {
         $branchId = $this->getBranchId();
         return match ($this->transactionType) {
             'sales' => $this->applyStatusFilter(
@@ -86,7 +93,7 @@ class Transactions extends Component
                         ->orWhere('sale_number', 'like', '%' . $this->search . '%');
                 })
                 ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            )->orderBy('sale_time', 'desc')->paginate((int) ($this->quantity ?? 25)),
+            )->orderBy('sale_time', 'desc'),
             'purchases' => $this->applyStatusFilter(
                 Purchase::query()->when($this->search, function ($query) {
                     $query->where('id', 'like', '%' . $this->search . '%')
@@ -94,24 +101,42 @@ class Transactions extends Component
                         ->orWhere('supplier_name', 'like', '%' . $this->search . '%');
                 })
                 ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            )->orderBy('purchase_date', 'desc')->paginate((int) ($this->quantity ?? 25)),
+            )->orderBy('purchase_date', 'desc'),
             'payments' => $this->applyStatusFilter(
                 Payment::query()->when($this->search, function ($query) {
                     $query->where('id', 'like', '%' . $this->search . '%')
                         ->orWhere('reference_number', 'like', '%' . $this->search . '%');
                 })
                 ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            )->orderBy('payment_time', 'desc')->paginate((int) ($this->quantity ?? 25)),
+            )->orderBy('payment_time', 'desc'),
             'adjustments' => $this->applyStatusFilter(
                 $this->adjustmentQuery()->when($this->search, function ($query) {
                     $query->where('id', 'like', '%' . $this->search . '%');
                 })
                 ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            )->orderBy('movement_date', 'desc')->paginate((int) ($this->quantity ?? 25)),
+            )->orderBy('movement_date', 'desc'),
             default => $this->applyStatusFilter(
                 Sale::query()->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            )->orderBy('sale_time', 'desc')->paginate((int) ($this->quantity ?? 25)),
+            )->orderBy('sale_time', 'desc'),
         };
+    }
+
+    public function exportToCsv()
+    {
+        $rows = $this->transactionsQuery()->get()->map(function ($row) {
+            return [
+                $row->id,
+                $row->gl_posting_status ?? '-',
+                number_format($this->resolveAmount($row), 2, '.', ''),
+                $this->resolveDate($row) ?? '',
+            ];
+        });
+
+        return $this->streamCsv(
+            $this->csvFilename('transactions_'.$this->transactionType),
+            ['ID', 'Status', 'Amount', 'Date'],
+            $rows
+        );
     }
 
     private function applyStatusFilter($query)

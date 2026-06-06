@@ -18,10 +18,10 @@ class CreateSupplierContact extends Component
     protected function rules()
     {
         return [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
-            'role' => 'required|string|max:100',
+            'name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:20',
+            'role' => 'nullable|string|max:100',
             'isPrimary' => 'boolean',
         ];
     }
@@ -37,10 +37,10 @@ class CreateSupplierContact extends Component
 
         SupplierContact::create([
             'supplier_id' => $this->supplier->id,
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'],
-            'role' => $validated['role'],
+            'name' => $validated['name'] ?? '',
+            'email' => ($validated['email'] ?? '') ?: null,
+            'phone' => ($validated['phone'] ?? '') ?: null,
+            'role' => ($validated['role'] ?? '') ?: 'other',
             'is_primary' => $validated['isPrimary'],
             'is_active' => true,
         ]);

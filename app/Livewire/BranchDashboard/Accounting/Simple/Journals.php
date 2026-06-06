@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\GlEntry;
 use App\Models\AccountingPeriod;
 use App\Models\GlAccount;
@@ -17,6 +18,7 @@ use Livewire\WithPagination;
 class Journals extends Component
 {
     use WithPagination;
+    use ExportsCsv;
 
     #[Url(keep: true)]
     public ?string $b_id = null;
@@ -62,6 +64,35 @@ class Journals extends Component
             ->where('period_end', '>=', now())
             ->first()?->id;
         $this->quickExpenseDate = $this->entryDate;
+    }
+
+    public function exportToCsv()
+    {
+        $branchId = $this->getBranchId();
+        $query = GlEntry::query();
+
+        if ($this->status !== 'all') {
+            $query->where('status', $this->status);
+        }
+
+        $rows = $query->with('glAccount')
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->orderBy('entry_date', 'desc')
+            ->get()
+            ->map(fn ($e) => [
+                $e->entry_date ? \Illuminate\Support\Carbon::parse($e->entry_date)->format('Y-m-d') : '',
+                $e->glAccount ? trim($e->glAccount->account_number.' - '.$e->glAccount->account_name) : '',
+                number_format((float) $e->debit, 2, '.', ''),
+                number_format((float) $e->credit, 2, '.', ''),
+                $e->reference_number ?? '',
+                $e->status,
+            ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('journal_entries'),
+            ['Date', 'Account', 'Debit', 'Credit', 'Reference', 'Status'],
+            $rows
+        );
     }
 
     public function render()

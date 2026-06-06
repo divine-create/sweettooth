@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\DebitNote;
 use App\Models\Purchase;
 use App\Models\Supplier;
@@ -13,7 +14,7 @@ use TallStackUi\Traits\Interactions;
 #[Layout('components.layouts.app.branch-dashboard')]
 class DebitNotes extends Component
 {
-    use Interactions, WithPagination;
+    use Interactions, WithPagination, ExportsCsv;
 
     public bool $showCreateModal = false;
     public bool $showDetailModal = false;
@@ -141,6 +142,35 @@ class DebitNotes extends Component
     public function updatedSupplierId(): void
     {
         $this->purchase_id = null;
+    }
+
+    public function exportToCsv()
+    {
+        $branchId = current_branch_id();
+
+        $rows = DebitNote::where('branch_id', $branchId)
+            ->when($this->search, fn($q) => $q->where('debit_note_number', 'like', "%{$this->search}%")
+                ->orWhere('reason', 'like', "%{$this->search}%"))
+            ->with('supplier')
+            ->orderByDesc('debit_note_date')
+            ->get()
+            ->map(fn ($n) => [
+                $n->debit_note_number,
+                $n->debit_note_date ? \Illuminate\Support\Carbon::parse($n->debit_note_date)->format('Y-m-d') : '',
+                $n->supplier?->name ?? '',
+                $n->reason ?? '',
+                number_format((float) $n->subtotal, 2, '.', ''),
+                number_format((float) $n->tax_amount, 2, '.', ''),
+                number_format((float) $n->total, 2, '.', ''),
+                number_format((float) $n->amount_applied, 2, '.', ''),
+                ucfirst((string) $n->status),
+            ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('debit_notes'),
+            ['Debit Note #', 'Date', 'Supplier', 'Reason', 'Subtotal', 'Tax', 'Total', 'Amount Applied', 'Status'],
+            $rows
+        );
     }
 
     public function render()

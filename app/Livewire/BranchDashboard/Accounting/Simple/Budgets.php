@@ -2,6 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\Simple;
 
+use App\Livewire\Concerns\ExportsCsv;
 use App\Models\Budget;
 use App\Models\GlAccount;
 use App\Models\AccountingPeriod;
@@ -13,6 +14,7 @@ use Livewire\WithPagination;
 class Budgets extends Component
 {
     use WithPagination;
+    use ExportsCsv;
 
     public ?string $gl_account_id = null;
     public ?string $accounting_period_id = null;
@@ -61,6 +63,27 @@ class Budgets extends Component
         ]);
         $this->is_approved = true;
         $this->dispatch('notify', message: 'Budget saved.');
+    }
+
+    public function exportToCsv()
+    {
+        $rows = Budget::with(['glAccount', 'period'])
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn ($b) => [
+                $b->glAccount ? trim($b->glAccount->account_number.' - '.$b->glAccount->account_name) : '',
+                $b->period?->name ?? ($b->period ? "{$b->period->month}/{$b->period->year}" : ''),
+                $b->category ?? '',
+                number_format((float) $b->planned_amount, 2, '.', ''),
+                $b->forecast_amount === null ? '' : number_format((float) $b->forecast_amount, 2, '.', ''),
+                $b->is_approved ? 'Yes' : 'No',
+            ]);
+
+        return $this->streamCsv(
+            $this->csvFilename('budgets'),
+            ['Account', 'Period', 'Category', 'Planned Amount', 'Forecast Amount', 'Approved'],
+            $rows
+        );
     }
 
     public function render()
