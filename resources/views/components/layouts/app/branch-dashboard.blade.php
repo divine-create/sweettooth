@@ -379,6 +379,11 @@
                     {{ __('Bank Reconciliation') }}
                 </flux:navlist.item>
 
+                <flux:navlist.item icon="arrow-up-tray" :href="branch_route('branch-dashboard.accounting.bank-statement-import')"
+                    :current="request()->routeIs('branch-dashboard.accounting.bank-statement-import')" wire:navigate>
+                    {{ __('Import Bank Statement') }}
+                </flux:navlist.item>
+
                 <flux:navlist.item icon="scale" :href="branch_route('branch-dashboard.accounting.inventory-valuation')"
                     :current="request()->routeIs('branch-dashboard.accounting.inventory-valuation')" wire:navigate>
                     {{ __('Inventory Valuation') }}

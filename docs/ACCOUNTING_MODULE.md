@@ -268,9 +268,11 @@ Main accounting operations, posting, and validation.
 |-----------|------|-------------|
 | `BranchDashboard\Accounting\Simple\CashBank` | `/accounting/bank-accounts` | Bank account management |
 | `BranchDashboard\Accounting\BankAccounts` | `/accounting/bank-accounts/list` | Bank accounts (advanced) |
+| `BranchDashboard\Accounting\BankStatementImport` | `/accounting/bank-statement-import` | Import bank statement (CSV) |
+| `BranchDashboard\Accounting\BankReconciliation` | `/accounting/bank-reconciliation` | Reconciliation tool |
 | `BranchDashboard\Accounting\CashPosition` | `/accounting/cash-position` | Cash position |
 
-> **Note:** Bank Reconciliation (`BankReconciliation`) is built but currently disabled — awaiting CSV import functionality. See disabled routes in `branch-route.php` + `accounting.php`.
+> **Note:** Bank Reconciliation is live. The workflow is: import a statement via `BankStatementImport` (CSV), then match GL entries against the imported bank transactions in `BankReconciliation`.
 
 ### 3.5 Period Management
 
@@ -334,9 +336,10 @@ Route::middleware(['auth', 'accounting'])->prefix('accounting')->group(function 
     Route::get('/reports/general-ledger', ...);
     Route::get('/reports/cash-flow', ...);
     
-    // Bank Reconciliation (disabled - awaiting CSV import)
-    // Route::get('/bank-reconciliation', ...);
-    // Route::get('/bank-reconciliation/manage', ...);
+    // Bank Statement Import + Reconciliation
+    Route::get('/bank-statement-import', ...);
+    Route::get('/bank-reconciliation', ...);
+    Route::get('/bank-reconciliation/manage', ...);
     
     // Inventory Valuation
     Route::get('/inventory-valuation', ...);
