@@ -3,6 +3,7 @@
 namespace App\Livewire\BranchDashboard\Supplier;
 
 use App\Models\Supplier;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class SupplierDetails extends Component
@@ -59,19 +60,19 @@ class SupplierDetails extends Component
 
     private function initializeEditForm(): void
     {
-        $this->editName = $this->supplier->name;
-        $this->editEmail = $this->supplier->email;
-        $this->editPhone = $this->supplier->phone;
+        $this->editName = $this->supplier->name ?? '';
+        $this->editEmail = $this->supplier->email ?? '';
+        $this->editPhone = $this->supplier->phone ?? '';
         $this->editWebsite = $this->supplier->website ?? '';
-        $this->editAddress = $this->supplier->address;
-        $this->editCity = $this->supplier->city;
-        $this->editState = $this->supplier->state;
-        $this->editPostalCode = $this->supplier->postal_code;
-        $this->editCountry = $this->supplier->country;
-        $this->editTaxId = $this->supplier->tax_id;
-        $this->editStatus = $this->supplier->status;
-        $this->editCreditLimit = (string) $this->supplier->credit_limit;
-        $this->editPaymentTermsDays = (string) $this->supplier->payment_terms_days;
+        $this->editAddress = $this->supplier->address ?? '';
+        $this->editCity = $this->supplier->city ?? '';
+        $this->editState = $this->supplier->state ?? '';
+        $this->editPostalCode = $this->supplier->postal_code ?? '';
+        $this->editCountry = $this->supplier->country ?? '';
+        $this->editTaxId = $this->supplier->tax_id ?? '';
+        $this->editStatus = $this->supplier->status ?? '';
+        $this->editCreditLimit = (string) ($this->supplier->credit_limit ?? '');
+        $this->editPaymentTermsDays = (string) ($this->supplier->payment_terms_days ?? '');
         $this->editNotes = $this->supplier->notes ?? '';
     }
 
@@ -79,18 +80,18 @@ class SupplierDetails extends Component
     {
         $validated = $this->validate([
             'editName' => 'required|string|max:255',
-            'editEmail' => 'required|email|unique:suppliers,email,' . $this->supplier->id,
-            'editPhone' => 'required|string|max:20',
+            'editEmail' => 'nullable|email|unique:suppliers,email,' . $this->supplier->id,
+            'editPhone' => 'nullable|string|max:20',
             'editWebsite' => 'nullable|url|max:255',
-            'editAddress' => 'required|string|max:255',
-            'editCity' => 'required|string|max:100',
-            'editState' => 'required|string|max:100',
-            'editPostalCode' => 'required|string|max:20',
-            'editCountry' => 'required|string|max:100',
-            'editTaxId' => 'required|string|max:50|unique:suppliers,tax_id,' . $this->supplier->id,
+            'editAddress' => 'nullable|string|max:255',
+            'editCity' => 'nullable|string|max:100',
+            'editState' => 'nullable|string|max:100',
+            'editPostalCode' => 'nullable|string|max:20',
+            'editCountry' => 'nullable|string|max:100',
+            'editTaxId' => 'nullable|string|max:50|unique:suppliers,tax_id,' . $this->supplier->id,
             'editStatus' => 'required|in:active,inactive,suspended,pending',
-            'editCreditLimit' => 'required|numeric|min:0',
-            'editPaymentTermsDays' => 'required|numeric|min:0',
+            'editCreditLimit' => 'nullable|numeric|min:0',
+            'editPaymentTermsDays' => 'nullable|numeric|min:0',
             'editNotes' => 'nullable|string|max:1000',
         ]);
 
