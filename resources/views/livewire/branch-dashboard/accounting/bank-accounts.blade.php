@@ -4,7 +4,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
                 <h1 class="text-3xl font-bold text-zinc-900 dark:text-white mb-2">Bank Accounts</h1>
-                <p class="text-zinc-600 dark:text-zinc-400">Create, edit, and manage bank accounts used for reconciliation and postings</p>
+                <p class="text-zinc-600 dark:text-zinc-400">Create, edit, and manage your organization's bank accounts</p>
             </div>
             <button type="button" wire:click="exportToCsv" class="self-start px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold">Export CSV</button>
         </div>

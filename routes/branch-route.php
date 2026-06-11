@@ -284,9 +284,16 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
 
             // Bank Reconciliation
             Route::middleware('role_or_permission:reconcile-accounts,Accounting Manager')->group(function () {
-                Route::get('/bank-reconciliation', \App\Livewire\BranchDashboard\Accounting\Simple\CashBank::class)->name('bank-reconciliation');
+                Route::get('/bank-reconciliation', \App\Livewire\BranchDashboard\Accounting\BankReconciliation::class)
+                    ->name('bank-reconciliation');
                 Route::get('/bank-reconciliation/manage', \App\Livewire\BranchDashboard\Accounting\BankReconciliation::class)
                     ->name('bank-reconciliation-manage');
+            });
+
+            // Bank Statement Import
+            Route::middleware('role_or_permission:manage-bank-accounts,Accounting Manager')->group(function () {
+                Route::get('/bank-statement-import', \App\Livewire\BranchDashboard\Accounting\BankStatementImport::class)
+                    ->name('bank-statement-import');
             });
 
             // POS Remittances

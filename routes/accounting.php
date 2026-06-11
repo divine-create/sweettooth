@@ -66,13 +66,17 @@ Route::middleware(['auth', 'accounting'])->prefix('accounting')->group(function 
             ->name('accounting.reports.cash-flow');
     });
 
-    // Bank Reconciliation - Use branch dashboard components with proper layout
+    // Bank Reconciliation
     Route::prefix('bank-reconciliation')->group(function () {
-        Route::get('/', App\Livewire\BranchDashboard\Accounting\Simple\CashBank::class)
+        Route::get('/', App\Livewire\BranchDashboard\Accounting\BankReconciliation::class)
             ->name('accounting.bank-reconciliation.index');
         Route::get('/manage', App\Livewire\BranchDashboard\Accounting\BankReconciliation::class)
             ->name('accounting.bank-reconciliation.manage');
     });
+
+    // Bank Statement Import
+    Route::get('/bank-statement-import', App\Livewire\BranchDashboard\Accounting\BankStatementImport::class)
+        ->name('accounting.bank-statement-import');
 
     // Overview/Audit - Use branch dashboard components with proper layout
     Route::get('overview', App\Livewire\BranchDashboard\Accounting\Simple\Home::class)
