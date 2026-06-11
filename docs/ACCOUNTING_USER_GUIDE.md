@@ -26,11 +26,10 @@ From the Accounting menu, you can access:
 |----------|---------------|
 | Dashboard | Overview of accounting activities |
 | GL Accounts | View and manage chart of accounts |
-| Bank Accounts | Manage bank accounts & reconciliation |
+| Bank Accounts | Add, edit, and manage your organization's bank accounts |
 | Journal Entries | Record manual transactions |
 | Periods | Manage fiscal periods |
 | Reports | Financial reports |
-| Bank Reconciliation | Match bank records with GL |
 | Inventory Valuation | Inventory accounting |
 | Expenses | Record expenses |
 | Payroll | Employee payroll |
@@ -124,6 +123,19 @@ For basic transactions, use the simpler form:
 4. Set to Active
 5. Save
 
+### Bank Statement Import
+
+Before you can reconcile, you need to bring your bank statement into the system.
+
+1. Go to **Import Bank Statement**
+2. Select the **Bank Account**
+3. Upload your **CSV file** (download the sample CSV to see the expected format)
+4. The system shows a **preview** of the first 20 rows
+5. Click **Import** to bring all transactions into the system
+6. Then go to **Bank Reconciliation** to start matching
+
+> **Tip:** Download the sample CSV from the import page to see the exact format. Most bank statements can be exported as CSV from your internet banking portal.
+
 ### Bank Reconciliation
 
 This matches your bank records with your GL records to ensure they agree.
@@ -132,15 +144,15 @@ This matches your bank records with your GL records to ensure they agree.
 
 1. Go to **Bank Reconciliation**
 2. Select the **Bank Account**
-3. Select the **Date** you want to reconcile
-4. The system shows:
-   - Bank position (from bank statements)
-   - GL balance (from your records)
-5. Click on transactions to mark them as cleared
-6. Note any differences in the Variance Notes
-7. Mark as **Reconciled** when complete
+3. Enter the **Reconciliation Date** and **Bank Balance** (from your statement)
+4. Click **Start Reconciliation**
+5. The system shows two columns:
+   - **GL Entries** — transactions from your accounting records
+   - **Bank Transactions** — transactions you imported
+6. Click **Auto-Match Transactions** to match obvious pairs, or match manually
+7. When the difference reaches ₦0.00, click **Complete Reconciliation**
 
-**Tip:** Review daily to keep up-to-date.
+**Tip:** Reconcile at least monthly to keep your records accurate.
 
 ---
 

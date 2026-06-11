@@ -119,6 +119,15 @@
                         @enderror
                     </div>
 
+                    <!-- Import reminder -->
+                    <div class="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-4 text-sm text-blue-800 dark:text-blue-200">
+                        Reconciliation matches your GL entries against imported bank transactions. If you haven't loaded this account's statement yet,
+                        <a href="{{ route('branch-dashboard.accounting.bank-statement-import', ['b_id' => request('b_id')]) }}" wire:navigate class="font-semibold underline hover:no-underline">
+                            import your bank statement
+                        </a>
+                        first.
+                    </div>
+
                     <!-- Action Buttons -->
                     <div class="flex justify-end">
                         <button wire:click="startReconciliation" wire:loading.attr="disabled" wire:target="startReconciliation" class="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">

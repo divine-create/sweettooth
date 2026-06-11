@@ -51,9 +51,14 @@ class BankReconciliation extends Component
 
     public int $autoMatchCount = 0;
 
-    public function mount()
+    public function mount(?int $account_id = null)
     {
         $this->service = app(BankReconciliationService::class);
+
+        // If an account_id is provided (e.g., from the bank accounts page), pre-select it
+        if ($account_id) {
+            $this->selectedBankAccountId = $account_id;
+        }
     }
     
     protected function getService(): BankReconciliationService
