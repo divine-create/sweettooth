@@ -19,6 +19,8 @@ class SaleItem extends Model
         'sales_uom_id',
         'conversion_factor',
         'unit_price',
+        'unit_cost',
+        'line_cost',
         'subtotal',
         'discount',
         'total',
@@ -30,6 +32,8 @@ class SaleItem extends Model
         'sales_quantity' => 'decimal:4',
         'conversion_factor' => 'decimal:6',
         'unit_price' => 'decimal:2',
+        'unit_cost' => 'decimal:2',
+        'line_cost' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'discount' => 'decimal:2',
         'total' => 'decimal:2',
@@ -94,11 +98,62 @@ class SaleItem extends Model
         $this->total = $this->calculateTotal();
     }
 
+    /**
+     * Capture the cost of goods sold for this line if it has not been provided.
+     *
+     * Product (recipe-made) lines: cost is taken from the product's saved cost,
+     * falling back to its recipe-derived estimated cost. Both are expressed per
+     * sales unit (same basis as unit_price), so the line cost is cost x sales qty.
+     *
+     * Direct inventory item lines: cost is the stock's weighted-average cost per
+     * base unit, so the line cost is cost x base quantity.
+     *
+     * An explicitly supplied unit_cost/line_cost is never overwritten.
+     */
+    public function ensureCostCaptured(): void
+    {
+        if ((float) ($this->unit_cost ?? 0) > 0 || (float) ($this->line_cost ?? 0) > 0) {
+            return;
+        }
+
+        if ($this->product_id) {
+            $product = $this->product ?: Product::find($this->product_id);
+            if (! $product) {
+                return;
+            }
+
+            $costPerSalesUnit = (float) ($product->cost ?? 0);
+            if ($costPerSalesUnit <= 0) {
+                $costPerSalesUnit = (float) ($product->estimated_cost ?? 0);
+            }
+
+            if ($costPerSalesUnit > 0) {
+                $salesQty = (float) ($this->sales_quantity ?? $this->quantity ?? 0);
+                $this->unit_cost = round($costPerSalesUnit, 2);
+                $this->line_cost = round($costPerSalesUnit * $salesQty, 2);
+            }
+
+            return;
+        }
+
+        if ($this->item_id) {
+            $avg = Stock::where('item_id', $this->item_id)
+                ->when($this->sale?->branch_id, fn ($q) => $q->where('branch_id', $this->sale->branch_id))
+                ->value('average_cost');
+
+            if ($avg !== null && (float) $avg > 0) {
+                $this->unit_cost = round((float) $avg, 2);
+                $this->line_cost = round((float) $avg * (float) ($this->quantity ?? 0), 2);
+            }
+        }
+    }
+
     // Boot method to auto-calculate fields
     protected static function booted(): void
     {
         static::saving(function (SaleItem $saleItem) {
             $saleItem->updateCalculatedFields();
+            $saleItem->ensureCostCaptured();
         });
 
         // Update parent sale totals when sale item changes
