@@ -95,7 +95,7 @@ class Purchases extends Component
         'purchaseItems' => 'required|array|min:1',
         'purchaseItems.*.item_id' => 'required|exists:items,id',
         'purchaseItems.*.quantity' => 'required|numeric|min:1',
-        'purchaseItems.*.uom' => 'required|exists:units_of_measure,symbol',
+        'purchaseItems.*.uom' => 'nullable|string',
         'purchaseItems.*.unit_price' => 'required|numeric|min:0.01',
         'purchaseItems.*.expiry_date' => 'nullable|date',
         'purchaseItems.*.batch_number' => 'nullable|string|max:100',

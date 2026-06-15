@@ -487,6 +487,9 @@
                                             @error('purchaseItems.'.$index.'.item_id')
                                                 <span class="text-red-500 text-xs">{{ $message }}</span>
                                             @enderror
+                                            @error('purchaseItems.'.$index.'.uom')
+                                                <span class="block text-red-500 text-xs">{{ $message }}</span>
+                                            @enderror
                                         </td>
                                         <td class="px-4 py-2">
                                             <input type="number" step="0.5" min="1" wire:model.live="purchaseItems.{{ $index }}.quantity"
