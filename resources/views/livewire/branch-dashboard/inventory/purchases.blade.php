@@ -466,7 +466,6 @@
                                     <tr>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">Item</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">Quantity</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">UOM</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">Unit Price</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">Expiry Date</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300">Batch No.</th>
@@ -493,13 +492,6 @@
                                             <input type="number" step="0.5" min="1" wire:model.live="purchaseItems.{{ $index }}.quantity"
                                                 class="w-24 px-2 py-1 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500">
                                             @error('purchaseItems.'.$index.'.quantity')
-                                                <span class="text-red-500 text-xs">{{ $message }}</span>
-                                            @enderror
-                                        </td>
-                                        <td class="px-4 py-2">
-                                            <input type="text" wire:model="purchaseItems.{{ $index }}.uom" disabled
-                                                class="w-24 px-2 py-1 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 cursor-not-allowed opacity-75">
-                                            @error('purchaseItems.'.$index.'.uom')
                                                 <span class="text-red-500 text-xs">{{ $message }}</span>
                                             @enderror
                                         </td>
@@ -534,7 +526,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="7" class="px-4 py-8 text-center text-zinc-500">No items added. Click "Add Item" to begin.</td>
+                                        <td colspan="6" class="px-4 py-8 text-center text-zinc-500">No items added. Click "Add Item" to begin.</td>
                                     </tr>
                                     @endforelse
                                 </tbody>
