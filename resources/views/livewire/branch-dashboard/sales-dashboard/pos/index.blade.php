@@ -2,6 +2,7 @@
     x-data="{
         productView: 'grid',
         showReceipt: false,
+        showBill: false,
         receiptContent: ''
     }"
     @pos-receipt-ready.window="showReceipt = true"
@@ -588,11 +589,17 @@
                             @endif
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 pt-2">
+                    <div class="grid grid-cols-4 gap-2 pt-2">
                         <button type="button" wire:click="holdSale"
                             @if(!$this->hasActiveShift()) disabled title="No active shift" @endif
                             class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                             Hold
+                        </button>
+                        <button type="button" x-on:click="showBill = true"
+                            :disabled="{{ count($cart) === 0 ? 'true' : 'false' }}"
+                            @if(count($cart) === 0) title="Add items to the cart first" @endif
+                            class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                            Bill
                         </button>
                         <button type="button" wire:click="completeSale"
                             :disabled="{{ !$this->hasActiveShift() || count($cart) === 0 ? 'true' : 'false' }} || $wire.total <= 0 || $wire.paymentRemaining > 0.01"
@@ -786,6 +793,99 @@
         </div>
     </div>
 
+    <!-- Pre-Payment Bill Modal -->
+    <div x-show="showBill" x-cloak class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/40" @click="showBill = false"></div>
+        <div class="relative w-full max-w-sm mx-auto bg-white shadow-2xl" id="bill-to-print">
+            <div class="p-6">
+                <div class="text-center mb-4">
+                    <div class="text-2xl font-bold">SWEET TOOTH</div>
+                    @if(!empty($branchName))
+                        <div class="text-xs text-zinc-500">{{ $branchName }}</div>
+                    @endif
+                    <div class="text-sm font-semibold text-zinc-700 mt-1">BILL</div>
+                    <div class="text-xs text-zinc-500 mt-1">{{ now()->format('d M Y, h:i A') }}</div>
+                    <div class="text-xs text-zinc-500">Cashier: {{ auth()->user()->name ?? 'N/A' }}</div>
+                    @if(!empty($orderType))
+                        <div class="text-xs text-zinc-500">{{ ucfirst(str_replace('-', ' ', $orderType)) }}</div>
+                    @endif
+                </div>
+
+                @if(count($cart) > 0)
+                    <div class="border-t-2 border-b-2 border-dashed border-zinc-300 py-3 my-3">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-zinc-200">
+                                    <th class="text-left pb-1">Item</th>
+                                    <th class="text-center pb-1">Qty</th>
+                                    <th class="text-right pb-1">Price</th>
+                                    <th class="text-right pb-1">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($cart as $line)
+                                    <tr>
+                                        <td class="py-1">{{ $line['name'] ?? 'Item' }}</td>
+                                        <td class="text-center">
+                                            {{ number_format($line['qty'] ?? 0, 0) }}
+                                            @if(!empty($line['sales_uom']) || !empty($line['uom']))
+                                                <span class="text-[10px] text-zinc-400">{{ $line['sales_uom'] ?? $line['uom'] }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-right">{{ number_format($line['price'] ?? 0, 2) }}</td>
+                                        <td class="text-right font-semibold">{{ number_format(($line['price'] ?? 0) * ($line['qty'] ?? 0), 2) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="space-y-1 text-sm mb-3">
+                        <div class="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>{{ $this->formatCurrency($subtotal) }}</span>
+                        </div>
+                        @if($discount > 0)
+                            <div class="flex justify-between text-orange-600">
+                                <span>Discount:</span>
+                                <span>-{{ $this->formatCurrency($discount) }}</span>
+                            </div>
+                        @endif
+                        @if($tax > 0)
+                            <div class="flex justify-between">
+                                <span>Tax:</span>
+                                <span>{{ $this->formatCurrency($tax) }}</span>
+                            </div>
+                        @endif
+                        <div class="flex justify-between text-lg font-bold border-t border-zinc-300 pt-1 mt-2">
+                            <span>TOTAL:</span>
+                            <span>{{ $this->formatCurrency($total) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="text-center text-xs text-zinc-500 border-t border-zinc-200 pt-3">
+                        <p class="font-semibold">This is a bill, not a payment receipt.</p>
+                        <p class="mt-1">Please proceed to payment.</p>
+                    </div>
+                @else
+                    <div class="text-center py-8 text-zinc-500">
+                        <p>Add items to the cart to generate a bill</p>
+                    </div>
+                @endif
+            </div>
+
+            <div class="bg-zinc-100 px-4 py-3 flex items-center justify-end gap-2 print:hidden">
+                <button type="button" @click="showBill = false" class="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-white text-zinc-700 hover:bg-zinc-200 border border-zinc-300">
+                    Close
+                </button>
+                <button type="button" onclick="window.print()" class="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M7.875 1.5C6.839 1.5 6 2.34 6 3.375v2.99c-.426.053-.851.11-1.274.174-1.454.218-2.476 1.483-2.476 2.917v6.294a3 3 0 0 0 3 3h.27l-.155 1.705A1.875 1.875 0 0 0 7.232 22.5h9.536a1.875 1.875 0 0 0 1.867-2.045l-.155-1.705h.27a3 3 0 0 0 3-3V9.456c0-1.434-1.022-2.7-2.476-2.917A48.716 48.716 0 0 0 18 6.366V3.375c0-1.036-.84-1.875-1.875-1.875h-8.25ZM16.5 6.205v-2.83A.375.375 0 0 0 16.125 3h-8.25a.375.375 0 0 0-.375.375v2.83a49.353 49.353 0 0 1 9 0Zm-.217 8.265c.178.018.317.16.333.337l.526 5.784a.375.375 0 0 1-.374.409H7.232a.375.375 0 0 1-.374-.409l.526-5.784a.373.373 0 0 1 .333-.337 41.741 41.741 0 0 1 8.566 0Zm.967-3.97a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H18a.75.75 0 0 1-.75-.75V10.5ZM15 9.75a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V10.5a.75.75 0 0 0-.75-.75H15Z" clip-rule="evenodd"/></svg>
+                    Print Bill
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Add Table Modal -->
     @if($showTableModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4" x-data="{ show: @entangle('showTableModal') }">
@@ -884,10 +984,11 @@
             body * {
                 visibility: hidden;
             }
-            #receipt-to-print, #receipt-to-print * {
+            #receipt-to-print, #receipt-to-print *,
+            #bill-to-print, #bill-to-print * {
                 visibility: visible;
             }
-            #receipt-to-print {
+            #receipt-to-print, #bill-to-print {
                 position: absolute;
                 left: 0;
                 top: 0;
