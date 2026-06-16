@@ -149,6 +149,13 @@ class SyncSalesDepartmentPages extends Command
                 'order' => 9,
             ],
             [
+                'name' => 'Bill',
+                'slug' => 'bill',
+                'route_name' => "branch-dashboard.sales-dashboard.bill.index",
+                'icon' => 'document-text',
+                'order' => 9,
+            ],
+            [
                 'name' => 'My Sales',
                 'slug' => 'my-sales',
                 'route_name' => 'branch-dashboard.sales-dashboard.my-sales.index',

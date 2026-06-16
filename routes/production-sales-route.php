@@ -102,6 +102,11 @@ Route::prefix('sales-dashboard')->name('sales-dashboard.')->middleware([
             Route::get('/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\Pos\Index::class)->name('index');
         });
 
+        // Bill - Print a customer bill before payment (no workflow validation; print-only, no DB writes)
+        Route::prefix('bill')->name('bill.')->group(function () {
+            Route::get('/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\Bill\Index::class)->name('index');
+        });
+
         // Analytics - Less restrictive, no workflow validation needed
         Route::prefix('analytics')->name('analytics.')->group(function () {
             Route::get('/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\Analytics\Index::class)->name('index');
