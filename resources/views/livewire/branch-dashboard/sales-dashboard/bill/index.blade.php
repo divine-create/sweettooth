@@ -98,7 +98,7 @@
                         </button>
                     </div>
 
-                    <div class="max-h-[45vh] overflow-auto divide-y divide-zinc-200 dark:divide-zinc-800">
+                    <div class="max-h-[40vh] overflow-auto divide-y divide-zinc-200 dark:divide-zinc-800">
                         @forelse($billItems as $key => $line)
                             <div class="p-3 flex items-center gap-2">
                                 <div class="flex-1">
