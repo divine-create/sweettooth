@@ -4,9 +4,8 @@ namespace App\Listeners;
 
 use App\Events\ProductionCompleted;
 use App\Services\ProductionAccountingService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
-class PostProductionToGl implements ShouldQueue
+class PostProductionToGl
 {
     /**
      * Create the event listener.
@@ -17,17 +16,15 @@ class PostProductionToGl implements ShouldQueue
 
     /**
      * Handle the event.
+     *
+     * Runs synchronously (not queued) so production posts to the ledger even
+     * when no queue worker is running, mirroring how sales posting works.
+     * recordProductionCompletion records approved output, rejects and consumed
+     * inputs in one balanced transaction, so rejection is no longer posted
+     * separately here.
      */
     public function handle(ProductionCompleted $event): void
     {
-        $production = $event->production;
-
-        // Post production completion entries
-        $this->productionService->recordProductionCompletion($production);
-
-        // If there are rejections, record them
-        if ($production->quantity_rejected > 0) {
-            $this->productionService->recordProductionRejection($production);
-        }
+        $this->productionService->recordProductionCompletion($event->production);
     }
 }

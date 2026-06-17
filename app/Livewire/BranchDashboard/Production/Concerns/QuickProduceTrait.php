@@ -417,6 +417,15 @@ trait QuickProduceTrait
                 }
             });
 
+            // Post the completed batch to the general ledger (approved output ->
+            // Finished Goods / WIP, rejects -> write-off, materials consumed).
+            if ($this->lastProductionRecordId) {
+                $postedRecord = \App\Models\ProductionRecord::with('recipe')->find($this->lastProductionRecordId);
+                if ($postedRecord) {
+                    \App\Events\ProductionCompleted::dispatch($postedRecord);
+                }
+            }
+
             if ($this->selectedRecipe->is_wip) {
                 $this->toast()->success("WIP produced: {$this->approvedQuantity} units added to stock.")->send();
                 $this->resetProduction();

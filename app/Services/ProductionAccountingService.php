@@ -33,8 +33,8 @@ class ProductionAccountingService
                 throw new Exception('Recipe not found for production record');
             }
 
-            $rmAccount = GlAccount::where('account_number', '1310')->firstOrFail();
-            $wipAccount = GlAccount::where('account_number', '1320')->firstOrFail();
+            $rmAccount = GlAccount::where('account_number', '1240')->firstOrFail();
+            $wipAccount = GlAccount::where('account_number', '1250')->firstOrFail();
 
             // Calculate raw materials cost from recipe
             $rmCost = $this->calculateRawMaterialsCost($recipe, $production->quantity_produced);
@@ -79,127 +79,170 @@ class ProductionAccountingService
     }
 
     /**
-     * Record production completion - transfer WIP to Finished Goods
-     * Includes direct labor and overhead allocation
+     * Record a completed production batch in the general ledger.
+     *
+     * QuickProduce is a single-step flow (there is no separate "start" posting),
+     * so this method records the full movement in one balanced transaction:
+     *   DR Finished Goods / WIP   (approved output, capitalised at cost)
+     *   DR Write-off Loss         (rejected output, expensed)
+     *   CR Raw Materials          (materials consumed)
+     *   CR Direct Labor / Overhead (when those costs are tracked)
+     *
+     * Debits always equal credits because the good + rejected cost split sums
+     * back to the total input cost.
      */
     public function recordProductionCompletion(ProductionRecord $production): bool
     {
         try {
             DB::beginTransaction();
 
+            // Idempotency: never post the same batch twice.
+            $alreadyPosted = GlEntry::where('reference_type', ProductionRecord::class)
+                ->where('reference_id', $production->id)
+                ->exists();
+            if ($alreadyPosted) {
+                DB::commit();
+                return true;
+            }
+
             $period = $this->getCurrentPeriod();
             if (!$period || $period->status !== 'open') {
                 throw new Exception('No open accounting period found');
             }
 
-            $wipAccount = GlAccount::where('account_number', '1320')->firstOrFail();
-            $fgAccount = GlAccount::where('account_number', '1330')->firstOrFail();
-            $laborAccount = GlAccount::where('account_number', '6120')->firstOrFail();
-            $overheadAccount = GlAccount::where('account_number', '6130')->firstOrFail();
+            $recipe = $production->recipe;
+            if (!$recipe) {
+                throw new Exception('Recipe not found for production record');
+            }
 
-            // Calculate costs
-            $laborCost = $this->calculateDirectLaborCost($production);
+            $branchId = $recipe->branch_id;
+
+            // Account numbers match the seeded chart of accounts.
+            $rawMaterials  = GlAccount::where('account_number', '1240')->firstOrFail(); // Raw Materials Inventory
+            $wipAccount    = GlAccount::where('account_number', '1250')->firstOrFail(); // Work in Progress
+            $fgAccount     = GlAccount::where('account_number', '1230')->firstOrFail(); // Finished Goods Inventory
+            $laborAccount  = GlAccount::where('account_number', '6020')->firstOrFail(); // Direct Labor
+            $overheadAcct  = GlAccount::where('account_number', '6030')->firstOrFail(); // Manufacturing Overhead
+            $writeOffAcct  = GlAccount::where('account_number', '5040')->firstOrFail(); // Write-off Loss
+
+            $producedQty = (float) $production->quantity_produced;
+            if ($producedQty <= 0) {
+                DB::commit();
+                return true; // nothing produced
+            }
+            $approvedQty = (float) $production->quantity_approved;
+            $rejectedQty = (float) $production->quantity_rejected;
+
+            // Input costs. Labor/overhead currently resolve to 0 until a costing
+            // rule is configured, in which case they will be capitalised too.
+            $rmCost       = $this->calculateRawMaterialsCost($recipe, $producedQty);
+            $laborCost    = $this->calculateDirectLaborCost($production);
             $overheadCost = $this->calculateOverheadAllocation($production);
-            $totalProductionCost = $laborCost + $overheadCost;
+            $totalCost    = $rmCost + $laborCost + $overheadCost;
 
-            // Entry 1: Add labor to WIP
-            if ($laborCost > 0) {
+            if ($totalCost <= 0) {
+                // No costed inputs yet (recipe ingredients have no cost) - record
+                // a zero unit cost and skip posting rather than write empty entries.
+                $production->update(['unit_cost' => 0]);
+                DB::commit();
+                return true;
+            }
+
+            // Split the input cost between good output (capitalised to inventory)
+            // and rejected output (expensed as waste).
+            $approvedCost = $totalCost * ($approvedQty / $producedQty);
+            $rejectedCost = $totalCost - $approvedCost;
+
+            // WIP recipes stock as Work in Progress; everything else as Finished Goods.
+            $goodInventory = $recipe->is_wip ? $wipAccount : $fgAccount;
+            $outputLabel   = $recipe->is_wip ? 'WIP produced' : 'Finished goods produced';
+
+            // ---- Debits ----
+            if ($approvedCost > 0) {
                 $this->createEntry([
-                    'gl_account_id' => $wipAccount->id,
+                    'branch_id' => $branchId,
+                    'gl_account_id' => $goodInventory->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
                     'reference_type' => ProductionRecord::class,
                     'reference_id' => $production->id,
                     'reference_number' => $production->batch_number,
-                    'description' => "Direct labor allocation - Batch {$production->batch_number}",
-                    'debit' => $laborCost,
+                    'description' => "{$outputLabel} - Batch {$production->batch_number}",
+                    'debit' => $approvedCost,
                     'credit' => 0,
                     'entry_date' => $production->production_time,
                 ]);
+            }
 
+            if ($rejectedCost > 0) {
+                $reason = $production->rejection_reason ? ": {$production->rejection_reason}" : '';
                 $this->createEntry([
+                    'branch_id' => $branchId,
+                    'gl_account_id' => $writeOffAcct->id,
+                    'accounting_period_id' => $period->id,
+                    'entry_type' => 'adjustment',
+                    'reference_type' => ProductionRecord::class,
+                    'reference_id' => $production->id,
+                    'reference_number' => $production->batch_number,
+                    'description' => "Production rejection write-off - Batch {$production->batch_number}{$reason}",
+                    'debit' => $rejectedCost,
+                    'credit' => 0,
+                    'entry_date' => $production->production_time,
+                ]);
+            }
+
+            // ---- Credits (inputs consumed) ----
+            if ($rmCost > 0) {
+                $this->createEntry([
+                    'branch_id' => $branchId,
+                    'gl_account_id' => $rawMaterials->id,
+                    'accounting_period_id' => $period->id,
+                    'entry_type' => 'adjustment',
+                    'reference_type' => ProductionRecord::class,
+                    'reference_id' => $production->id,
+                    'reference_number' => $production->batch_number,
+                    'description' => "Raw materials consumed - Batch {$production->batch_number}",
+                    'debit' => 0,
+                    'credit' => $rmCost,
+                    'entry_date' => $production->production_time,
+                ]);
+            }
+
+            if ($laborCost > 0) {
+                $this->createEntry([
+                    'branch_id' => $branchId,
                     'gl_account_id' => $laborAccount->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
                     'reference_type' => ProductionRecord::class,
                     'reference_id' => $production->id,
                     'reference_number' => $production->batch_number,
-                    'description' => "Labor cost allocation - Batch {$production->batch_number}",
+                    'description' => "Direct labor applied - Batch {$production->batch_number}",
                     'debit' => 0,
                     'credit' => $laborCost,
                     'entry_date' => $production->production_time,
                 ]);
             }
 
-            // Entry 2: Add overhead to WIP
             if ($overheadCost > 0) {
                 $this->createEntry([
-                    'gl_account_id' => $wipAccount->id,
+                    'branch_id' => $branchId,
+                    'gl_account_id' => $overheadAcct->id,
                     'accounting_period_id' => $period->id,
                     'entry_type' => 'adjustment',
                     'reference_type' => ProductionRecord::class,
                     'reference_id' => $production->id,
                     'reference_number' => $production->batch_number,
-                    'description' => "Manufacturing overhead allocation - Batch {$production->batch_number}",
-                    'debit' => $overheadCost,
-                    'credit' => 0,
-                    'entry_date' => $production->production_time,
-                ]);
-
-                $this->createEntry([
-                    'gl_account_id' => $overheadAccount->id,
-                    'accounting_period_id' => $period->id,
-                    'entry_type' => 'adjustment',
-                    'reference_type' => ProductionRecord::class,
-                    'reference_id' => $production->id,
-                    'reference_number' => $production->batch_number,
-                    'description' => "Overhead allocation - Batch {$production->batch_number}",
+                    'description' => "Manufacturing overhead applied - Batch {$production->batch_number}",
                     'debit' => 0,
                     'credit' => $overheadCost,
                     'entry_date' => $production->production_time,
                 ]);
             }
 
-            // Entry 3: Transfer completed WIP to FG
-            // Total WIP cost = Raw Materials + Labor + Overhead
-            $recipe = $production->recipe;
-            $rmCost = $this->calculateRawMaterialsCost($recipe, $production->quantity_produced);
-            $totalWipCost = $rmCost + $laborCost + $overheadCost;
-
-            $this->createEntry([
-                'gl_account_id' => $fgAccount->id,
-                'accounting_period_id' => $period->id,
-                'entry_type' => 'adjustment',
-                'reference_type' => ProductionRecord::class,
-                'reference_id' => $production->id,
-                'reference_number' => $production->batch_number,
-                'description' => "WIP to Finished Goods - Batch {$production->batch_number}",
-                'debit' => $totalWipCost,
-                'credit' => 0,
-                'entry_date' => $production->production_time,
-            ]);
-
-            $this->createEntry([
-                'gl_account_id' => $wipAccount->id,
-                'accounting_period_id' => $period->id,
-                'entry_type' => 'adjustment',
-                'reference_type' => ProductionRecord::class,
-                'reference_id' => $production->id,
-                'reference_number' => $production->batch_number,
-                'description' => "WIP reduction - Batch {$production->batch_number}",
-                'debit' => 0,
-                'credit' => $totalWipCost,
-                'entry_date' => $production->production_time,
-            ]);
-
-            // Calculate and store unit cost
-            $unitCost = $production->quantity_approved > 0 
-                ? $totalWipCost / $production->quantity_approved 
-                : 0;
-
-            $production->update([
-                'unit_cost' => $unitCost,
-            ]);
+            // Unit cost is the cost of one good unit.
+            $unitCost = $approvedQty > 0 ? ($approvedCost / $approvedQty) : 0;
+            $production->update(['unit_cost' => $unitCost]);
 
             DB::commit();
             return true;
@@ -224,11 +267,12 @@ class ProductionAccountingService
             return 0;
         }
 
-        $totalCost = 0;
+        $totalCost = 0.0;
         foreach ($ingredients as $ingredient) {
-            $ingredientQuantity = $ingredient->quantity * $quantity;
-            $ingredientCost = $ingredientQuantity * $ingredient->unit_cost;
-            $totalCost += $ingredientCost;
+            // The real column is cost_per_unit (the previous code read a
+            // non-existent unit_cost, so material cost always came out as 0).
+            // getCostForBatchFactor applies waste % and scales per unit produced.
+            $totalCost += $ingredient->getCostForBatchFactor((float) $quantity);
         }
 
         return $totalCost;
@@ -284,8 +328,8 @@ class ProductionAccountingService
 
             $totalRejectionCost = $rmCost + $laborCost + $overheadCost;
 
-            $wipAccount = GlAccount::where('account_number', '1320')->firstOrFail();
-            $writeoffAccount = GlAccount::where('account_number', '5210')->firstOrFail();
+            $wipAccount = GlAccount::where('account_number', '1250')->firstOrFail();
+            $writeoffAccount = GlAccount::where('account_number', '5040')->firstOrFail();
 
             // Entry: Debit Writeoff, Credit WIP
             $this->createEntry([

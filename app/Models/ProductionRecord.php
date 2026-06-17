@@ -20,6 +20,8 @@ class ProductionRecord extends Model
         'quantity_sent_out',
         'quantity_for_order',
         'quantity_remaining',
+        'unit_cost',
+        'total_production_cost',
         'production_time',
         'quality_status',
         'dispatch_status',
