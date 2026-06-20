@@ -44,7 +44,7 @@ class GetLowStockItemsTool implements ChatTool
         $branchId = current_branch_id();
 
         abort_unless($branchId !== null, 422, 'No active branch.');
-        abort_unless(auth()->user()?->can($this->permission()), 403);
+        abort_unless(is_super_admin() || auth()->user()?->can($this->permission()), 403);
 
         $limit = min(max((int) ($input['limit'] ?? 20), 1), 50);
 

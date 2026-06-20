@@ -45,7 +45,7 @@ class GetIncomeStatementTool implements ChatTool
         $branchId = current_branch_id();
 
         abort_unless($branchId !== null, 422, 'No active branch.');
-        abort_unless(auth()->user()?->can($this->permission()), 403);
+        abort_unless(is_super_admin() || auth()->user()?->can($this->permission()), 403);
 
         $is = $this->incomeStatement->getIncomeStatement(null, $branchId);
 
