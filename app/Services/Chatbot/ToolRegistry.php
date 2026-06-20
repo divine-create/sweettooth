@@ -22,6 +22,10 @@ class ToolRegistry
         \App\Services\Chatbot\Tools\GetTrialBalanceTool::class,
         \App\Services\Chatbot\Tools\GetIncomeStatementTool::class,
         \App\Services\Chatbot\Tools\GetBalanceSheetTool::class,
+        \App\Services\Chatbot\Tools\GetCashFlowTool::class,
+        \App\Services\Chatbot\Tools\GetItemStockTool::class,
+        \App\Services\Chatbot\Tools\GetExpiringBatchesTool::class,
+        \App\Services\Chatbot\Tools\GetProductionOrdersTool::class,
         \App\Services\Chatbot\Tools\SearchHelpTool::class,
     ];
 
