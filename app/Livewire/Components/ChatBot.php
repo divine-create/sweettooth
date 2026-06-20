@@ -3,6 +3,7 @@
 namespace App\Livewire\Components;
 
 use App\Services\Chatbot\ChatbotService;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class ChatBot extends Component
@@ -16,11 +17,29 @@ class ChatBot extends Component
 
     public bool $thinking = false;
 
+    /** Starter prompts shown on the empty state. */
+    public array $suggestions = [
+        'What were our sales this month?',
+        'Which items need restocking?',
+        'How do I close a sales shift?',
+        'Are our books balanced?',
+    ];
+
     public function send(ChatbotService $bot): void
     {
-        $text = trim($this->draft);
+        $this->ask($this->draft, $bot);
+    }
 
-        if ($text === '') {
+    public function suggest(int $index, ChatbotService $bot): void
+    {
+        $this->ask($this->suggestions[$index] ?? '', $bot);
+    }
+
+    protected function ask(string $text, ChatbotService $bot): void
+    {
+        $text = trim($text);
+
+        if ($text === '' || $this->thinking) {
             return;
         }
 
@@ -39,12 +58,22 @@ class ChatBot extends Component
             ];
         } finally {
             $this->thinking = false;
+            $this->dispatch('chat-updated');
         }
     }
 
     public function clearChat(): void
     {
         $this->messages = [];
+    }
+
+    /** Render assistant markdown to sanitized HTML (raw HTML in the model output is stripped). */
+    public function md(string $text): string
+    {
+        return Str::markdown($text, [
+            'html_input' => 'strip',
+            'allow_unsafe_links' => false,
+        ]);
     }
 
     /**

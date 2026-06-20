@@ -17,6 +17,15 @@ return [
     'max_steps'  => (int) env('CHATBOT_MAX_STEPS', 6), // tool-call loop ceiling
 
     /*
+    | Gemini "thinking" budget (tokens). Gemini 2.5-flash with thinking enabled
+    | intermittently emits MALFORMED_FUNCTION_CALL on tool use, so we disable it
+    | by default (0) for reliable, faster tool calls. Use -1 for dynamic/auto.
+    | NOTE: gemini-2.5-pro cannot be 0 — use -1 or >=128 there. Ignored by
+    | non-Gemini providers.
+    */
+    'thinking_budget' => (int) env('CHATBOT_THINKING_BUDGET', 0),
+
+    /*
     | Per-provider capabilities. The adapter only opts into a feature when the
     | active provider actually supports it (e.g. Vertex has no streaming yet).
     */

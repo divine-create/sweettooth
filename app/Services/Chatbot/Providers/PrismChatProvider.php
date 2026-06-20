@@ -29,11 +29,20 @@ class PrismChatProvider implements ChatProvider
         ));
         $conversation = array_values(array_filter($messages, fn (ChatMessage $m) => $m->role !== 'system'));
 
+        $provider = (string) config('chatbot.provider');
+
         $request = Prism::text()
-            ->using(config('chatbot.provider'), config('chatbot.model'))
+            ->using($provider, config('chatbot.model'))
             ->withMaxTokens(config('chatbot.max_tokens'))
             ->withMaxSteps(config('chatbot.max_steps'))
             ->withMessages($this->mapMessages($conversation));
+
+        // Disable/limit Gemini "thinking" — it's the main cause of intermittent
+        // MALFORMED_FUNCTION_CALL on tool use. Only meaningful for Gemini family.
+        $budget = config('chatbot.thinking_budget');
+        if ($budget !== null && (str_contains($provider, 'gemini') || str_contains($provider, 'vertex'))) {
+            $request->withProviderOptions(['thinkingBudget' => (int) $budget]);
+        }
 
         if ($system !== '') {
             $request->withSystemPrompt($system);
@@ -67,14 +76,19 @@ class PrismChatProvider implements ChatProvider
      */
     protected function executeWithRetry(\Prism\Prism\Text\PendingRequest $request)
     {
-        try {
-            return $request->asText();
-        } catch (\Prism\Prism\Exceptions\PrismException $e) {
-            if (! str_contains($e->getMessage(), 'unhandled finish reason')) {
-                throw $e;
-            }
+        $maxAttempts = 3;
 
-            return $request->asText();
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                return $request->asText();
+            } catch (\Prism\Prism\Exceptions\PrismException $e) {
+                $transient = str_contains($e->getMessage(), 'unhandled finish reason');
+
+                if (! $transient || $attempt >= $maxAttempts) {
+                    throw $e;
+                }
+                // else: retry the transient Gemini finish-reason glitch
+            }
         }
     }
 

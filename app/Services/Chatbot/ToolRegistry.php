@@ -32,8 +32,14 @@ class ToolRegistry
             return [];
         }
 
-        return collect($this->tools)
-            ->map(fn (string $class): ChatTool => app($class))
+        $tools = collect($this->tools)->map(fn (string $class): ChatTool => app($class));
+
+        // Super admins can access everything in the app, so they get every tool.
+        if (function_exists('is_super_admin') && is_super_admin()) {
+            return $tools->values()->all();
+        }
+
+        return $tools
             ->filter(fn (ChatTool $tool) => $tool->permission() === null || $user->can($tool->permission()))
             ->values()
             ->all();

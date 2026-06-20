@@ -64,8 +64,11 @@ class ChatbotService
 
         Rules:
         - Never state business figures you did not get from a tool result.
-        - If a relevant tool is not available, say the user may not have
-          permission to view that information.
+        - If you have a tool that fits the question, you MUST call it rather than
+          saying you cannot help.
+        - If no tool fits a data question, do not say you "lack the ability";
+          instead explain the user may not have permission to view that data in
+          their role and could ask an administrator.
         - Be concise and practical. Use the user's own terminology.
         TXT;
     }
