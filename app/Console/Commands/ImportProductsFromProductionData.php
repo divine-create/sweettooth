@@ -100,16 +100,16 @@ class ImportProductsFromProductionData extends Command
     protected function loadPricesFromExcel(string $path): void
     {
         try {
-            $data = \Excel::toArray([], $path);
-            
-            if (empty($data)) {
+            // First (active) sheet contains the prices.
+            $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($path)
+                ->getActiveSheet()
+                ->toArray();
+
+            if (empty($sheet)) {
                 $this->warn("No data found in Excel file: {$path}");
                 return;
             }
 
-            // Assume first sheet contains the prices
-            $sheet = reset($data);
-            
             foreach ($sheet as $index => $row) {
                 // Skip header row
                 if ($index === 0) {

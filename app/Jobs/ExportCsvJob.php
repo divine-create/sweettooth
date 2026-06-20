@@ -2,13 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Support\CsvFromHtml;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Maatwebsite\Excel\Facades\Excel;
 
 class ExportCsvJob implements ShouldQueue
 {
@@ -26,32 +26,26 @@ class ExportCsvJob implements ShouldQueue
     {
         $path = 'exports/' . $this->filename . '_' . now()->format('Y-m-d_His') . '.csv';
 
-        Excel::store(
-            new class($this->data, $this->view, $this->options) implements \Maatwebsite\Excel\Concerns\FromView {
-                public function __construct(
-                    protected array $data,
-                    protected string $view,
-                    protected array $options
-                ) {}
+        $html = view($this->view, [
+            'data' => collect($this->data),
+            'forCsv' => true,
+            'options' => $this->options,
+        ])->render();
 
-                public function view(): \Illuminate\Contracts\View\View
-                {
-                    return view($this->view, [
-                        'data' => collect($this->data),
-                        'forCsv' => true,
-                        'options' => $this->options,
-                    ]);
-                }
-            },
-            $path,
-            'public',
-            \Maatwebsite\Excel\Excel::CSV
-        );
+        $rows = CsvFromHtml::rows($html);
+
+        $stream = fopen('php://temp', 'r+');
+        CsvFromHtml::writeTo($stream, $rows);
+        rewind($stream);
+        $contents = stream_get_contents($stream);
+        fclose($stream);
+
+        Storage::disk('public')->put($path, $contents);
 
         Log::info('CSV export generated', [
             'user_id' => $this->userId,
             'path' => $path,
-            'url' => Storage::url($path),
+            'url' => Storage::disk('public')->url($path),
         ]);
     }
 }

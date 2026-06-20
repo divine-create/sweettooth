@@ -3,7 +3,7 @@
 namespace App\Traits;
 
 use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Facades\Excel;
+use App\Support\CsvFromHtml;
 use App\Jobs\ExportCsvJob;
 
 trait Exportable
@@ -148,26 +148,21 @@ trait Exportable
                 throw new \InvalidArgumentException("Export view '{$view}' not found.");
             }
 
-            $csvClass = new class($data, $view, $options)
-                implements \Maatwebsite\Excel\Concerns\FromView
-            {
-                public function __construct(
-                    protected Collection $data,
-                    protected string $view,
-                    protected array $options
-                ) {}
+            $html = view($view, [
+                'data' => $data,
+                'forCsv' => true,
+                'options' => $options,
+            ])->render();
 
-                public function view(): \Illuminate\Contracts\View\View
-                {
-                    return view($this->view, [
-                        'data' => $this->data,
-                        'forCsv' => true,
-                        'options' => $this->options,
-                    ]);
-                }
-            };
+            $rows = CsvFromHtml::rows($html);
 
-            return Excel::download($csvClass, $filename . '.csv', \Maatwebsite\Excel\Excel::CSV);
+            return response()->streamDownload(function () use ($rows) {
+                $output = fopen('php://output', 'w');
+                CsvFromHtml::writeTo($output, $rows);
+                fclose($output);
+            }, $filename . '.csv', [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+            ]);
         } catch (\Exception $e) {
             \Log::error('CSV export failed: ' . $e->getMessage(), [
                 'filename' => $filename,
