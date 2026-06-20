@@ -38,3 +38,8 @@ Archive.zip
 # Google Vertex service-account key (never commit)
 sweettooth-vertex.json
 *-vertex.json
+
+# Local data / import scratch files
+Recipe_Worksheet.xlsx
+inventory_stock_levels.csv
+inventory_unit_prices.csv
