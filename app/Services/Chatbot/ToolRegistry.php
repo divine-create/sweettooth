@@ -26,6 +26,8 @@ class ToolRegistry
         \App\Services\Chatbot\Tools\GetItemStockTool::class,
         \App\Services\Chatbot\Tools\GetExpiringBatchesTool::class,
         \App\Services\Chatbot\Tools\GetProductionOrdersTool::class,
+        \App\Services\Chatbot\Tools\ListReportsTool::class,
+        \App\Services\Chatbot\Tools\RunReportTool::class,
         \App\Services\Chatbot\Tools\SearchHelpTool::class,
     ];
 
