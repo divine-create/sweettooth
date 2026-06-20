@@ -29,6 +29,7 @@ class BankStatementImport extends Component
     public array $availableColumns = [];
     public bool $showPreview = false;
     public int $importedCount = 0;
+    public int $duplicateCount = 0;
     public array $importErrors = [];
 
     protected function rules()
@@ -118,8 +119,23 @@ class BankStatementImport extends Component
         try {
             $bankAccount = BankAccount::findOrFail($this->selectedBankAccountId);
             $imported = 0;
+            $skipped = 0;
             $errors = [];
             $positionsByDate = [];
+
+            // Fingerprint transactions that already exist for this account so a
+            // re-uploaded statement does not create duplicate rows. Snapshotting
+            // before the loop lets genuinely identical lines within a single new
+            // statement still import, while blocking a repeat of a prior import.
+            $existingFingerprints = DailyBankTransaction::where('bank_account_id', $bankAccount->id)
+                ->get(['transaction_date', 'amount', 'transaction_type', 'description'])
+                ->mapWithKeys(fn ($t) => [
+                    $t->transaction_date->toDateString()
+                        .'|'.number_format((float) $t->amount, 2, '.', '')
+                        .'|'.$t->transaction_type
+                        .'|'.trim((string) $t->description) => true,
+                ])
+                ->all();
             $dateCol = $this->columnMapping['date'];
             $narrationCol = $this->columnMapping['narration'];
             $debitCol = $this->columnMapping['debit'];
@@ -152,6 +168,15 @@ class BankStatementImport extends Component
                 $amount = $creditAmount > 0 ? $creditAmount : $debitAmount;
                 $subtype = $this->classifyTransaction($data['narration']);
                 $dateKey = $transactionDate->toDateString();
+
+                $fingerprint = $dateKey
+                    .'|'.number_format($amount, 2, '.', '')
+                    .'|'.$transactionType
+                    .'|'.trim($data['narration']);
+                if (isset($existingFingerprints[$fingerprint])) {
+                    $skipped++;
+                    continue;
+                }
 
                 if (!isset($positionsByDate[$dateKey])) {
                     $position = DailyBankPosition::firstOrCreate(
@@ -188,8 +213,13 @@ class BankStatementImport extends Component
             fclose($handle);
             DB::commit();
             $this->importedCount = $imported;
+            $this->duplicateCount = $skipped;
             $this->importErrors = $errors;
-            session()->flash('message', "Successfully imported {$imported} transactions.");
+            $message = "Successfully imported {$imported} transactions.";
+            if ($skipped > 0) {
+                $message .= " Skipped {$skipped} duplicate transaction(s) already on record.";
+            }
+            session()->flash('message', $message);
             $this->upload = null;
             $this->preview = [];
             $this->showPreview = false;

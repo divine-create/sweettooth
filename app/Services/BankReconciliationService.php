@@ -391,8 +391,8 @@ class BankReconciliationService
     private function getBankTransactions(BankAccount $account, Carbon $fromDate, Carbon $toDate): Collection
     {
         return DailyBankTransaction::where('bank_account_id', $account->id)
-            ->whereBetween('position_date', [$fromDate, $toDate])
-            ->orderBy('position_date')
+            ->whereBetween('transaction_date', [$fromDate, $toDate])
+            ->orderBy('transaction_date')
             ->get();
     }
 
@@ -446,7 +446,7 @@ class BankReconciliationService
         // Match by amount and approximate date (within 5 days)
         $amount = floatval($bankTx->amount);
         $glAmount = floatval($bankTx->transaction_type === 'inflow' ? $glTx->debit : $glTx->credit);
-        $dateDiff = $glTx->entry_date->diffInDays($bankTx->position_date);
+        $dateDiff = $glTx->entry_date->diffInDays($bankTx->transaction_date);
 
         return abs($amount - $glAmount) < 0.01 && $dateDiff <= 5;
     }
@@ -654,11 +654,11 @@ class BankReconciliationService
 
         // Check for duplicate transactions
         $transactions = DailyBankTransaction::where('bank_account_id', $account->id)
-            ->where('position_date', '<=', $date)
+            ->where('transaction_date', '<=', $date)
             ->get();
 
         $grouped = $transactions->groupBy(function ($item) {
-            return $item->amount . '|' . $item->position_date->toDateString();
+            return $item->amount . '|' . $item->transaction_date->toDateString();
         });
 
         foreach ($grouped as $key => $group) {
@@ -667,7 +667,7 @@ class BankReconciliationService
                     'type' => 'duplicate',
                     'count' => $group->count(),
                     'amount' => $group->first()->amount,
-                    'date' => $group->first()->position_date,
+                    'date' => $group->first()->transaction_date,
                     'transactions' => $group,
                 ]);
             }

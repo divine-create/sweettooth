@@ -90,8 +90,16 @@
     <span>Add New Item</span>
 </button>
 
-    <!-- Export Buttons -->
+    <!-- Export / Import Buttons -->
     <div class="flex justify-end items-center space-x-2">
+        <button wire:click="openImportModal"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200 flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 14v-6m0 0l-3 3m3-3l3 3m2 9H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Import CSV
+        </button>
         <button wire:click="exportCSV"
             class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors duration-200 flex items-center">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,6 +109,75 @@
             Export CSV
         </button>
     </div>
+
+    <!-- Import Prices Modal -->
+    @if($showImportModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" wire:key="import-modal">
+        <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto scrollbar-thin">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-zinc-700">
+                <h3 class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Import Item Settings (CSV)</h3>
+                <button wire:click="closeImportModal" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <p class="text-sm text-zinc-600 dark:text-zinc-300">
+                    Upload a worksheet keyed on <strong>ID</strong> / <strong>SKU</strong>. Any of the
+                    <strong>Unit Price</strong>, <strong>Reorder Level</strong> and <strong>Max Stock Level</strong>
+                    columns present will be applied — blank cells are ignored, so you can re-upload the same file as
+                    you fill it in.
+                </p>
+                <p class="text-xs text-amber-600 dark:text-amber-400">
+                    Note: a <strong>Quantity On Hand</strong> column is <strong>not</strong> imported here — enter opening
+                    counts through <strong>Inventory → Stock Takes</strong> so they are approved and recorded.
+                </p>
+
+                <div>
+                    <input type="file" wire:model="importFile" accept=".csv,text/csv"
+                        class="block w-full text-sm text-zinc-700 dark:text-zinc-200 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                    @error('importFile') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    <div wire:loading wire:target="importFile" class="text-xs text-zinc-500 mt-1">Uploading…</div>
+                </div>
+
+                @if(!empty($importResult))
+                    <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 text-sm space-y-1">
+                        <p class="text-green-700 dark:text-green-400 font-medium">{{ $importResult['updated'] }} item(s) updated</p>
+                        @if(!empty($importResult['fields']))
+                            <ul class="text-xs text-zinc-600 dark:text-zinc-400 list-disc list-inside">
+                                @foreach($importResult['fields'] as $col => $count)
+                                    <li>{{ $importResult['fieldLabels'][$col] ?? $col }}: {{ $count }} changed</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        <p class="text-zinc-600 dark:text-zinc-400">{{ $importResult['unchanged'] }} already matched · {{ $importResult['skipped'] }} left blank</p>
+                        @if(!empty($importResult['errors']))
+                            <details class="mt-1">
+                                <summary class="text-red-600 dark:text-red-400 cursor-pointer">{{ count($importResult['errors']) }} row(s) skipped with errors</summary>
+                                <ul class="mt-1 list-disc list-inside text-xs text-red-600 dark:text-red-400 max-h-40 overflow-y-auto scrollbar-thin">
+                                    @foreach($importResult['errors'] as $err)
+                                        <li>{{ $err }}</li>
+                                    @endforeach
+                                </ul>
+                            </details>
+                        @endif
+                        <p class="text-xs text-amber-600 dark:text-amber-400 pt-1">Reminder: ask an administrator to refresh recipe costs after importing.</p>
+                    </div>
+                @endif
+            </div>
+
+            <div class="flex justify-end gap-2 px-5 py-3 border-t border-zinc-200 dark:border-zinc-700">
+                <button wire:click="closeImportModal"
+                    class="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-200 rounded-lg text-sm font-medium">Close</button>
+                <button wire:click="importCSV" wire:loading.attr="disabled" wire:target="importCSV,importFile"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center">
+                    <span wire:loading.remove wire:target="importCSV">Import</span>
+                    <span wire:loading wire:target="importCSV">Importing…</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Bulk Actions Bar -->
     <div x-data="{ selectedIds: @entangle('selectedIds') }" x-show="selectedIds.length > 0" x-cloak

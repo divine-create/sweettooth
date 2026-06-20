@@ -16,11 +16,19 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app.branch-dashboard')]
 class Items extends BaseComponent
 {
-    use Exportable;
+    use Exportable, WithFileUploads;
+
+    // CSV unit-price import state
+    public $importFile;
+
+    public bool $showImportModal = false;
+
+    public array $importResult = [];
 
     #[Url(keep: true)]
     public ?string $b_id = null;
@@ -771,5 +779,207 @@ class Items extends BaseComponent
 
             return;
         }
+    }
+
+    public function openImportModal()
+    {
+        $this->reset(['importFile', 'importResult']);
+        $this->resetValidation();
+        $this->showImportModal = true;
+    }
+
+    public function closeImportModal()
+    {
+        $this->reset(['importFile', 'importResult']);
+        $this->resetValidation();
+        $this->showImportModal = false;
+    }
+
+    /**
+     * Item fields that can be set from a CSV worksheet, keyed by the column
+     * tag mapImportColumns() resolves and labelled for messages.
+     * Quantity on hand is deliberately excluded — opening counts must go
+     * through the Stock Take workflow so they are approved and audited.
+     */
+    protected array $importableFields = [
+        'price' => ['column' => 'unit_price', 'label' => 'Unit Price'],
+        'reorder' => ['column' => 'reorder_level', 'label' => 'Reorder Level'],
+        'max' => ['column' => 'max_stock_level', 'label' => 'Max Stock Level'],
+    ];
+
+    /**
+     * Import item settings (Unit Price, Reorder Level, Max Stock Level) from the
+     * exported / supplied worksheet. Whichever of those columns are present are
+     * applied; blank cells are left untouched so the file can be re-uploaded as
+     * it is filled in. A "Quantity On Hand" column, if present, is ignored.
+     */
+    public function importCSV()
+    {
+        $this->validate([
+            'importFile' => 'required|file|mimes:csv,txt|max:5120',
+        ], [], ['importFile' => 'CSV file']);
+
+        $branchId = $this->getBranchId();
+
+        $handle = fopen($this->importFile->getRealPath(), 'r');
+        if ($handle === false) {
+            $this->toast()->error('Could not read the uploaded file.')->send();
+
+            return;
+        }
+
+        $header = fgetcsv($handle);
+        $map = $this->mapImportColumns($header);
+
+        // which editable fields are actually present in this file
+        $present = array_filter(
+            $this->importableFields,
+            fn ($tag) => isset($map[$tag]),
+            ARRAY_FILTER_USE_KEY
+        );
+
+        if (empty($present)) {
+            fclose($handle);
+            $this->toast()->error('No Unit Price, Reorder Level or Max Stock Level column found in the file.')->send();
+
+            return;
+        }
+
+        $updated = 0;
+        $unchanged = 0;
+        $skipped = 0;
+        $errors = [];
+        $fieldCounts = array_fill_keys(array_column($present, 'column'), 0);
+        $rowNum = 1; // header is row 1
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $rowNum++;
+
+            // ignore completely blank lines
+            if (count(array_filter($row, fn ($c) => trim((string) $c) !== '')) === 0) {
+                continue;
+            }
+
+            // collect the values supplied for this row across the present columns
+            $values = [];
+            $rowHasError = false;
+            foreach ($present as $tag => $field) {
+                $raw = trim((string) ($row[$map[$tag]] ?? ''));
+                if ($raw === '') {
+                    continue;
+                }
+
+                $clean = preg_replace('/[^0-9.\-]/', '', $raw);
+                if ($clean === '' || ! is_numeric($clean) || (float) $clean < 0) {
+                    $errors[] = "Row {$rowNum}: invalid {$field['label']} '{$raw}'";
+                    $rowHasError = true;
+
+                    continue;
+                }
+
+                $values[$field['column']] = (float) $clean;
+            }
+
+            // nothing filled in for this row yet
+            if (empty($values)) {
+                if (! $rowHasError) {
+                    $skipped++;
+                }
+
+                continue;
+            }
+
+            $idVal = trim((string) ($row[$map['id']] ?? ''));
+            $skuVal = trim((string) ($row[$map['sku']] ?? ''));
+
+            $query = Item::query()->where('branch_id', $branchId);
+            $item = ($idVal !== '' && is_numeric($idVal))
+                ? (clone $query)->find((int) $idVal)
+                : null;
+            if (! $item && $skuVal !== '') {
+                $item = (clone $query)->where('sku', $skuVal)->first();
+            }
+
+            if (! $item) {
+                $errors[] = "Row {$rowNum}: item not found in this branch (ID {$idVal}, SKU {$skuVal})";
+
+                continue;
+            }
+
+            // apply only the values that actually differ
+            $changes = [];
+            foreach ($values as $column => $value) {
+                if (abs((float) $item->{$column} - $value) < 0.0001) {
+                    continue;
+                }
+                $label = collect($present)->firstWhere('column', $column)['label'];
+                $changes[] = "{$label}: ".($item->{$column} ?? 0)." → {$value}";
+                $item->{$column} = $value;
+                $fieldCounts[$column]++;
+            }
+
+            if (empty($changes)) {
+                $unchanged++;
+
+                continue;
+            }
+
+            $item->save();
+            $updated++;
+
+            AuditService::log(
+                current_actor(),
+                'update',
+                $item,
+                "Updated via CSV import for '{$item->name}' (SKU: {$item->sku}). ".implode(', ', $changes),
+                'completed'
+            );
+        }
+
+        fclose($handle);
+
+        $this->importResult = [
+            'updated' => $updated,
+            'unchanged' => $unchanged,
+            'skipped' => $skipped,
+            'fields' => $fieldCounts,
+            'fieldLabels' => collect($present)->pluck('label', 'column')->all(),
+            'errors' => $errors,
+        ];
+
+        $this->toast()->success("Import complete: {$updated} item(s) updated, {$unchanged} unchanged, {$skipped} left blank.")->send();
+    }
+
+    /**
+     * Resolve column positions from the header row by name. ID and SKU fall
+     * back to the export's fixed first two columns; the editable price/level
+     * columns are matched purely by header text (absent if not present).
+     */
+    protected function mapImportColumns($header): array
+    {
+        $map = [];
+
+        if (is_array($header)) {
+            foreach ($header as $idx => $col) {
+                $key = strtolower(trim((string) $col));
+                if ($key === 'id') {
+                    $map['id'] = $idx;
+                } elseif ($key === 'sku') {
+                    $map['sku'] = $idx;
+                } elseif (str_contains($key, 'unit price')) {
+                    $map['price'] = $idx;
+                } elseif (str_contains($key, 'reorder')) {
+                    $map['reorder'] = $idx;
+                } elseif (str_contains($key, 'max stock')) {
+                    $map['max'] = $idx;
+                }
+            }
+        }
+
+        // ID / SKU positional fallback: worksheets always lead with ID, SKU
+        $map['id'] ??= 0;
+        $map['sku'] ??= 1;
+
+        return $map;
     }
 }
