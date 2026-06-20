@@ -65,7 +65,7 @@ fi
 
 # 3. PHP dependencies -------------------------------------------------------
 log "Installing PHP dependencies"
-composer install --no-interaction --prefer-dist --optimize-autoloader
+composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
 # Optional maintenance window around the schema/cache changes only, to keep
 # downtime minimal. Off by default (additive migrations are non-disruptive).
