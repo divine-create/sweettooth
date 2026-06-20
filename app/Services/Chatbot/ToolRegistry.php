@@ -27,6 +27,7 @@ class ToolRegistry
         \App\Services\Chatbot\Tools\GetExpiringBatchesTool::class,
         \App\Services\Chatbot\Tools\GetProductionOrdersTool::class,
         \App\Services\Chatbot\Tools\GetProductsWithoutRecipeTool::class,
+        \App\Services\Chatbot\Tools\GetProductRecipeTool::class,
         \App\Services\Chatbot\Tools\GetCashPositionTool::class,
         \App\Services\Chatbot\Tools\GetShiftStatusTool::class,
         \App\Services\Chatbot\Tools\GetPendingApprovalsTool::class,

@@ -18,10 +18,12 @@ class GetProductsWithoutRecipeTool implements ChatTool
 
     public function description(): string
     {
-        return 'List products in the current branch that do not have a recipe defined '
-            . 'yet. Use for questions about which products are missing recipes, recipe '
-            . 'setup gaps, or products that cannot be produced. Returns a total count '
-            . 'and a sample list.';
+        return 'List PRODUCED products in the current branch (made in-house in '
+            . 'production) that do not have a recipe defined yet. Excludes raw '
+            . 'materials/ingredients (those are inventory items, not products) and '
+            . 'resale goods sold straight from inventory. Use for questions about '
+            . 'which products are missing recipes or recipe setup gaps. Returns a '
+            . 'total count and a sample list.';
     }
 
     public function permission(): ?string
@@ -54,6 +56,9 @@ class GetProductsWithoutRecipeTool implements ChatTool
 
         $query = Product::query()
             ->where('branch_id', $branchId)
+            // Produced in-house only: exclude resale goods sold from inventory
+            // (those legitimately have no recipe). isSoldFromInventory() === linked_item_id !== null.
+            ->whereNull('linked_item_id')
             ->whereDoesntHave('recipes')
             ->when($activeOnly, fn ($q) => $q->where('is_active', true));
 
