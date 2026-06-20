@@ -1375,6 +1375,10 @@
         {{ $slot }}
     </flux:main>
 
+    @auth
+        <livewire:components.chat-bot />
+    @endauth
+
     @fluxScripts
     @livewireScripts
     @stack('scripts')

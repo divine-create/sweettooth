@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SweetTooth — Production Module User Guide</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f6fa;
+      color: #1a1a2e;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 270px;
+      min-width: 270px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 28px 0 40px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sidebar .brand {
+      padding: 0 24px 24px;
+      border-bottom: 1px solid #313244;
+    }
+
+    #sidebar .brand h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #cba6f7;
+      letter-spacing: 0.02em;
+    }
+
+    #sidebar .brand p {
+      font-size: 0.72rem;
+      color: #6c7086;
+      margin-top: 3px;
+    }
+
+    #sidebar nav { padding: 20px 0; flex: 1; }
+
+    #sidebar nav .section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6c7086;
+      padding: 14px 24px 6px;
+    }
+
+    #sidebar nav a {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 24px;
+      color: #a6adc8;
+      text-decoration: none;
+      font-size: 0.84rem;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+
+    #sidebar nav a:hover, #sidebar nav a.active {
+      color: #cba6f7;
+      background: #313244;
+      border-left-color: #cba6f7;
+    }
+
+    #sidebar nav a .icon { font-size: 1rem; width: 18px; text-align: center; }
+
+    /* ── Main content ── */
+    #content { flex: 1; padding: 48px 56px; max-width: 1080px; }
+
+    /* ── Video Demo ── */
+    .video-section {
+      margin-bottom: 52px;
+      scroll-margin-top: 32px;
+    }
+
+    .video-section .video-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .video-section .video-header h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .video-section .video-header .play-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #cba6f7;
+      color: #1e1e2e;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .video-container {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+      border: 1px solid #e0dff0;
+    }
+
+    .video-container iframe {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border: none;
+    }
+
+    .video-caption {
+      margin-top: 12px;
+      font-size: 0.82rem;
+      color: #6c7086;
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* ── Cover ── */
+    .cover {
+      background: linear-gradient(135deg, #1e1e2e 0%, #313244 100%);
+      border-radius: 16px;
+      padding: 52px 48px;
+      color: #fff;
+      margin-bottom: 52px;
+    }
+
+    .cover .badge {
+      display: inline-block;
+      background: #cba6f7;
+      color: #1e1e2e;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 18px;
+    }
+
+    .cover h1 { font-size: 2.4rem; font-weight: 800; line-height: 1.2; color: #cdd6f4; }
+    .cover h1 span { color: #cba6f7; }
+    .cover p { margin-top: 14px; color: #a6adc8; font-size: 1rem; max-width: 560px; line-height: 1.7; }
+
+    .cover .meta { display: flex; gap: 28px; margin-top: 28px; flex-wrap: wrap; }
+    .cover .meta-item { font-size: 0.8rem; color: #6c7086; }
+    .cover .meta-item strong { display: block; color: #cdd6f4; font-size: 0.9rem; }
+
+    /* ── Section ── */
+    .section { margin-bottom: 64px; scroll-margin-top: 32px; }
+
+    .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+
+    .section-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+
+    .section h2 { font-size: 1.5rem; font-weight: 700; color: #1a1a2e; }
+
+    .section-intro {
+      color: #5c5f77; font-size: 0.95rem; line-height: 1.75;
+      margin-bottom: 28px; max-width: 720px;
+      border-left: 3px solid #e0d7f8; padding-left: 16px;
+    }
+
+    /* ── Steps ── */
+    .step {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: 28px; overflow: hidden;
+      border: 1px solid #e8e8f0;
+    }
+
+    .step-header { display: flex; align-items: flex-start; gap: 16px; padding: 22px 24px 16px; }
+
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #cba6f7; color: #1e1e2e;
+      font-size: 0.8rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 2px;
+    }
+
+    .step-header h3 { font-size: 1.05rem; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+    .step-header p { font-size: 0.875rem; color: #5c5f77; line-height: 1.65; }
+
+    .step-body { padding: 0 24px 24px 72px; }
+    .step-body ol, .step-body ul { margin: 10px 0 14px 18px; font-size: 0.875rem; color: #3c3f5a; line-height: 1.8; }
+
+    /* ── Screenshots ── */
+    .screenshot-wrap {
+      margin-top: 16px; border-radius: 10px; overflow: hidden;
+      border: 1px solid #e0dff0; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    .screenshot-wrap img { display: block; width: 100%; height: auto; }
+
+    .screenshot-caption {
+      background: #f5f6fa; border-top: 1px solid #e0dff0;
+      padding: 10px 16px; font-size: 0.775rem; color: #6c7086; font-style: italic;
+    }
+
+    /* ── Callouts ── */
+    .callout {
+      border-radius: 8px; padding: 14px 18px;
+      font-size: 0.855rem; line-height: 1.65;
+      margin: 16px 0; display: flex; gap: 12px; align-items: flex-start;
+    }
+    .callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+    .callout.info  { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .callout.warn  { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .callout.tip   { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+    .callout.error { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
+
+    /* ── Tag pills ── */
+    .tag {
+      display: inline-block; font-size: 0.7rem; font-weight: 700;
+      padding: 2px 9px; border-radius: 12px; margin: 0 2px 4px 0;
+    }
+    .tag-green  { background: #dcfce7; color: #15803d; }
+    .tag-amber  { background: #fef9c3; color: #92400e; }
+    .tag-red    { background: #ffe4e6; color: #9f1239; }
+    .tag-blue   { background: #dbeafe; color: #1e40af; }
+    .tag-purple { background: #f3e8ff; color: #6b21a8; }
+    .tag-gray   { background: #f1f5f9; color: #475569; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid #e8e8f0; margin: 48px 0; }
+
+    /* ── Icon backgrounds ── */
+    .bg-purple { background: #f3e8ff; }
+    .bg-blue   { background: #eff6ff; }
+    .bg-green  { background: #f0fdf4; }
+    .bg-amber  { background: #fffbeb; }
+    .bg-rose   { background: #fff1f2; }
+    .bg-teal   { background: #f0fdfa; }
+    .bg-indigo { background: #eef2ff; }
+    .bg-orange { background: #fff7ed; }
+    .bg-sky    { background: #f0f9ff; }
+    .bg-lime   { background: #f7fee7; }
+
+    /* ── Download button ── */
+    .download-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #cba6f7;
+      color: #1e1e2e;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+
+    .btn-download:hover { background: #b77fe8; }
+
+    .btn-watch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      color: #cba6f7;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      border: 2px solid #cba6f7;
+      transition: all 0.15s;
+    }
+
+    .btn-watch:hover { background: #cba6f720; }
+
+    /* ── Quick reference table ── */
+    .ref-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.875rem; }
+    .ref-table th {
+      background: #1e1e2e; color: #cba6f7;
+      padding: 10px 14px; text-align: left; font-size: 0.8rem;
+    }
+    .ref-table td { padding: 10px 14px; border-bottom: 1px solid #e8e8f0; color: #3c3f5a; }
+    .ref-table tr:last-child td { border-bottom: none; }
+    .ref-table tr:hover td { background: #f9f8ff; }
+
+    @media (max-width: 900px) {
+      #sidebar { display: none; }
+      #content { padding: 28px 20px; }
+    }
+
+    /* ── Print / PDF styles ── */
+    @media print {
+      @page {
+        size: A4;
+        margin: 18mm 16mm;
+      }
+
+      body { display: block; background: #fff; color: #000; }
+
+      #sidebar { display: none !important; }
+
+      #content {
+        padding: 0;
+        max-width: 100%;
+      }
+
+      .cover {
+        background: #1e1e2e !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        page-break-after: always;
+        border-radius: 0;
+      }
+
+      .download-bar { display: none !important; }
+
+      .video-container { display: none !important; }
+
+      .video-section .video-link-print {
+        display: block !important;
+        padding: 14px 18px;
+        background: #f5f6fa;
+        border: 1px solid #e0dff0;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        color: #1e40af;
+        word-break: break-all;
+      }
+
+      .section { page-break-inside: avoid; }
+
+      .step { page-break-inside: avoid; box-shadow: none; border: 1px solid #ddd; }
+
+      .screenshot-wrap {
+        page-break-inside: avoid;
+        box-shadow: none;
+      }
+
+      .screenshot-wrap img { max-height: 420px; width: auto; margin: 0 auto; display: block; }
+
+      .divider { border-top: 1px solid #ccc; }
+
+      h2 { page-break-after: avoid; }
+      h3 { page-break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<aside id="sidebar">
+  <div class="brand">
+    <h1>SweetTooth ERP</h1>
+    <p>Production Module — User Guide</p>
+  </div>
+  <nav>
+    <div class="section-label">Getting Started</div>
+    <a href="#video-demo"><span class="icon">▶️</span> Video Demo</a>
+    <a href="#getting-started"><span class="icon">🚀</span> Getting Started</a>
+    <a href="#dashboard"><span class="icon">📊</span> Production Dashboard</a>
+
+    <div class="section-label">Products & Recipes</div>
+    <a href="#products"><span class="icon">🍰</span> Products</a>
+    <a href="#product-types"><span class="icon">🏷️</span> Product Types</a>
+    <a href="#recipes"><span class="icon">📋</span> Recipes</a>
+    <a href="#product-assignments"><span class="icon">🔗</span> Product Assignments</a>
+
+    <div class="section-label">Production Operations</div>
+    <a href="#production-records"><span class="icon">📁</span> Production Records</a>
+    <a href="#quick-produce-fg"><span class="icon">⚡</span> Quick Produce (FG)</a>
+    <a href="#quick-produce-wip"><span class="icon">🔧</span> Quick Produce (WIP)</a>
+    <a href="#production-store"><span class="icon">🏪</span> Production Store</a>
+
+    <div class="section-label">Materials</div>
+    <a href="#material-requests"><span class="icon">📤</span> Material Requests</a>
+    <a href="#material-returns"><span class="icon">↩️</span> Material Returns</a>
+    <a href="#raw-material-tracking"><span class="icon">📦</span> Raw Material Tracking</a>
+
+    <div class="section-label">Sales & Orders</div>
+    <a href="#sales-requests"><span class="icon">🛒</span> Sales Requests Review</a>
+    <a href="#customer-orders"><span class="icon">🧾</span> Customer Orders</a>
+    <a href="#production-helper"><span class="icon">🤝</span> Production Helper</a>
+
+    <div class="section-label">Reports</div>
+    <a href="#operations-report"><span class="icon">📈</span> Operations Report</a>
+    <a href="#performance-report"><span class="icon">🎯</span> Performance Report</a>
+    <a href="#reports-library"><span class="icon">📚</span> Reports Library</a>
+
+    <div class="section-label">Reference</div>
+    <a href="#quick-reference"><span class="icon">⚡</span> Quick Reference</a>
+  </nav>
+</aside>
+
+<!-- ═══════════════════════ CONTENT ═══════════════════════ -->
+<main id="content">
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="badge">User Guide</div>
+    <h1>SweetTooth <span>Production</span> Module</h1>
+    <p>
+      A complete guide to managing recipes, production batches, material requests, production store,
+      sales fulfillment, and performance reporting in the SweetTooth ERP system for restaurant
+      and bakery operations.
+    </p>
+    <div class="meta">
+      <div class="meta-item"><strong>Platform</strong>SweetTooth ERP</div>
+      <div class="meta-item"><strong>Module</strong>Production Management</div>
+      <div class="meta-item"><strong>Branch</strong>SweetTooth Port Harcourt</div>
+      <div class="meta-item"><strong>Role</strong>Production Staff / Kitchen Manager</div>
+    </div>
+    <div class="download-bar">
+      <a class="btn-download" href="production-guide.pdf" download>⬇ Download PDF Guide</a>
+      <a class="btn-watch" href="https://www.canva.com/design/DAHKS3yvD2w/bKjOhk8tdEGCd5fZdz5yQQ/watch?utm_content=DAHKS3yvD2w&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hb2c887a020" target="_blank" rel="noopener">▶ Watch Video Demo</a>
+    </div>
+  </div>
+
+  <!-- ─── Video Demo ─── -->
+  <section class="video-section" id="video-demo">
+    <div class="video-header">
+      <div class="section-icon bg-purple" style="width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">▶️</div>
+      <h2>Video Demonstration</h2>
+      <span class="play-badge">▶ Watch Now</span>
+    </div>
+    <p class="section-intro" style="margin-bottom:20px;">
+      Watch the full walkthrough of the SweetTooth Production module — covering the daily workflow
+      from login through recipes, production batches, material requests, sales fulfilment, and reporting.
+    </p>
+    <div class="video-container">
+      <iframe
+        src="https://www.canva.com/design/DAHKS3yvD2w/bKjOhk8tdEGCd5fZdz5yQQ/view?embed"
+        allowfullscreen="allowfullscreen"
+        allow="fullscreen"
+        loading="lazy"
+        title="SweetTooth Production Module — Video Demo">
+      </iframe>
+    </div>
+    <p class="video-caption">SweetTooth Production Module — Full Video Demonstration. Use fullscreen for the best experience.</p>
+    <a class="video-link-print" href="https://www.canva.com/design/DAHKS3yvD2w/bKjOhk8tdEGCd5fZdz5yQQ/watch?utm_content=DAHKS3yvD2w&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hb2c887a020" style="display:none;">
+      📹 Watch the video demonstration online: https://www.canva.com/design/DAHKS3yvD2w/bKjOhk8tdEGCd5fZdz5yQQ/watch
+    </a>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Getting Started ─── -->
+  <section class="section" id="getting-started">
+    <div class="section-header">
+      <div class="section-icon bg-purple">🚀</div>
+      <h2>Getting Started</h2>
+    </div>
+    <p class="section-intro">
+      Production staff log in through the Staff Login portal and are automatically directed to their
+      production department dashboard. The system supports multiple production departments (e.g.
+      Hot Kitchen, Pastry, Gelato) and each has its own product catalog, recipe list, and store.
+      An active shift opened by your supervisor is required for most production operations.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Logging In as Production Staff</h3>
+          <p>Navigate to the SweetTooth portal and choose <strong>Login as Staff</strong> to access the production module.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Open your browser and go to the SweetTooth portal URL provided by your IT team.</li>
+          <li>Click <strong>Login as Staff</strong> on the landing page.</li>
+          <li>Select your branch from the <em>Select Branch</em> dropdown (e.g., <em>SweetTooth Port Harcourt</em>).</li>
+          <li>Enter your email address and password, then click <strong>Log in</strong>.</li>
+          <li>You will be redirected to your production department dashboard automatically.</li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Active Shift Required:</strong> Most production operations are protected by the shift gate. If you see an "Unauthorized" redirect, your shift has not been opened yet. Contact your supervisor to open the shift.</div>
+        </div>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Multiple Departments:</strong> If you manage multiple production departments (e.g., Hot Kitchen and Pastry), each department has its own sidebar section and routes. The department slug is embedded in the URL (e.g., <code>/hot-kitchen/</code>).</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/01-login-page.png" alt="Staff login page with branch selector" loading="lazy" />
+          <div class="screenshot-caption">Fig 1 — Staff login page. Select your branch first, then enter your credentials.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Dashboard ─── -->
+  <section class="section" id="dashboard">
+    <div class="section-header">
+      <div class="section-icon bg-blue">📊</div>
+      <h2>Production Dashboard</h2>
+    </div>
+    <p class="section-intro">
+      The Production Dashboard is your command center. It gives an at-a-glance view of production
+      activity across all departments you manage. The left sidebar lists all modules available to your
+      role, grouped by department and function. Use it to navigate between recipes, production records,
+      material requests, and reports.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Reading the Dashboard</h3>
+          <p>After login, you land on the Production Dashboard showing an overview of your department's activity.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>The <strong>sidebar</strong> on the left lists every production page available to your role.</li>
+          <li>Each production department (Hot Kitchen, Pastry, Gelato, etc.) has its own sub-group in the sidebar.</li>
+          <li>Global links — Customer Orders, Reports, Production Helper — appear at the bottom of the sidebar.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Tip:</strong> The department slug in the URL (e.g., <code>hot-kitchen</code>) identifies which department's data you are viewing. Switch between departments by clicking the corresponding sidebar group.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/02-dashboard.png" alt="Production dashboard showing department overview" loading="lazy" />
+          <div class="screenshot-caption">Fig 2 — Production Dashboard. Sidebar links are grouped by department and function.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Products ─── -->
+  <section class="section" id="products">
+    <div class="section-header">
+      <div class="section-icon bg-amber">🍰</div>
+      <h2>Products</h2>
+    </div>
+    <p class="section-intro">
+      The Products page lists every item your department produces — both Finished Goods (FG) ready for
+      sale and Work-in-Progress (WIP) items used as sub-ingredients in other recipes. Each product
+      has a type, a unit of measure, and an optional recipe. Only Finished Goods appear on POS screens.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Viewing the Product Catalog</h3>
+          <p>Navigate to <strong>Products</strong> under your department in the sidebar to see all items your kitchen produces.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Each row shows the product name, <span class="tag tag-green">FG</span> or <span class="tag tag-purple">WIP</span> type badge, unit of measure, and assigned recipe.</li>
+          <li>Products marked <span class="tag tag-green">FG</span> (Finished Good) are sellable items that appear in the POS.</li>
+          <li>Products marked <span class="tag tag-purple">WIP</span> (Work In Progress) are intermediate items consumed in other recipes.</li>
+          <li>Use the search bar to filter by product name.</li>
+        </ul>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Adding Products:</strong> New products must be created by a manager or admin from the organization settings. Contact your manager if you need a new product added to the catalog.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/03-products.png" alt="Production products catalog page" loading="lazy" />
+          <div class="screenshot-caption">Fig 3 — Products page showing FG and WIP items for the Hot Kitchen department.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Product Types ─── -->
+  <section class="section" id="product-types">
+    <div class="section-header">
+      <div class="section-icon bg-indigo">🏷️</div>
+      <h2>Product Types</h2>
+    </div>
+    <p class="section-intro">
+      Product Types define the classification of each product — primarily distinguishing between
+      <strong>Finished Goods (FG)</strong> and <strong>Work-In-Progress (WIP)</strong>. This
+      classification controls where products appear in the system: FG items show on POS and
+      dispatch screens, while WIP items are internal production intermediates.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Understanding Product Type Classification</h3>
+          <p>Navigate to <strong>Product Types</strong> under your department to view all classifications in use.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li><span class="tag tag-green">Finished Good (FG)</span> — A sellable, deliverable product. Produced in full batches and dispatched to the sales department.</li>
+          <li><span class="tag tag-purple">Work In Progress (WIP)</span> — An intermediate product consumed by other recipes. For example, a bread dough that becomes a finished loaf.</li>
+          <li>Product types are set when a product is created and cannot be changed casually — they affect accounting and POS visibility.</li>
+        </ul>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Important:</strong> Changing a product's type from WIP to FG (or vice versa) affects its visibility in POS screens and stock reporting. Only managers should modify product types.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/04-product-types.png" alt="Product types classification page" loading="lazy" />
+          <div class="screenshot-caption">Fig 4 — Product Types page showing FG and WIP classifications for the department.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Recipes ─── -->
+  <section class="section" id="recipes">
+    <div class="section-header">
+      <div class="section-icon bg-green">📋</div>
+      <h2>Recipes</h2>
+    </div>
+    <p class="section-intro">
+      Recipes are the backbone of the Production module. Each recipe defines which raw materials
+      (or WIP sub-products) are needed, in what quantities, and at what ratio per batch. The system
+      uses recipes to calculate ingredient consumption and generate material requests automatically.
+      WIP recipes are recursively expanded down to base inventory items.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Viewing the Recipe List</h3>
+          <p>Navigate to <strong>Recipes</strong> under your department to see all defined recipes.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Each recipe row shows the product it produces, the number of ingredients, and the default batch size.</li>
+          <li>Click a recipe name to view its full ingredient breakdown.</li>
+          <li>Recipes attached to WIP products will expand their sub-ingredients when costing a production batch.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/05-recipes.png" alt="Recipe list page" loading="lazy" />
+          <div class="screenshot-caption">Fig 5 — Recipes list showing all production recipes for the department.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Viewing Recipe Details & Ingredients</h3>
+          <p>Click any recipe to see its full ingredient list, quantities, and unit of measure.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>The detail page shows each ingredient, its quantity per batch, and the unit of measure (UOM).</li>
+          <li>If an ingredient is a WIP item, the system automatically expands it to its base raw materials when calculating batch consumption.</li>
+          <li>The <strong>Add Recipe</strong> link in the sidebar lets managers create new recipes from scratch.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>WIP Expansion:</strong> When you produce 10 units of a cake that contains "bread dough" (WIP) as an ingredient, the system traces the dough recipe and calculates the flour, water, and yeast needed — all the way down to the base inventory items. You don't need to manually compute this.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/06-recipe-detail.png" alt="Recipe detail page showing ingredients and quantities" loading="lazy" />
+          <div class="screenshot-caption">Fig 6 — Recipe detail showing ingredients, quantities per batch, and WIP sub-recipe expansion.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Product Assignments ─── -->
+  <section class="section" id="product-assignments">
+    <div class="section-header">
+      <div class="section-icon bg-sky">🔗</div>
+      <h2>Product Assignments</h2>
+    </div>
+    <p class="section-intro">
+      Product Assignments is a management tool with two tabs: <strong>Sales Department Assignment</strong>
+      and <strong>Recipe Assignment</strong>. The Sales tab links products to a specific sales department,
+      making them visible and sellable in that department's POS. The Recipe tab connects a recipe to a
+      product so the system knows what ingredients to deduct when that product is produced.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Assigning Products to a Sales Department</h3>
+          <p>The Sales tab lets managers bulk-assign products to a sales department — this controls which products appear in the POS for that department.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Navigate to <strong>Product Assignments</strong> under your department in the sidebar.</li>
+          <li>Stay on the <strong>Sales</strong> tab (the default).</li>
+          <li>Select one or more products from the product list using the checkboxes.</li>
+          <li>Choose the target <strong>Sales Department</strong> from the dropdown (only valid sales departments for this branch appear).</li>
+          <li>Click <strong>Apply Assignment</strong>. The system updates each selected product's <code>sales_department_id</code>.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Why this matters:</strong> A product's <code>sales_department_id</code> determines which sales department can sell it. If a finished good is not appearing in the POS, the most common cause is that it has not been assigned to the correct sales department here.</div>
+        </div>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Approval Required:</strong> Non-super-admin users must provide an audit reason before the assignment takes effect. The request goes into an approval queue and is executed once approved by a super admin.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/16-product-assignments.png" alt="Product assignments page showing sales department and recipe tabs" loading="lazy" />
+          <div class="screenshot-caption">Fig 7 — Product Assignments page: Sales tab (left) for linking products to a sales department; Recipe tab for assigning recipes to products.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Assigning a Recipe to a Product</h3>
+          <p>The Recipe tab links a pre-created recipe to a product, so the system knows its ingredients when production is recorded.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Click the <strong>Recipe</strong> tab on the Product Assignments page.</li>
+          <li>Select the <strong>Product</strong> you want to link a recipe to.</li>
+          <li>Select the <strong>Recipe</strong> from the dropdown (only recipes belonging to this department appear).</li>
+          <li>Click <strong>Apply Assignment</strong>. The recipe is now linked to the product.</li>
+        </ol>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Recipe required for production:</strong> If a product has no recipe assigned, the system cannot calculate ingredient deductions when you use Quick Produce. Always ensure new products have a recipe assigned before your team begins producing them.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Production Records ─── -->
+  <section class="section" id="production-records">
+    <div class="section-header">
+      <div class="section-icon bg-teal">📁</div>
+      <h2>Production Records</h2>
+    </div>
+    <p class="section-intro">
+      Production Records are the official log of every completed production batch in your department.
+      Each record captures the product produced, quantity, date, ingredients consumed, and the staff
+      member responsible. These records feed into cost accounting and ingredient utilization reports.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Viewing Production Records</h3>
+          <p>Navigate to <strong>Production Records</strong> under your department to see the history of all completed batches.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Records are listed chronologically with the most recent at the top.</li>
+          <li>Each row shows: product name, batch quantity, date produced, production method, and status.</li>
+          <li>Click any record to expand its ingredient consumption detail — useful for cost audits.</li>
+          <li>Filter by date range or product name using the filter controls at the top of the table.</li>
+        </ul>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Record Sources:</strong> Production records are created automatically when you submit a Quick Produce entry or complete a production batch request. You cannot manually create a record without going through one of those workflows.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/07-production-records.png" alt="Production records list page" loading="lazy" />
+          <div class="screenshot-caption">Fig 8 — Production Records showing completed batch history for the department.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Quick Produce FG ─── -->
+  <section class="section" id="quick-produce-fg">
+    <div class="section-header">
+      <div class="section-icon bg-amber">⚡</div>
+      <h2>Quick Produce — Finished Goods</h2>
+    </div>
+    <p class="section-intro">
+      Quick Produce is a streamlined form for recording production without a formal batch request.
+      The <strong>Finished Goods (FG)</strong> variant is used for sellable items that will be
+      dispatched to the sales department. The system automatically deducts raw materials from the
+      Production Store and creates a production record.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Recording a Finished Good Production</h3>
+          <p>Navigate to <strong>Produce Finished Goods</strong> in the sidebar to record an FG batch produced this shift.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Product</strong> you produced from the dropdown (only FG products assigned to your department appear).</li>
+          <li>Enter the <strong>Quantity Produced</strong>.</li>
+          <li>Confirm the <strong>Batch Date</strong> (defaults to today).</li>
+          <li>Add any <strong>Notes</strong> if needed (e.g., batch number, supervisor name).</li>
+          <li>Click <strong>Submit</strong> to record the production.</li>
+        </ol>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Automatic Ingredient Deduction:</strong> When you submit a Quick Produce entry, the system automatically calculates the raw materials consumed (using the product's recipe) and deducts them from your Production Store stock.</div>
+        </div>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Insufficient Stock:</strong> If your Production Store does not have enough raw materials to cover the batch, the system will warn you. Raise a Material Request to replenish stock before producing.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/08-quick-produce-fg.png" alt="Quick Produce Finished Goods form" loading="lazy" />
+          <div class="screenshot-caption">Fig 9 — Quick Produce (Finished Goods) form for recording an FG production batch.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Quick Produce WIP ─── -->
+  <section class="section" id="quick-produce-wip">
+    <div class="section-header">
+      <div class="section-icon bg-rose">🔧</div>
+      <h2>Quick Produce — WIP (Work In Progress)</h2>
+    </div>
+    <p class="section-intro">
+      The <strong>WIP Quick Produce</strong> form is used for recording intermediate or semi-finished
+      items — for example, producing bread dough that will be used to bake multiple finished products.
+      WIP items are stored in the Production Store and consumed in subsequent FG production runs.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Recording a WIP Production</h3>
+          <p>Navigate to <strong>Produce WIP</strong> in the sidebar when you need to record the production of an intermediate item.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>WIP Product</strong> from the dropdown (only WIP items assigned to your department appear).</li>
+          <li>Enter the <strong>Quantity Produced</strong> in the product's base unit.</li>
+          <li>Confirm the <strong>Batch Date</strong>.</li>
+          <li>Click <strong>Submit</strong>. The system deducts the WIP recipe's raw materials from your Production Store and adds the produced WIP quantity to stock.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>WIP in the Production Store:</strong> After submitting a WIP batch, the produced quantity appears in your Production Store as available stock, ready to be consumed when you produce the corresponding Finished Goods.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/09-quick-produce-wip.png" alt="Quick Produce WIP form" loading="lazy" />
+          <div class="screenshot-caption">Fig 10 — Quick Produce (WIP) form for recording intermediate production batches.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Production Store ─── -->
+  <section class="section" id="production-store">
+    <div class="section-header">
+      <div class="section-icon bg-orange">🏪</div>
+      <h2>Production Store</h2>
+    </div>
+    <p class="section-intro">
+      The Production Store is your department's raw material warehouse. It tracks every ingredient
+      you have received from the Inventory department, how much has been consumed in production, and
+      the current balance available. All material requests and production batches flow through this
+      store — it is the single source of truth for your department's ingredient stock.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Checking Current Store Stock</h3>
+          <p>Navigate to <strong>Production Store</strong> in the sidebar to view all items currently in your department's store.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Each row shows: ingredient name, unit of measure, quantity received, quantity consumed, and current balance.</li>
+          <li>Items with a low or zero balance are highlighted — raise a Material Request to restock them.</li>
+          <li>The store is updated automatically when:
+            <ul>
+              <li>Inventory dispatches materials to your department (balance increases).</li>
+              <li>You submit a Quick Produce or Production Batch (balance decreases by the recipe's ingredient amounts).</li>
+              <li>You return excess materials via Material Returns (balance decreases, inventory balance increases).</li>
+            </ul>
+          </li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Daily Check:</strong> Review your Production Store at the start of every shift to confirm you have enough raw materials for the day's production plan. Raise material requests early to avoid delays.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/10-production-store.png" alt="Production Store stock levels page" loading="lazy" />
+          <div class="screenshot-caption">Fig 11 — Production Store showing current raw material balances for the department.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Material Requests ─── -->
+  <section class="section" id="material-requests">
+    <div class="section-header">
+      <div class="section-icon bg-blue">📤</div>
+      <h2>Material Requests</h2>
+    </div>
+    <p class="section-intro">
+      When your Production Store is running low on raw materials, you raise a Material Request to ask
+      the Inventory department to dispatch stock to your department. The inventory team reviews,
+      approves, and dispatches the requested items, which then appear in your Production Store.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Raising a Material Request</h3>
+          <p>Navigate to <strong>Material Request</strong> in the sidebar and fill in the request form.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Click <strong>Material Request</strong> in the sidebar.</li>
+          <li>Click <strong>New Request</strong> or the <strong>+</strong> button to start a new request.</li>
+          <li>Add each ingredient you need: select the item, enter the quantity, and confirm the unit of measure.</li>
+          <li>Add a note if urgency or special instructions apply.</li>
+          <li>Click <strong>Submit</strong>. Your request enters the inventory approval queue.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Approval Workflow:</strong> Material requests go through an approval process in the Inventory module. Once approved and dispatched, the items will automatically appear in your Production Store balance.</div>
+        </div>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Plan Ahead:</strong> Material requests are not instant. Allow time for inventory review and dispatch. Raise requests at the end of your shift for the following day's needs.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/11-material-request.png" alt="Material request form" loading="lazy" />
+          <div class="screenshot-caption">Fig 12 — Material Request form used to request raw materials from the Inventory department.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Material Returns ─── -->
+  <section class="section" id="material-returns">
+    <div class="section-header">
+      <div class="section-icon bg-rose">↩️</div>
+      <h2>Material Returns</h2>
+    </div>
+    <p class="section-intro">
+      If your department received more raw materials than needed — or if an ingredient was damaged or
+      expired — you use Material Returns to send the excess back to Inventory. The returned quantity
+      is deducted from your Production Store and added back to the Inventory stock balance.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Returning Excess or Damaged Materials</h3>
+          <p>Navigate to <strong>Return Item</strong> in the sidebar to create a new return, or <strong>Return History</strong> to view past returns.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Click <strong>Return Item</strong> in the sidebar.</li>
+          <li>Select the <strong>Item</strong> you are returning from your Production Store.</li>
+          <li>Enter the <strong>Quantity</strong> to return and the <strong>Reason</strong> (excess, damaged, expired).</li>
+          <li>Click <strong>Submit</strong>. The return is logged and your Production Store balance is reduced immediately.</li>
+        </ol>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div>Use <strong>Return History</strong> in the sidebar to view all past returns for your department, including which items were returned, quantities, reasons, and dates.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/12-material-returns.png" alt="Material returns history page" loading="lazy" />
+          <div class="screenshot-caption">Fig 13 — Material Returns history listing all past returns with item, quantity, and reason.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Raw Material Tracking ─── -->
+  <section class="section" id="raw-material-tracking">
+    <div class="section-header">
+      <div class="section-icon bg-lime">📦</div>
+      <h2>Raw Material Tracking</h2>
+    </div>
+    <p class="section-intro">
+      Raw Material Tracking gives you a detailed movement log for every raw material that has passed
+      through your Production Store. Unlike the store page (which shows current balances), this view
+      shows the full inbound and outbound history — when materials arrived, how much was consumed
+      in each production batch, and what remains. It is the audit trail for ingredient usage.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Tracking Ingredient Movements</h3>
+          <p>Navigate to <strong>Raw Material Tracking</strong> in the sidebar to view the full movement history for your department's materials.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Filter by date range, ingredient name, or movement type (received, consumed, returned).</li>
+          <li>Each row shows: date, ingredient, movement type, quantity, and the production record or material request that triggered it.</li>
+          <li>Use this view to investigate discrepancies between expected and actual ingredient usage.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Audit Tip:</strong> If your Production Store balance seems wrong, use Raw Material Tracking to trace every movement and identify the source of the discrepancy — whether it's an over-counted batch, a missing return, or a failed dispatch.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/15-raw-material-tracking.png" alt="Raw material tracking movement log" loading="lazy" />
+          <div class="screenshot-caption">Fig 14 — Raw Material Tracking page showing full inbound/outbound movement history.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Sales Requests Review ─── -->
+  <section class="section" id="sales-requests">
+    <div class="section-header">
+      <div class="section-icon bg-green">🛒</div>
+      <h2>Sales Requests Review</h2>
+    </div>
+    <p class="section-intro">
+      When the sales team needs products that are not currently in stock, they raise a Sales Request
+      asking the production department to produce them. This page shows all pending sales requests
+      assigned to your department. You review each request, confirm whether you can fulfil it, and
+      dispatch produced items back to the sales team when ready.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Reviewing and Fulfilling Sales Requests</h3>
+          <p>Navigate to <strong>Sales Requests Review</strong> under your department in the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Each request shows the product needed, quantity requested, and the requesting sales department.</li>
+          <li>Review pending requests tagged <span class="tag tag-amber">Pending</span>.</li>
+          <li>Once you have produced the requested quantity, click <strong>Dispatch</strong> to send the items to the sales team's stock.</li>
+          <li>Requests that have been fulfilled show a <span class="tag tag-green">Dispatched</span> status.</li>
+        </ul>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Dispatch Flow:</strong> When you dispatch a fulfilled sales request, the produced quantity is added to the corresponding sales department's <code>product_stocks.addition_quantity</code>, making it available in the POS immediately.</div>
+        </div>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div>Do not dispatch a request until the items are physically produced and ready. Once dispatched, the sales team sees the stock as available in POS.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/13-sales-requests.png" alt="Sales requests review page" loading="lazy" />
+          <div class="screenshot-caption">Fig 15 — Sales Requests Review showing pending demand from the sales department.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Customer Orders ─── -->
+  <section class="section" id="customer-orders">
+    <div class="section-header">
+      <div class="section-icon bg-purple">🧾</div>
+      <h2>Customer Orders</h2>
+    </div>
+    <p class="section-intro">
+      Customer Orders feed directly into the production pipeline. When a customer places an order for
+      a bespoke item or a large quantity, it is captured here and generates a production requirement
+      for your department. This ensures the kitchen produces exactly what is needed to fulfil customer
+      commitments on time.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Viewing Customer Order Production Requirements</h3>
+          <p>Navigate to <strong>Customer Orders</strong> at the bottom of the sidebar (this is a global page, not per-department).</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Each order shows the customer name, product required, quantity, and the delivery deadline.</li>
+          <li>Orders are prioritised by due date — address the earliest deadlines first.</li>
+          <li>When you produce the required items, mark the order as fulfilled via the action button.</li>
+          <li>Fulfilled orders generate production records and update inventory accordingly.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Production Planning:</strong> Review Customer Orders at the start of each shift alongside your Sales Requests to plan the day's production schedule. Prioritise customer orders with the nearest deadlines.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/14-customer-orders.png" alt="Customer orders production view" loading="lazy" />
+          <div class="screenshot-caption">Fig 16 — Customer Orders page showing pending orders that require production fulfilment.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Production Helper ─── -->
+  <section class="section" id="production-helper">
+    <div class="section-header">
+      <div class="section-icon bg-teal">🤝</div>
+      <h2>Production Helper</h2>
+    </div>
+    <p class="section-intro">
+      The Production Helper is a planning and lookup tool that helps your team quickly calculate
+      ingredient needs for any given production quantity, check recipe scaling, and verify raw
+      material availability before starting a batch. Use it as a quick-check before committing
+      to a production run.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Using the Production Helper</h3>
+          <p>Navigate to <strong>Production Helper</strong> at the bottom of the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Select a product and enter the batch quantity you plan to produce.</li>
+          <li>The helper displays the full ingredient list scaled to your batch size, pulled from the product's recipe.</li>
+          <li>WIP ingredients are recursively expanded so you can see base raw material requirements at a glance.</li>
+          <li>Compare the calculated ingredient needs against your current Production Store balance to confirm feasibility.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Pre-production Check:</strong> Always use the Production Helper before a large batch to ensure you have sufficient raw materials. This prevents mid-batch shortfalls that stall production.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/21-production-helper.png" alt="Production helper planning tool" loading="lazy" />
+          <div class="screenshot-caption">Fig 17 — Production Helper showing scaled ingredient requirements for a planned batch.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Operations Report ─── -->
+  <section class="section" id="operations-report">
+    <div class="section-header">
+      <div class="section-icon bg-indigo">📈</div>
+      <h2>Operations Report</h2>
+    </div>
+    <p class="section-intro">
+      The Operations Report provides a summary of all production activity across departments for a
+      selected date range. It shows total batches produced, units output, ingredient consumption
+      totals, and a breakdown by product. Use it for daily shift summaries and weekly management
+      reviews.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Generating an Operations Report</h3>
+          <p>Navigate to <strong>Operations Reports</strong> at the bottom of the sidebar under the Reports section.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Date Range</strong> (start and end date) for the report period.</li>
+          <li>Optionally filter by department or product.</li>
+          <li>Click <strong>Generate</strong> to load the report.</li>
+          <li>The table shows: product, department, total batches, total units produced, and ingredients consumed.</li>
+          <li>Use the <strong>Export</strong> button to download the report as a CSV or PDF.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Management Use:</strong> Operations Reports are typically reviewed by production managers at end-of-shift or end-of-week. Staff with the correct role can view the report, but only managers can export or archive it.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/17-operations-report.png" alt="Operations report page" loading="lazy" />
+          <div class="screenshot-caption">Fig 18 — Operations Report showing production summary across departments and date range.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Performance Report ─── -->
+  <section class="section" id="performance-report">
+    <div class="section-header">
+      <div class="section-icon bg-amber">🎯</div>
+      <h2>Performance Report</h2>
+    </div>
+    <p class="section-intro">
+      The Performance Report analyses production efficiency — comparing planned vs actual output,
+      ingredient utilization rates, waste percentages, and production cost per unit. It helps
+      managers identify bottlenecks, high-waste products, and departments that are over- or
+      under-performing against targets.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Analysing Production Performance</h3>
+          <p>Navigate to <strong>Performance Reports</strong> under the Reports section in the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Select a date range and optionally a department or product to focus the analysis.</li>
+          <li>Key metrics displayed:
+            <ul>
+              <li><strong>Output Efficiency:</strong> actual units produced vs expected based on materials received.</li>
+              <li><strong>Ingredient Utilization:</strong> percentage of received materials actually consumed in production.</li>
+              <li><strong>Waste Rate:</strong> proportion of materials returned or written off.</li>
+              <li><strong>Cost per Unit:</strong> total ingredient cost divided by units produced.</li>
+            </ul>
+          </li>
+          <li>Charts visualise trends over the selected period.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Improve Efficiency:</strong> A high waste rate on a specific product signals a recipe calibration issue or handling problem. Use the Performance Report to identify the product, then review its recipe and raw material handling procedures.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/18-performance-report.png" alt="Performance report analytics page" loading="lazy" />
+          <div class="screenshot-caption">Fig 19 — Performance Report showing efficiency metrics, utilization rates, and cost per unit.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Reports Library ─── -->
+  <section class="section" id="reports-library">
+    <div class="section-header">
+      <div class="section-icon bg-sky">📚</div>
+      <h2>Reports Library</h2>
+    </div>
+    <p class="section-intro">
+      The Reports Library is a central hub for all production reports — both pre-built system reports
+      and any custom reports your manager has configured. Instead of navigating to each report
+      individually, you can browse and launch any available report from this single page.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Browsing and Launching Reports</h3>
+          <p>Navigate to <strong>Reports Library</strong> at the bottom of the sidebar under the Reports section.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Reports are listed by category (Operations, Performance, Ingredient, etc.).</li>
+          <li>Click any report card to open it directly with its configuration panel.</li>
+          <li>Use the search bar to quickly find a specific report by name.</li>
+          <li>Frequently used reports can be bookmarked by clicking the star icon on each card.</li>
+        </ul>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div>New reports added by your manager appear here automatically. If you need a report that does not exist yet, contact your manager to have it configured and published to the library.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/19-reporting-library.png" alt="Reports library page" loading="lazy" />
+          <div class="screenshot-caption">Fig 20 — Reports Library listing all available production reports in one place.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Quick Reference ─── -->
+  <section class="section" id="quick-reference">
+    <div class="section-header">
+      <div class="section-icon bg-purple">⚡</div>
+      <h2>Quick Reference</h2>
+    </div>
+    <p class="section-intro">
+      Use this checklist as your daily production workflow guide. Follow these steps each shift to
+      ensure smooth production, accurate records, and complete material management.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Daily Production Workflow Checklist</h3>
+          <p>Follow this sequence each shift for consistent, audit-ready production management.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li><strong>Log in</strong> via Staff Login → select branch → enter credentials.</li>
+          <li><strong>Check Production Store</strong> — confirm raw material balances before starting production.</li>
+          <li><strong>Review Customer Orders</strong> — identify any orders due today.</li>
+          <li><strong>Review Sales Requests</strong> — check pending demands from the sales team.</li>
+          <li><strong>Use Production Helper</strong> — verify ingredient availability for planned batches.</li>
+          <li><strong>Raise Material Requests</strong> if any ingredients are low — do this early to allow time for dispatch.</li>
+          <li><strong>Produce WIP batches</strong> first (if your FG recipes require WIP sub-products).</li>
+          <li><strong>Record Quick Produce — FG</strong> for each finished goods batch produced this shift.</li>
+          <li><strong>Dispatch Sales Requests</strong> for any fulfilled sales demands.</li>
+          <li><strong>Return excess materials</strong> at end of shift via Material Returns.</li>
+          <li><strong>Review Production Records</strong> to confirm all batches are logged correctly.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Page Reference — What to Use and When</h3>
+          <p>Quick lookup of every production page and its primary use case.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <table class="ref-table">
+          <thead>
+            <tr>
+              <th>Page</th>
+              <th>When to Use</th>
+              <th>Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Products</strong></td>
+              <td>View all FG and WIP items your department produces</td>
+              <td><span class="tag tag-gray">Staff</span></td>
+            </tr>
+            <tr>
+              <td><strong>Product Types</strong></td>
+              <td>Understand FG vs WIP classification</td>
+              <td><span class="tag tag-gray">Staff</span></td>
+            </tr>
+            <tr>
+              <td><strong>Recipes</strong></td>
+              <td>View ingredient requirements for each product</td>
+              <td><span class="tag tag-gray">Staff</span></td>
+            </tr>
+            <tr>
+              <td><strong>Product Assignments</strong></td>
+              <td>Link products to a sales department (POS visibility) and assign recipes to products</td>
+              <td><span class="tag tag-purple">Manager</span></td>
+            </tr>
+            <tr>
+              <td><strong>Production Records</strong></td>
+              <td>View history of all completed production batches</td>
+              <td><span class="tag tag-gray">Staff</span></td>
+            </tr>
+            <tr>
+              <td><strong>Quick Produce — FG</strong></td>
+              <td>Record a finished goods production batch</td>
+              <td><span class="tag tag-green">Daily</span></td>
+            </tr>
+            <tr>
+              <td><strong>Quick Produce — WIP</strong></td>
+              <td>Record a WIP (intermediate) production batch</td>
+              <td><span class="tag tag-green">Daily</span></td>
+            </tr>
+            <tr>
+              <td><strong>Production Store</strong></td>
+              <td>Check current raw material stock balances</td>
+              <td><span class="tag tag-green">Daily</span></td>
+            </tr>
+            <tr>
+              <td><strong>Material Requests</strong></td>
+              <td>Request raw materials from Inventory when stock is low</td>
+              <td><span class="tag tag-amber">As needed</span></td>
+            </tr>
+            <tr>
+              <td><strong>Material Returns</strong></td>
+              <td>Return excess or damaged materials to Inventory</td>
+              <td><span class="tag tag-amber">As needed</span></td>
+            </tr>
+            <tr>
+              <td><strong>Raw Material Tracking</strong></td>
+              <td>Audit ingredient movement history and investigate discrepancies</td>
+              <td><span class="tag tag-blue">Audit</span></td>
+            </tr>
+            <tr>
+              <td><strong>Sales Requests Review</strong></td>
+              <td>Review and dispatch sales team demands for produced goods</td>
+              <td><span class="tag tag-green">Daily</span></td>
+            </tr>
+            <tr>
+              <td><strong>Customer Orders</strong></td>
+              <td>View and fulfil bespoke customer order production requirements</td>
+              <td><span class="tag tag-green">Daily</span></td>
+            </tr>
+            <tr>
+              <td><strong>Production Helper</strong></td>
+              <td>Pre-check ingredient needs before starting a production run</td>
+              <td><span class="tag tag-green">Daily</span></td>
+            </tr>
+            <tr>
+              <td><strong>Operations Report</strong></td>
+              <td>Review total production output and ingredient consumption by period</td>
+              <td><span class="tag tag-purple">Manager</span></td>
+            </tr>
+            <tr>
+              <td><strong>Performance Report</strong></td>
+              <td>Analyse efficiency, waste rates, and cost per unit</td>
+              <td><span class="tag tag-purple">Manager</span></td>
+            </tr>
+            <tr>
+              <td><strong>Reports Library</strong></td>
+              <td>Browse and launch all available production reports</td>
+              <td><span class="tag tag-purple">Manager</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div>
+          <h3>Common Issues & Solutions</h3>
+          <p>Troubleshooting guide for the most common production workflow problems.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <table class="ref-table">
+          <thead>
+            <tr>
+              <th>Issue</th>
+              <th>Likely Cause</th>
+              <th>Solution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Page shows "Unauthorized" or redirects away</td>
+              <td>Shift not opened yet</td>
+              <td>Contact your supervisor to open the shift</td>
+            </tr>
+            <tr>
+              <td>Product missing from Quick Produce dropdown</td>
+              <td>Product not assigned to your department</td>
+              <td>Check Product Assignments; contact manager to assign</td>
+            </tr>
+            <tr>
+              <td>Quick Produce fails with stock error</td>
+              <td>Insufficient raw materials in Production Store</td>
+              <td>Raise a Material Request; wait for dispatch before producing</td>
+            </tr>
+            <tr>
+              <td>Sales Request stays "Pending" after dispatch</td>
+              <td>Dispatch not confirmed</td>
+              <td>Return to Sales Requests Review and click Dispatch again</td>
+            </tr>
+            <tr>
+              <td>Production Store balance looks wrong</td>
+              <td>Missing return or failed dispatch</td>
+              <td>Use Raw Material Tracking to trace all movements</td>
+            </tr>
+            <tr>
+              <td>Recipe detail shows no ingredients</td>
+              <td>Recipe not configured for this product</td>
+              <td>Contact manager to configure the recipe via Add Recipe</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // Sidebar active link highlighting on scroll
+  const sections = document.querySelectorAll('.section[id], .video-section[id]');
+  const navLinks = document.querySelectorAll('#sidebar nav a');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const link = document.querySelector(`#sidebar nav a[href="#${e.target.id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

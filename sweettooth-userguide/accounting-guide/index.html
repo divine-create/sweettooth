@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SweetTooth Accounting Module — User Guide</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sidebar-bg: #1e1e2e;
+    --sidebar-text: #cdd6f4;
+    --sidebar-muted: #6c7086;
+    --sidebar-hover: #313244;
+    --accent: #cba6f7;
+    --body-bg: #f5f5f7;
+    --card-bg: #ffffff;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --sidebar-w: 270px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--body-bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+  }
+  .sidebar-brand { padding: 22px 20px 14px; border-bottom: 1px solid #313244; }
+  .sidebar-brand h1 { font-size: 14px; font-weight: 700; color: #fff; }
+  .sidebar-brand p { font-size: 11px; color: var(--sidebar-muted); margin-top: 3px; }
+  .sidebar-badge {
+    display: inline-block; background: var(--accent); color: #1e1e2e;
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 99px; margin-top: 6px;
+  }
+  .sidebar-section { padding: 12px 12px 2px; }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--sidebar-muted); padding: 0 8px; margin-bottom: 3px;
+  }
+  .sidebar a {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+    border-radius: 6px; color: var(--sidebar-text); text-decoration: none;
+    font-size: 12.5px; transition: background .15s;
+  }
+  .sidebar a:hover { background: var(--sidebar-hover); }
+  .sidebar a.active { background: var(--sidebar-hover); color: var(--accent); font-weight: 600; }
+  .sidebar a .icon { font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+
+  /* ── MAIN ── */
+  .main { margin-left: var(--sidebar-w); flex: 1; max-width: calc(100% - var(--sidebar-w)); }
+
+  /* ── COVER ── */
+  .cover {
+    background: linear-gradient(135deg, #1e1e2e 0%, #313244 50%, #1e1e2e 100%);
+    color: #fff; padding: 64px 48px 52px;
+  }
+  .cover-eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--accent); margin-bottom: 14px; }
+  .cover h1 { font-size: 40px; font-weight: 800; line-height: 1.1; margin-bottom: 14px; }
+  .cover h1 span { color: var(--accent); }
+  .cover p { color: #a6adc8; font-size: 15px; line-height: 1.6; max-width: 560px; margin-top: 10px; }
+  .cover-meta { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 22px; }
+  .cover-meta-item { font-size: 13px; color: #a6adc8; }
+  .cover-meta-item strong { color: #fff; display: block; font-size: 14px; }
+  .download-bar { margin-top: 28px; display: flex; align-items: center; gap: 12px; }
+  .btn-download {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px;
+    border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none;
+    background: var(--accent); color: #1e1e2e;
+  }
+
+  /* ── CONTENT ── */
+  .content { max-width: 960px; padding: 48px 48px 80px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 44px 0; }
+  section { scroll-margin-top: 24px; }
+  .section-eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); margin-bottom: 7px; }
+  .section-title { font-size: 25px; font-weight: 800; margin-bottom: 10px; }
+  .section-desc { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 22px; max-width: 680px; }
+
+  /* steps */
+  .steps { display: flex; flex-direction: column; gap: 14px; margin: 20px 0; }
+  .step { display: flex; gap: 14px; align-items: flex-start; }
+  .step-num {
+    width: 30px; height: 30px; border-radius: 50%; background: var(--accent);
+    color: #1e1e2e; font-weight: 800; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;
+  }
+  .step-body h4 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .step-body p { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+  /* callouts */
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 18px 0;
+    font-size: 13px; line-height: 1.6; display: flex; gap: 11px; align-items: flex-start;
+  }
+  .callout-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body h4 { font-weight: 700; margin-bottom: 3px; }
+  .callout.info  { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; }
+  .callout.tip   { background: #f0fdf4; border-left: 4px solid #22c55e; color: #166534; }
+  .callout.warn  { background: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; }
+  .callout.note  { background: #faf5ff; border-left: 4px solid var(--accent); color: #5b21b6; }
+
+  /* screenshot */
+  .screenshot-wrap {
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    margin: 22px 0; box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  }
+  .screenshot-wrap img { width: 100%; display: block; }
+  .screenshot-caption {
+    background: #f9fafb; border-top: 1px solid var(--border);
+    padding: 7px 14px; font-size: 11px; color: var(--muted); font-style: italic;
+  }
+
+  /* feature grid */
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin: 18px 0; }
+  .feature-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 15px; }
+  .feature-card .icon { font-size: 20px; margin-bottom: 7px; }
+  .feature-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .feature-card p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 18px 0; }
+  .data-table th {
+    background: var(--sidebar-bg); color: #cdd6f4; padding: 9px 13px;
+    text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  }
+  .data-table td { padding: 9px 13px; border-bottom: 1px solid var(--border); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: #fafafa; }
+  .data-table code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; font-size: 11px; font-family: monospace; }
+
+  /* badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .badge-purple { background: #ede9fe; color: #5b21b6; }
+  .badge-green  { background: #dcfce7; color: #166534; }
+  .badge-blue   { background: #dbeafe; color: #1e40af; }
+  .badge-yellow { background: #fef9c3; color: #854d0e; }
+  .badge-red    { background: #fee2e2; color: #991b1b; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 18px 0; }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+  @media print {
+    .sidebar { display: none; }
+    .main { margin-left: 0; max-width: 100%; }
+    .cover { padding: 40px 32px; }
+    .content { padding: 32px; }
+    .screenshot-wrap { page-break-inside: avoid; }
+    .download-bar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <h1>SweetTooth ERP</h1>
+    <p>Accounting Module</p>
+    <span class="sidebar-badge">Accounting Manager</span>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Getting Started</div>
+    <a href="#intro"><span class="icon">📘</span> Introduction</a>
+    <a href="#login"><span class="icon">🔑</span> Login &amp; Clock In</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Accounting</div>
+    <a href="#dashboard"><span class="icon">📊</span> Dashboard</a>
+    <a href="#overview"><span class="icon">🔭</span> Overview</a>
+    <a href="#chart-of-accounts"><span class="icon">📂</span> Chart of Accounts</a>
+    <a href="#accounting-periods"><span class="icon">📅</span> Accounting Periods</a>
+    <a href="#bank-accounts"><span class="icon">🏦</span> Bank Accounts</a>
+    <a href="#journal-entries"><span class="icon">📒</span> Journal Entries</a>
+    <a href="#quick-expense"><span class="icon">⚡</span> Quick Expense</a>
+    <a href="#accounting-entries"><span class="icon">📋</span> Accounting Entries</a>
+    <a href="#posting-status"><span class="icon">📡</span> Posting Status</a>
+    <a href="#pos-remittances"><span class="icon">💳</span> POS Remittances</a>
+    <a href="#expense-imports"><span class="icon">📥</span> Expense Imports</a>
+    <a href="#purchase-payments"><span class="icon">🧾</span> Purchase Payments</a>
+    <a href="#tax-payments"><span class="icon">🏛️</span> Tax Payments</a>
+    <a href="#fixed-assets"><span class="icon">🏗️</span> Fixed Assets</a>
+    <a href="#budgets"><span class="icon">🎯</span> Budgets</a>
+    <a href="#credit-notes"><span class="icon">📉</span> Credit Notes</a>
+    <a href="#debit-notes"><span class="icon">📈</span> Debit Notes</a>
+    <a href="#bank-reconciliation"><span class="icon">🔄</span> Bank Reconciliation</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Financial Reports</div>
+    <a href="#general-ledger"><span class="icon">📖</span> General Ledger</a>
+    <a href="#trial-balance"><span class="icon">⚖️</span> Trial Balance</a>
+    <a href="#income-statement"><span class="icon">📈</span> Income Statement</a>
+    <a href="#balance-sheet"><span class="icon">🏛️</span> Balance Sheet</a>
+    <a href="#cash-flow"><span class="icon">💧</span> Cash Flow</a>
+    <a href="#budget-vs-actual"><span class="icon">🎯</span> Budget vs Actual</a>
+    <a href="#ap-aging"><span class="icon">📊</span> AP Aging</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Leave Management</div>
+    <a href="#apply-leave"><span class="icon">📝</span> Apply for Leave</a>
+    <a href="#my-leaves"><span class="icon">📋</span> My Leaves</a>
+    <a href="#leave-balance"><span class="icon">🗓️</span> Leave Balance</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Reference</div>
+    <a href="#quick-ref"><span class="icon">⚡</span> Quick Reference</a>
+  </div>
+</nav>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div class="main">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-eyebrow">User Guide · Accounting Module</div>
+    <h1>SweetTooth <span>Accounting</span><br>Manager Guide</h1>
+    <p>A complete reference for the Accounting Manager — covering every accounting page, financial reports, and leave management.</p>
+    <div class="cover-meta">
+      <div class="cover-meta-item"><strong>Role</strong>Accounting Manager</div>
+      <div class="cover-meta-item"><strong>Sections</strong>30 topics covered</div>
+      <div class="cover-meta-item"><strong>Updated</strong>May 2026</div>
+    </div>
+    <div class="download-bar">
+      <a class="btn-download" href="accounting-guide.pdf" download>⬇ Download PDF</a>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- INTRO -->
+    <section id="intro">
+      <div class="section-eyebrow">Getting Started</div>
+      <h2 class="section-title">Introduction</h2>
+      <p class="section-desc">The SweetTooth Accounting Module is the financial backbone of branch operations. This guide covers every page available to the Accounting Manager role.</p>
+
+      <div class="feature-grid">
+        <div class="feature-card"><div class="icon">📂</div><h4>Chart of Accounts</h4><p>Master list of all 47 GL accounts. Create, edit, and deactivate accounts.</p></div>
+        <div class="feature-card"><div class="icon">📅</div><h4>Accounting Periods</h4><p>Open, close, and lock accounting periods to control when entries can be posted.</p></div>
+        <div class="feature-card"><div class="icon">📒</div><h4>Journal Entries</h4><p>Create double-entry manual journals. Quick Expense shortcut for single-line costs.</p></div>
+        <div class="feature-card"><div class="icon">📡</div><h4>Posting Status</h4><p>Monitor auto-posted GL entries from sales and purchases. Retry failures instantly.</p></div>
+        <div class="feature-card"><div class="icon">🔄</div><h4>Bank Reconciliation</h4><p>Match GL balances against bank statements to confirm cash positions.</p></div>
+        <div class="feature-card"><div class="icon">🎯</div><h4>Budgets</h4><p>Set budget targets per GL account and period for variance tracking.</p></div>
+<div class="feature-card"><div class="icon">📈</div><h4>Financial Reports</h4><p>General Ledger, Trial Balance, Income Statement, Balance Sheet, Cash Flow, Budget vs Actual, AP Aging.</p></div>
+        <div class="feature-card"><div class="icon">📉</div><h4>Credit &amp; Debit Notes</h4><p>Issue credit notes to reduce supplier invoices and debit notes to dispute or add charges.</p></div>
+        <div class="feature-card"><div class="icon">💳</div><h4>POS Remittances</h4><p>Reconcile cash remitted from POS sales against bank deposits.</p></div>
+        <div class="feature-card"><div class="icon">🏗️</div><h4>Fixed Assets</h4><p>Track and depreciate branch fixed assets over their useful life.</p></div>
+        <div class="feature-card"><div class="icon">🧾</div><h4>Purchase Payments</h4><p>Record and settle outstanding accounts payable from purchases.</p></div>
+      </div>
+
+      <div class="callout info">
+        <div class="callout-icon">ℹ️</div>
+        <div class="callout-body">
+          <h4>Role Permissions</h4>
+          Accounting Manager has: <strong>view-accounting, manage-accounting, manage-bank-accounts, manage-accounting-periods, reconcile-accounts, view-financial-reports, view-reports, view-analytics, send-reports-to-md</strong>.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- LOGIN -->
+    <section id="login">
+      <div class="section-eyebrow">Getting Started</div>
+      <h2 class="section-title">Login &amp; Clock In</h2>
+      <p class="section-desc">Every session begins at the Staff Login page. Select your branch, enter credentials, choose a shift, and clock in to reach the Accounting Dashboard.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/01-login-page.png" alt="Staff Login Page" />
+        <div class="screenshot-caption">Staff Login — select branch, enter email and password, then click Log In.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Open Staff Login</h4><p>Navigate to <code>/staff-login</code>. Select <strong>SweetTooth Port Harcourt (PHC-002)</strong> from the branch dropdown.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Enter Credentials</h4><p>Enter your email and password, then click <strong>Log In</strong>.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Select Shift &amp; Clock In</h4><p>Choose your shift (Morning, Afternoon, Evening, or Fulltime) and click <strong>Clock In</strong>. You land directly on the Accounting Dashboard.</p></div></div>
+      </div>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <h4>Direct to Accounting Dashboard</h4>
+          After clocking in, you land directly on the Accounting Dashboard. All accounting features are immediately available from the sidebar — no additional workflow steps required.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- DASHBOARD -->
+    <section id="dashboard">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Dashboard</h2>
+      <p class="section-desc">Your home screen after login. Shows GL posting health, quick actions, and cash &amp; bank account summaries.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/02-accounting-dashboard.png" alt="Accounting Dashboard" />
+        <div class="screenshot-caption">Accounting Dashboard — posting health cards (Sales, Purchases, Payments, Adjustments), quick actions, and bank account balances.</div>
+      </div>
+
+      <div class="callout note">
+        <div class="callout-icon">📌</div>
+        <div class="callout-body">
+          <h4>Posting Health at a Glance</h4>
+          The dashboard shows pending and failed GL postings for Sales, Purchases, Payments, and Adjustments. Use <strong>Review Posting Queue</strong> to jump directly to the Posting Status page and address failures.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- OVERVIEW -->
+    <section id="overview">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Overview</h2>
+      <p class="section-desc">A consolidated snapshot of the branch's financial position — revenue totals, expenses, outstanding payables, and transaction summaries across accounting periods.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/03-overview.png" alt="Accounting Overview" />
+        <div class="screenshot-caption">Overview — aggregated financial summary with period-level KPI breakdowns.</div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- CHART OF ACCOUNTS -->
+    <section id="chart-of-accounts">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Chart of Accounts</h2>
+      <p class="section-desc">The master list of every GL account used by the branch. All 47 accounts are organised by type and power every transaction, journal entry, and financial report in the system.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/16-chart-of-accounts.png" alt="Chart of Accounts" />
+        <div class="screenshot-caption">Chart of Accounts — 47 GL accounts with number, name, type (Asset/Liability/Equity/Revenue/COGS/Expense/Tax), and active status.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Browse &amp; Search</h4><p>Use the search box to find by number or name. Filter by type using the dropdown: Asset, Liability, Equity, Revenue, COGS, Expense, Tax.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Create a New Account</h4><p>Click <strong>New Account</strong>. Fill in the account number, name, type, and optional description. Once saved it is available in all journal entries and reports.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Edit or Deactivate</h4><p>Click any row to edit. Accounts with existing transactions cannot be deleted — deactivate them to prevent future use while preserving history.</p></div></div>
+      </div>
+
+      <div class="callout warn">
+        <div class="callout-icon">⚠️</div>
+        <div class="callout-body">
+          <h4>Numbering Convention</h4>
+          Follow the standard ranges: <strong>1xxx = Assets · 2xxx = Liabilities · 4xxx = Revenue · 5–6xxx = Expenses · 7xxx = Other</strong>. Deviating from this breaks financial report groupings.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ACCOUNTING PERIODS -->
+    <section id="accounting-periods">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Accounting Periods</h2>
+      <p class="section-desc">Accounting Periods define the financial calendar. You must open a period before entries can be posted to it, and lock it at month-end to prevent changes after books are closed.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/18-accounting-periods.png" alt="Accounting Periods" />
+        <div class="screenshot-caption">Accounting Periods — list of periods with open/closed/locked status and date ranges.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>View Periods</h4><p>The list shows all periods with their date range and status: <span class="badge badge-green">Open</span>, <span class="badge badge-yellow">Closed</span>, or <span class="badge badge-red">Locked</span>.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Open a New Period</h4><p>Click <strong>New Period</strong> and set the start and end date. Only one period can be open at a time for posting.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Close &amp; Lock</h4><p>At month-end: first <strong>Close</strong> the period (no new entries allowed) then <strong>Lock</strong> it (no edits allowed). Locking is permanent — ensure all entries are posted and reconciled first.</p></div></div>
+      </div>
+
+      <div class="callout warn">
+        <div class="callout-icon">⚠️</div>
+        <div class="callout-body">
+          <h4>Lock Only When Ready</h4>
+          Locking a period is irreversible. Always run Trial Balance and complete Bank Reconciliation before locking to ensure the books are balanced and complete.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- BANK ACCOUNTS -->
+    <section id="bank-accounts">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Bank Accounts</h2>
+      <p class="section-desc">Defines the real-world cash and bank accounts linked to the GL. Every payment transaction must reference a bank account registered here.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/04-bank-accounts.png" alt="Bank Accounts" />
+        <div class="screenshot-caption">Bank Accounts — registered accounts with GL mapping and current balances.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>View Accounts</h4><p>Table shows account name, bank name, account number, GL mapping, and current balance.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Add New Account</h4><p>Click <strong>Add Account</strong>. Fill in: name, bank name, account number, and the GL account it maps to (e.g., 1020 - Bank Account - Main).</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Edit or Deactivate</h4><p>Use the row action menu to edit details or deactivate unused accounts while preserving transaction history.</p></div></div>
+      </div>
+
+      <div class="callout warn">
+        <div class="callout-icon">⚠️</div>
+        <div class="callout-body">
+          <h4>GL Mapping is Critical</h4>
+          Incorrect GL mapping causes mismatches in the Trial Balance and Bank Reconciliation. Always verify the mapped account code before saving.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- JOURNAL ENTRIES -->
+    <section id="journal-entries">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Journal Entries</h2>
+      <p class="section-desc">The core double-entry bookkeeping interface. Record manual adjustments, corrections, accruals, or any transaction not automatically posted by the system.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/05-journal-entries.png" alt="Journal Entries" />
+        <div class="screenshot-caption">Journal Entries — Create Manual Journal form (top-left), Quick Expense panel (top-right), and posted entry list (bottom).</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Set Entry Details</h4><p>Choose the <strong>Period</strong>, set the <strong>Entry Date</strong>, write a <strong>Description</strong>, and add an optional Reference (auto-generated if blank).</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Add Journal Lines</h4><p>Each line needs an <strong>Account</strong>, a <strong>Debit</strong> or <strong>Credit</strong> amount, and an optional line description. Click <strong>Add Line</strong> for more rows.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Balance the Entry</h4><p>Total Debits must equal Total Credits. The form shows running totals and blocks saving if unbalanced.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Post or Save as Draft</h4><p>Tick <strong>Post immediately</strong> to record directly in the GL, or leave unticked to save as Draft for review first.</p></div></div>
+      </div>
+
+      <div class="callout info">
+        <div class="callout-icon">ℹ️</div>
+        <div class="callout-body">
+          <h4>Entry Status</h4>
+          <span class="badge badge-yellow">Draft</span> — saved, not posted &nbsp;·&nbsp;
+          <span class="badge badge-green">Posted</span> — in GL, cannot be edited &nbsp;·&nbsp;
+          <span class="badge badge-red">Reversed</span> — voided by a reversal entry
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- QUICK EXPENSE -->
+    <section id="quick-expense">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Quick Expense</h2>
+      <p class="section-desc">A shortcut for recording a single operational expense. Automatically creates a balanced two-line journal entry — one debit to the expense account, one credit to the payment account.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/06-quick-expense.png" alt="Quick Expense" />
+        <div class="screenshot-caption">Quick Expense — fast single-expense form with amount, expense account, payment account, date, and description.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Enter Amount</h4><p>Type the expense amount.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Choose Expense Account</h4><p>Select the GL account describing the cost — e.g., <em>6310 - Meals &amp; Entertainment</em>, <em>6320 - Office Supplies</em>.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Choose Payment Account</h4><p>Select how it was paid — typically <em>1010 - Cash</em> or your bank account.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Add Date &amp; Description, Save</h4><p>Set the date, write a brief description, then click <strong>Save Expense</strong>.</p></div></div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ACCOUNTING ENTRIES -->
+    <section id="accounting-entries">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Accounting Entries</h2>
+      <p class="section-desc">A read-only audit view of all accounting entries generated across the system — from sales, purchases, payroll, adjustments, and manual journals — in one unified list.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/23-accounting-entries.png" alt="Accounting Entries" />
+        <div class="screenshot-caption">Accounting Entries — complete list of all GL entries across all sources with date, reference, account, and amounts.</div>
+      </div>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <h4>Use for Audit Trails</h4>
+          Accounting Entries is the best place to trace any transaction by its reference number (e.g., SAL-81, PUR-20). Filter by date range or source to isolate entries for investigation.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- POSTING STATUS -->
+    <section id="posting-status">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Posting Status</h2>
+      <p class="section-desc">Real-time monitor of all automatic GL postings from sales, purchases, and payroll. Confirm postings succeeded and retry any that failed.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/07-posting-status.png" alt="Posting Status" />
+        <div class="screenshot-caption">Posting Status — live queue of auto-posted GL entries with success/failure status and one-click retry.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Filter by Source</h4><p>Filter to show only Sales, Purchases, or Inventory postings.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Identify Failures</h4><p>Rows marked <span class="badge badge-red">Failed</span> need attention. Read the error message to understand the cause — usually a locked period or missing GL account.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Retry</h4><p>Click <strong>Retry</strong> on any failed row. The system uses an idempotency guard — it will not create duplicates if the original partially posted.</p></div></div>
+      </div>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <h4>Check Every Morning</h4>
+          Review Posting Status at the start of each day to confirm overnight transactions (closing sales, purchase receipts) posted correctly before generating reports.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- POS REMITTANCES -->
+    <section id="pos-remittances">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">POS Remittances</h2>
+      <p class="section-desc">Tracks cash remitted from POS sales to the bank. Use this to confirm that daily sales cash has been physically deposited and matches the GL cash entries.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/21-pos-remittances.png" alt="POS Remittances" />
+        <div class="screenshot-caption">POS Remittances — list of remittance records showing shift, amount remitted, bank deposit reference, and status.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Review Remittance Records</h4><p>Each row corresponds to a shift's cash remittance. Columns show the shift date, sales staff, remitted amount, and whether a bank deposit has been confirmed.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Confirm a Deposit</h4><p>Once you have the bank deposit slip, mark the remittance as confirmed by entering the deposit reference and clicking <strong>Confirm</strong>.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Investigate Discrepancies</h4><p>If the remitted amount does not match the bank deposit, raise a query with the sales manager. Do not confirm until the amounts reconcile.</p></div></div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- EXPENSE IMPORTS -->
+    <section id="expense-imports">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Expense Imports</h2>
+      <p class="section-desc">Bulk-import expense records from an external spreadsheet or system. Useful for importing payroll deductions, third-party invoices, or expenses recorded outside SweetTooth.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/22-expense-imports.png" alt="Expense Imports" />
+        <div class="screenshot-caption">Expense Imports — upload interface with field mapping and import history log.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Prepare the File</h4><p>Download the import template from the page. Fill in: Date, Description, GL Account Code, Amount, and Reference for each expense row.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Upload &amp; Map Fields</h4><p>Upload the CSV/Excel file. The system will auto-map columns — verify the mapping before proceeding.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Review &amp; Import</h4><p>Preview the entries for errors. Click <strong>Import</strong> to post all rows. Failed rows are shown separately and can be corrected and re-imported.</p></div></div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- PURCHASE PAYMENTS -->
+    <section id="purchase-payments">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Purchase Payments</h2>
+      <p class="section-desc">Record and settle outstanding accounts payable balances from approved purchases. Links supplier invoices to actual bank payments and updates the GL accordingly.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/27-purchase-payments.png" alt="Purchase Payments" />
+        <div class="screenshot-caption">Purchase Payments — outstanding payables list with supplier, invoice amount, due date, and payment actions.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>View Outstanding Payables</h4><p>The table lists all approved purchases with unpaid balances, showing supplier name, purchase reference, amount due, and due date.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Record a Payment</h4><p>Click <strong>Pay</strong> on a row. Enter the payment date, bank account used, and amount paid (can be partial). Click <strong>Save Payment</strong>.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>GL Update</h4><p>The system posts: Debit Accounts Payable (2010) / Credit Bank Account. The outstanding balance updates automatically.</p></div></div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- CREDIT NOTES -->
+    <section id="credit-notes">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Credit Notes</h2>
+      <p class="section-desc">Issue credit notes to reduce amounts owed to suppliers — for returned goods, billing errors, or agreed discounts after an invoice has been recorded. Each credit note reverses part or all of the original payable and posts the corresponding GL entry.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/32-credit-notes.png" alt="Credit Notes" />
+        <div class="screenshot-caption">Credit Notes — list of issued credit notes with supplier, reference, amount, and status.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>New Credit Note</h4><p>Click <strong>New Credit Note</strong>. Select the supplier and the original purchase reference the credit applies to.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Enter Details</h4><p>Enter the credit note number (from supplier), date, and the amount being credited. Add a reason (e.g., goods returned, pricing error).</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Post</h4><p>Save and post the credit note. The system posts: Debit Accounts Payable (2010) / Credit Purchase Returns or Inventory account — reducing the outstanding payable.</p></div></div>
+      </div>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <h4>Apply Against Next Payment</h4>
+          Once posted, the credit note reduces the outstanding balance for that supplier. The reduced balance reflects automatically in Purchase Payments so the next settlement uses the net amount.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- DEBIT NOTES -->
+    <section id="debit-notes">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Debit Notes</h2>
+      <p class="section-desc">Raise debit notes to formally dispute a supplier invoice or request additional charges. A debit note increases the amount the supplier owes you and generates the corresponding GL posting.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/33-debit-notes.png" alt="Debit Notes" />
+        <div class="screenshot-caption">Debit Notes — list of raised debit notes with supplier, amount, reason, and posting status.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>New Debit Note</h4><p>Click <strong>New Debit Note</strong>. Select the supplier and the transaction being disputed or adjusted.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Enter Amount &amp; Reason</h4><p>Enter the debit note reference, date, amount, and a clear reason (e.g., short delivery, penalty charge, price adjustment).</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Post</h4><p>Save and post. The system posts the reversal entry, increasing the receivable or reducing the payable depending on the debit note type.</p></div></div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- TAX PAYMENTS -->
+    <section id="tax-payments">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Tax Payments</h2>
+      <p class="section-desc">Record tax remittances to government authorities — VAT, PAYE, withholding tax, and other statutory obligations. Keeps the Tax Payable GL accounts reconciled.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/24-tax-payments.png" alt="Tax Payments" />
+        <div class="screenshot-caption">Tax Payments — log of tax remittances with tax type, period, amount, and payment reference.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Select Tax Type</h4><p>Choose the tax type: VAT (2020 - Sales Tax Payable), PAYE (2120 - Payroll Tax Payable), or other statutory deductions.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Enter Payment Details</h4><p>Fill in the payment date, tax period covered, amount remitted, and bank reference number from the payment receipt.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Post the Payment</h4><p>Click <strong>Record Payment</strong>. The system posts: Debit Tax Payable / Credit Bank Account — clearing the liability from the balance sheet.</p></div></div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- FIXED ASSETS -->
+    <section id="fixed-assets">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Fixed Assets</h2>
+      <p class="section-desc">Track the branch's fixed assets — equipment, furniture, vehicles — and calculate depreciation over their useful life. Keeps the Fixed Assets GL accounts up to date.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/25-fixed-assets.png" alt="Fixed Assets" />
+        <div class="screenshot-caption">Fixed Assets — asset register with acquisition cost, useful life, accumulated depreciation, and net book value.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Add an Asset</h4><p>Click <strong>New Asset</strong>. Fill in: asset name, acquisition date, cost, GL account (1500 - Fixed Assets), useful life in months, and depreciation method (straight-line or declining balance).</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Run Depreciation</h4><p>At month-end click <strong>Run Depreciation</strong>. The system calculates the monthly charge and posts: Debit Depreciation Expense (6200) / Credit Accumulated Depreciation (1510).</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Dispose of an Asset</h4><p>When an asset is sold or scrapped, click <strong>Dispose</strong>. Enter the disposal date and proceeds (if any). The system clears the asset and accumulated depreciation from the GL.</p></div></div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- BUDGETS -->
+    <section id="budgets">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Budgets</h2>
+      <p class="section-desc">Set budget targets for revenue and expense GL accounts by accounting period. Budgets feed directly into the Budget vs Actual report for performance tracking.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/26-budgets.png" alt="Budgets" />
+        <div class="screenshot-caption">Budgets — budget entry grid with GL accounts as rows and periods as columns.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Select Period</h4><p>Choose the accounting period (e.g., May 2026) or budget year from the selector.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Enter Budget Amounts</h4><p>For each GL account row, enter the budgeted amount for the period. Focus on revenue accounts (4xxx) and major expense accounts (5xxx–6xxx).</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Save Budget</h4><p>Click <strong>Save</strong>. The budget is now live and will appear in the Budget vs Actual report against actual postings.</p></div></div>
+      </div>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <h4>Set Budgets at Period Start</h4>
+          Enter budgets at the beginning of each period before any transactions are posted. This gives the most meaningful Budget vs Actual variance analysis throughout the month.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- BANK RECONCILIATION -->
+    <section id="bank-reconciliation">
+      <div class="section-eyebrow">Accounting</div>
+      <h2 class="section-title">Bank Reconciliation</h2>
+      <p class="section-desc">Match the branch's GL cash balances against external bank statements to identify timing differences and confirm the closing cash position before period lock.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/17-bank-reconciliation.png" alt="Bank Reconciliation Overview" />
+        <div class="screenshot-caption">Bank Reconciliation — account selector and reconciliation status overview.</div>
+      </div>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/20-bank-reconciliation-manage.png" alt="Bank Reconciliation Manage" />
+        <div class="screenshot-caption">Bank Reconciliation Manage — detailed transaction matching with GL entries vs bank statement lines.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Select Account &amp; Period</h4><p>Choose the bank account and set the statement end date. The system loads all unreconciled GL entries for that account.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Enter Statement Balance</h4><p>Enter the closing balance from your physical bank statement. This is the target balance the system will match against.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Match Transactions</h4><p>Tick each GL entry that appears on the bank statement. The Reconciled Balance updates in real time. Unticked items are outstanding (timing differences).</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Reconcile</h4><p>When Reconciled Balance equals the Statement Ending Balance, the <strong>Difference</strong> shows ₦0.00 and the Reconcile button activates. Click to finalise.</p></div></div>
+      </div>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <h4>Reconcile Monthly</h4>
+          Complete bank reconciliation at end of each period before locking. This ensures the Balance Sheet cash balance is accurate and audit-ready.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- GENERAL LEDGER -->
+    <section id="general-ledger">
+      <div class="section-eyebrow">Financial Reports</div>
+      <h2 class="section-title">General Ledger</h2>
+      <p class="section-desc">The complete chronological record of every posted transaction for each GL account. The authoritative audit trail for all financial activity.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/08-general-ledger.png" alt="General Ledger" />
+        <div class="screenshot-caption">General Ledger — transaction history per account with date, reference, debit, credit, and running balance.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Select Account &amp; Period</h4><p>Choose a GL account and date range. The ledger loads all posted entries for that account.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Read the Ledger</h4><p>Columns: Date · Description · Reference · Debit · Credit · Running Balance. Reference numbers link back to source transactions.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Export</h4><p>Download as CSV or PDF for external reporting or audit.</p></div></div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- TRIAL BALANCE -->
+    <section id="trial-balance">
+      <div class="section-eyebrow">Financial Reports</div>
+      <h2 class="section-title">Trial Balance</h2>
+      <p class="section-desc">Summarises the net debit or credit balance for every GL account at a point in time. Verifies that total debits equal total credits before preparing financial statements.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/09-trial-balance.png" alt="Trial Balance" />
+        <div class="screenshot-caption">Trial Balance — all GL accounts with net debit or credit balance for the selected period.</div>
+      </div>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <h4>Run Before Month-End Reports</h4>
+          Always verify the Trial Balance first. If Total Debits ≠ Total Credits, find and fix the unbalanced entry before generating Income Statement or Balance Sheet.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- INCOME STATEMENT -->
+    <section id="income-statement">
+      <div class="section-eyebrow">Financial Reports</div>
+      <h2 class="section-title">Income Statement</h2>
+      <p class="section-desc">Shows revenue earned and expenses incurred over a period, resulting in net profit or loss. The primary report for assessing branch performance.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/10-income-statement.png" alt="Income Statement" />
+        <div class="screenshot-caption">Income Statement — Revenue → COGS → Gross Profit → Operating Expenses → Net Profit/(Loss).</div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- BALANCE SHEET -->
+    <section id="balance-sheet">
+      <div class="section-eyebrow">Financial Reports</div>
+      <h2 class="section-title">Balance Sheet</h2>
+      <p class="section-desc">The financial position at a specific date — what the branch owns (Assets), owes (Liabilities), and the net equity. Assets must always equal Liabilities + Equity.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/11-balance-sheet.png" alt="Balance Sheet" />
+        <div class="screenshot-caption">Balance Sheet — Assets, Liabilities, and Equity at a point in time.</div>
+      </div>
+
+      <div class="callout warn">
+        <div class="callout-icon">⚠️</div>
+        <div class="callout-body">
+          <h4>Must Balance</h4>
+          If Total Assets ≠ Total Liabilities + Equity, there is an unbalanced journal entry. Check the Trial Balance and Posting Status to identify the discrepancy.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- CASH FLOW -->
+    <section id="cash-flow">
+      <div class="section-eyebrow">Financial Reports</div>
+      <h2 class="section-title">Cash Flow Statement</h2>
+      <p class="section-desc">Tracks actual cash movement across three activities: Operating, Investing, and Financing. Explains the change in cash balance between periods.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/12-cash-flow.png" alt="Cash Flow Statement" />
+        <div class="screenshot-caption">Cash Flow Statement — Operating, Investing, and Financing activities with net cash movement.</div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- BUDGET VS ACTUAL -->
+    <section id="budget-vs-actual">
+      <div class="section-eyebrow">Financial Reports</div>
+      <h2 class="section-title">Budget vs Actual</h2>
+      <p class="section-desc">Compares budgeted amounts against actual GL postings for each account and period. Shows variance (amount and percentage) to identify over- and under-spending at a glance.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/28-budget-vs-actual.png" alt="Budget vs Actual" />
+        <div class="screenshot-caption">Budget vs Actual — GL accounts with Budget, Actual, Variance (₦), and Variance (%) columns.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Select Period</h4><p>Choose the accounting period. The report loads budget figures from the Budgets page and actual figures from posted GL entries.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Read Variance</h4><p>Positive variance on expenses means under-budget (good). Negative variance means over-budget (investigate). For revenue, positive variance means better than budget.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Export &amp; Share</h4><p>Export as PDF and send to management using the <strong>Send to MD</strong> option.</p></div></div>
+      </div>
+
+      <div class="callout info">
+        <div class="callout-icon">ℹ️</div>
+        <div class="callout-body">
+          <h4>Requires Budgets to Be Set</h4>
+          This report only shows meaningful data if budgets have been entered in the Budgets page for the selected period. Accounts without budgets show ₦0 as the budget figure.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- AP AGING -->
+    <section id="ap-aging">
+      <div class="section-eyebrow">Financial Reports</div>
+      <h2 class="section-title">AP Aging</h2>
+      <p class="section-desc">Shows all outstanding accounts payable balances grouped by how long they have been overdue — current, 1–30 days, 31–60 days, 61–90 days, and 90+ days. Helps prioritise which supplier payments need immediate attention.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/34-ap-aging.png" alt="AP Aging Report" />
+        <div class="screenshot-caption">AP Aging — outstanding payables grouped by aging bucket with total outstanding AP summary.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Select Date</h4><p>Choose the aging-as-of date (defaults to today). The report calculates how many days each outstanding payable has been due.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Read the Buckets</h4><p>Review payables by aging bucket: <strong>Current</strong> (not yet due), <strong>1–30 days</strong>, <strong>31–60 days</strong>, <strong>61–90 days</strong>, and <strong>90+ days</strong> (critical — settle immediately).</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Act on Overdue Items</h4><p>For anything in the 31+ day buckets, go to Purchase Payments to record settlement and clear the liability. Prolonged overdue payables affect supplier relationships and credit terms.</p></div></div>
+      </div>
+
+      <div class="callout warn">
+        <div class="callout-icon">⚠️</div>
+        <div class="callout-body">
+          <h4>Review Weekly</h4>
+          Run the AP Aging report every week. Payables that age past 60 days can incur late-payment penalties. Keeping the 90+ bucket at zero is a sign of healthy cash management.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- APPLY LEAVE -->
+    <section id="apply-leave">
+      <div class="section-eyebrow">Leave Management</div>
+      <h2 class="section-title">Apply for Leave</h2>
+      <p class="section-desc">Submit a leave request. HR reviews and approves or rejects it. Once approved, your leave balance is automatically deducted.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/13-apply-leave.png" alt="Apply Leave" />
+        <div class="screenshot-caption">Apply Leave — select leave type, dates, and add supporting notes.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Select Leave Type</h4><p>Choose from: Annual Leave, Sick Leave, Maternity/Paternity, Compassionate, or others configured by HR.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Set Dates</h4><p>Pick start and end dates. The system calculates working days and checks your remaining balance.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Add Notes &amp; Submit</h4><p>Write a brief reason and attach any supporting document (e.g., medical certificate). Click <strong>Submit</strong>.</p></div></div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- MY LEAVES -->
+    <section id="my-leaves">
+      <div class="section-eyebrow">Leave Management</div>
+      <h2 class="section-title">My Leaves</h2>
+      <p class="section-desc">Full history of all your leave requests — pending, approved, rejected, and cancelled.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/14-my-leaves.png" alt="My Leaves" />
+        <div class="screenshot-caption">My Leaves — leave request history with status badges, dates, and days taken.</div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- LEAVE BALANCE -->
+    <section id="leave-balance">
+      <div class="section-eyebrow">Leave Management</div>
+      <h2 class="section-title">Leave Balance</h2>
+      <p class="section-desc">Shows remaining leave days by type for the current year. Always check this before submitting a new leave request.</p>
+
+      <div class="screenshot-wrap">
+        <img src="screenshots/15-leave-balance.png" alt="Leave Balance" />
+        <div class="screenshot-caption">Leave Balance — allocated, used, and remaining days per leave type for the selected year.</div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- QUICK REFERENCE -->
+    <section id="quick-ref">
+      <div class="section-eyebrow">Reference</div>
+      <h2 class="section-title">Quick Reference</h2>
+
+      <h3 style="font-size:16px;font-weight:700;margin:0 0 12px;">Page Directory</h3>
+      <table class="data-table">
+        <thead><tr><th>Page</th><th>URL Path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Dashboard</strong></td><td><code>/accounting/dashboard</code></td><td>GL posting health and home screen</td></tr>
+          <tr><td><strong>Overview</strong></td><td><code>/accounting/overview</code></td><td>Period-level financial summary</td></tr>
+          <tr><td><strong>Chart of Accounts</strong></td><td><code>/accounting/accounts</code></td><td>Master GL account list — create, edit</td></tr>
+          <tr><td><strong>Accounting Periods</strong></td><td><code>/accounting/periods</code></td><td>Open, close, and lock periods</td></tr>
+          <tr><td><strong>Bank Accounts</strong></td><td><code>/accounting/bank-accounts</code></td><td>Cash and bank account records</td></tr>
+          <tr><td><strong>Journal Entries</strong></td><td><code>/accounting/journal-entry</code></td><td>Manual double-entry journals</td></tr>
+          <tr><td><strong>Quick Expense</strong></td><td><code>/accounting/quick-expense</code></td><td>Fast single-expense GL entry</td></tr>
+          <tr><td><strong>Accounting Entries</strong></td><td><code>/accounting/accounting-entries</code></td><td>Unified audit view of all GL entries</td></tr>
+          <tr><td><strong>Posting Status</strong></td><td><code>/accounting/posting-status</code></td><td>Monitor and retry auto-posted entries</td></tr>
+          <tr><td><strong>POS Remittances</strong></td><td><code>/accounting/pos-remittances</code></td><td>Confirm cash remittances from POS sales</td></tr>
+          <tr><td><strong>Expense Imports</strong></td><td><code>/accounting/expense-imports</code></td><td>Bulk-import expenses from spreadsheet</td></tr>
+          <tr><td><strong>Purchase Payments</strong></td><td><code>/accounting/purchase-payments</code></td><td>Settle accounts payable from purchases</td></tr>
+          <tr><td><strong>Credit Notes</strong></td><td><code>/accounting/credit-notes</code></td><td>Issue credit notes to reduce supplier payables</td></tr>
+          <tr><td><strong>Debit Notes</strong></td><td><code>/accounting/debit-notes</code></td><td>Raise debit notes to dispute or adjust charges</td></tr>
+          <tr><td><strong>Tax Payments</strong></td><td><code>/accounting/tax-payments</code></td><td>Record VAT, PAYE, and other tax remittances</td></tr>
+          <tr><td><strong>Fixed Assets</strong></td><td><code>/accounting/fixed-assets</code></td><td>Asset register and depreciation</td></tr>
+          <tr><td><strong>Budgets</strong></td><td><code>/accounting/budgets</code></td><td>Set budget targets per account/period</td></tr>
+          <tr><td><strong>Bank Reconciliation</strong></td><td><code>/accounting/bank-reconciliation</code></td><td>Match GL to bank statement</td></tr>
+          <tr><td><strong>General Ledger</strong></td><td><code>/accounting/reports/general-ledger</code></td><td>Full transaction history per account</td></tr>
+          <tr><td><strong>Trial Balance</strong></td><td><code>/accounting/reports/trial-balance</code></td><td>Net debit/credit per account</td></tr>
+          <tr><td><strong>Income Statement</strong></td><td><code>/accounting/reports/income-statement</code></td><td>Revenue, COGS, expenses, net profit</td></tr>
+          <tr><td><strong>Balance Sheet</strong></td><td><code>/accounting/reports/balance-sheet</code></td><td>Assets, Liabilities, Equity snapshot</td></tr>
+          <tr><td><strong>Cash Flow</strong></td><td><code>/accounting/reports/cash-flow-statement</code></td><td>Cash movements: Operating/Investing/Financing</td></tr>
+          <tr><td><strong>Budget vs Actual</strong></td><td><code>/accounting/reports/budget-vs-actual</code></td><td>Budget vs actual with variance analysis</td></tr>
+          <tr><td><strong>AP Aging</strong></td><td><code>/accounting/reports/ap-aging</code></td><td>Overdue payables by aging bucket</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size:16px;font-weight:700;margin:32px 0 12px;">Monthly Close Checklist</h3>
+      <div class="callout note">
+        <div class="callout-icon">☑️</div>
+        <div class="callout-body">
+          <ol style="padding-left:16px;line-height:2;">
+            <li>Check <strong>Posting Status</strong> — retry all failures</li>
+            <li>Record all <strong>Purchase Payments</strong> and <strong>Tax Payments</strong></li>
+            <li>Run <strong>Fixed Asset Depreciation</strong></li>
+            <li>Complete <strong>Bank Reconciliation</strong> for all accounts</li>
+            <li>Run <strong>Trial Balance</strong> — confirm it balances</li>
+            <li>Generate <strong>Income Statement</strong>, <strong>Balance Sheet</strong>, <strong>Cash Flow</strong></li>
+            <li>Review <strong>Budget vs Actual</strong> — investigate material variances</li>
+            <li>Review <strong>AP Aging</strong> — settle any overdue payables</li>
+            <li>Lock <strong>Accounting Period</strong></li>
+          </ol>
+        </div>
+      </div>
+
+      <h3 style="font-size:16px;font-weight:700;margin:32px 0 12px;">Troubleshooting</h3>
+      <table class="data-table">
+        <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>Journal entry won't save</td><td>Total debits ≠ total credits</td><td>Check each line; adjust until totals match</td></tr>
+          <tr><td>Posting Status shows <span class="badge badge-red">Failed</span></td><td>Period locked or GL account missing</td><td>Check period is open; confirm GL account exists; click Retry</td></tr>
+          <tr><td>Trial Balance doesn't balance</td><td>Unbalanced manual journal</td><td>Filter Journal Entries for Draft; find and correct one-sided entries</td></tr>
+          <tr><td>Balance Sheet doesn't balance</td><td>Unposted or unbalanced entries</td><td>Check Posting Status for failures; then check Trial Balance</td></tr>
+          <tr><td>Budget vs Actual shows ₦0 budget</td><td>Budget not entered for the period</td><td>Go to Budgets page and enter targets for the period</td></tr>
+          <tr><td>Bank reconciliation difference ≠ ₦0</td><td>Missing GL entry or bank-only item</td><td>Review outstanding items; post missing journal entries if needed</td></tr>
+          <tr><td>Cannot post to a period</td><td>Period is closed or locked</td><td>Go to Accounting Periods; open the period if not yet locked</td></tr>
+          <tr><td>Leave request stuck on Pending</td><td>HR has not reviewed it</td><td>Follow up with HR or check My Leaves for approver notes</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </div>
+</div>
+
+<script>
+  const sections = document.querySelectorAll('section[id]');
+  const links = document.querySelectorAll('.sidebar a[href^="#"]');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.sidebar a[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

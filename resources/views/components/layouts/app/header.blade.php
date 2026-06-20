@@ -111,6 +111,10 @@
 
         {{ $slot }}
 
+        @auth
+            <livewire:components.chat-bot />
+        @endauth
+
         @fluxScripts
     </body>
 </html>

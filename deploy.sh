@@ -11,6 +11,7 @@
 #   4. php artisan migrate --force   (only NEW, additive migrations run)
 #   5. front-end asset build (vite)
 #   6. config/route/view cache refresh
+#   6b. chatbot help-index rebuild (new/edited user guides become searchable)
 #   7. php-fpm reload
 #
 # Environment overrides (all optional):
@@ -94,6 +95,12 @@ php artisan optimize:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+
+# 6b. Chatbot help index ----------------------------------------------------
+# Rebuild so any new/edited user guides become searchable this release.
+# Non-fatal: a help-index hiccup must never block a deploy.
+log "Rebuilding chatbot help index"
+php artisan chatbot:reindex-help || warn "Help reindex failed (non-fatal)"
 
 # 7. Reload PHP-FPM (clears opcache so new code is served) ------------------
 log "Reloading $PHP_FPM_SERVICE"

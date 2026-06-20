@@ -35,3 +35,6 @@ Archive.zip
 
 *.deb
 *.sql
+# Google Vertex service-account key (never commit)
+sweettooth-vertex.json
+*-vertex.json

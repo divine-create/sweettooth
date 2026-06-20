@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SweetTooth — HR Module User Guide</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f6fa;
+      color: #1a1a2e;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 270px;
+      min-width: 270px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 28px 0 40px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sidebar .brand { padding: 0 24px 24px; border-bottom: 1px solid #313244; }
+    #sidebar .brand h1 { font-size: 1.05rem; font-weight: 700; color: #cba6f7; letter-spacing: 0.02em; }
+    #sidebar .brand p { font-size: 0.72rem; color: #6c7086; margin-top: 3px; }
+    #sidebar nav { padding: 20px 0; flex: 1; }
+    #sidebar nav .section-label {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #6c7086; padding: 14px 24px 6px;
+    }
+    #sidebar nav a {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 24px; color: #a6adc8; text-decoration: none;
+      font-size: 0.84rem; border-left: 3px solid transparent; transition: all 0.15s;
+    }
+    #sidebar nav a:hover, #sidebar nav a.active {
+      color: #cba6f7; background: #313244; border-left-color: #cba6f7;
+    }
+    #sidebar nav a .icon { font-size: 1rem; width: 18px; text-align: center; }
+
+    /* ── Main content ── */
+    #content { flex: 1; padding: 48px 56px; max-width: 1080px; }
+
+    /* ── Cover ── */
+    .cover {
+      background: linear-gradient(135deg, #1e1e2e 0%, #313244 100%);
+      border-radius: 16px; padding: 52px 48px; color: #fff; margin-bottom: 52px;
+    }
+    .cover .badge {
+      display: inline-block; background: #cba6f7; color: #1e1e2e;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; padding: 4px 12px; border-radius: 20px; margin-bottom: 18px;
+    }
+    .cover h1 { font-size: 2.4rem; font-weight: 800; line-height: 1.2; color: #cdd6f4; }
+    .cover h1 span { color: #cba6f7; }
+    .cover p { margin-top: 14px; color: #a6adc8; font-size: 1rem; max-width: 560px; line-height: 1.7; }
+    .cover .meta { display: flex; gap: 28px; margin-top: 28px; flex-wrap: wrap; }
+    .cover .meta-item { font-size: 0.8rem; color: #6c7086; }
+    .cover .meta-item strong { display: block; color: #cdd6f4; font-size: 0.9rem; }
+    .download-bar { display: flex; align-items: center; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+    .btn-download {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #cba6f7; color: #1e1e2e; font-size: 0.85rem; font-weight: 700;
+      padding: 10px 20px; border-radius: 8px; text-decoration: none; transition: background 0.15s;
+    }
+    .btn-download:hover { background: #b77fe8; }
+
+    /* ── Sections ── */
+    .section { margin-bottom: 64px; scroll-margin-top: 32px; }
+    .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+    .section-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+    .section h2 { font-size: 1.5rem; font-weight: 700; color: #1a1a2e; }
+    .section-intro {
+      color: #5c5f77; font-size: 0.95rem; line-height: 1.75;
+      margin-bottom: 28px; max-width: 720px;
+      border-left: 3px solid #e0d7f8; padding-left: 16px;
+    }
+
+    /* ── Steps ── */
+    .step {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: 28px; overflow: hidden; border: 1px solid #e8e8f0;
+    }
+    .step-header { display: flex; align-items: flex-start; gap: 16px; padding: 22px 24px 16px; }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #cba6f7; color: #1e1e2e; font-size: 0.8rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;
+    }
+    .step-header h3 { font-size: 1.05rem; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+    .step-header p { font-size: 0.875rem; color: #5c5f77; line-height: 1.65; }
+    .step-body { padding: 0 24px 24px 72px; }
+    .step-body ol, .step-body ul { margin: 10px 0 14px 18px; font-size: 0.875rem; color: #3c3f5a; line-height: 1.8; }
+
+    /* ── Screenshots ── */
+    .screenshot-wrap {
+      margin-top: 16px; border-radius: 10px; overflow: hidden;
+      border: 1px solid #e0dff0; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .screenshot-wrap img { display: block; width: 100%; height: auto; }
+    .screenshot-caption {
+      background: #f5f6fa; border-top: 1px solid #e0dff0;
+      padding: 10px 16px; font-size: 0.775rem; color: #6c7086; font-style: italic;
+    }
+
+    /* ── Callouts ── */
+    .callout {
+      border-radius: 8px; padding: 14px 18px; font-size: 0.855rem; line-height: 1.65;
+      margin: 16px 0; display: flex; gap: 12px; align-items: flex-start;
+    }
+    .callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+    .callout.info  { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .callout.warn  { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .callout.tip   { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+    .callout.error { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
+
+    /* ── Tags ── */
+    .tag {
+      display: inline-block; font-size: 0.7rem; font-weight: 700;
+      padding: 2px 9px; border-radius: 12px; margin: 0 2px 4px 0;
+    }
+    .tag-green  { background: #dcfce7; color: #15803d; }
+    .tag-amber  { background: #fef9c3; color: #92400e; }
+    .tag-red    { background: #ffe4e6; color: #9f1239; }
+    .tag-blue   { background: #dbeafe; color: #1e40af; }
+    .tag-purple { background: #f3e8ff; color: #6b21a8; }
+    .tag-gray   { background: #f1f5f9; color: #475569; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid #e8e8f0; margin: 48px 0; }
+
+    /* ── Icon backgrounds ── */
+    .bg-purple { background: #f3e8ff; }
+    .bg-blue   { background: #eff6ff; }
+    .bg-green  { background: #f0fdf4; }
+    .bg-amber  { background: #fffbeb; }
+    .bg-rose   { background: #fff1f2; }
+    .bg-teal   { background: #f0fdfa; }
+    .bg-indigo { background: #eef2ff; }
+    .bg-orange { background: #fff7ed; }
+    .bg-sky    { background: #f0f9ff; }
+    .bg-lime   { background: #f7fee7; }
+
+    /* ── Reference table ── */
+    .ref-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.875rem; }
+    .ref-table th { background: #1e1e2e; color: #cba6f7; padding: 10px 14px; text-align: left; font-size: 0.8rem; }
+    .ref-table td { padding: 10px 14px; border-bottom: 1px solid #e8e8f0; color: #3c3f5a; }
+    .ref-table tr:last-child td { border-bottom: none; }
+    .ref-table tr:hover td { background: #f9f8ff; }
+
+    /* ── Video section ── */
+    .video-section {
+      background: #1e1e2e; border-radius: 16px;
+      padding: 36px 40px; margin-bottom: 52px; color: #cdd6f4;
+    }
+    .video-section h2 { font-size: 1.4rem; font-weight: 700; color: #cba6f7; margin-bottom: 10px; }
+    .video-section p  { font-size: 0.9rem; color: #a6adc8; margin-bottom: 20px; line-height: 1.7; }
+    .video-wrap {
+      position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
+      border-radius: 10px; border: 2px solid #313244;
+    }
+    .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    .video-link-print { display: none; }
+
+    .btn-watch {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent; color: #cba6f7; font-size: 0.85rem; font-weight: 700;
+      padding: 10px 20px; border-radius: 8px; text-decoration: none;
+      border: 2px solid #cba6f7; transition: all 0.15s;
+    }
+    .btn-watch:hover { background: #cba6f7; color: #1e1e2e; }
+
+    @media (max-width: 900px) {
+      #sidebar { display: none; }
+      #content { padding: 28px 20px; }
+    }
+
+    @media print {
+      @page { size: A4; margin: 18mm 16mm; }
+      body { display: block; background: #fff; color: #000; }
+      #sidebar { display: none !important; }
+      #content { padding: 0; max-width: 100%; }
+      .cover {
+        background: #1e1e2e !important;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        page-break-after: always; border-radius: 0;
+      }
+      .download-bar { display: none !important; }
+      .section { page-break-inside: avoid; }
+      .step { page-break-inside: avoid; box-shadow: none; border: 1px solid #ddd; }
+      .screenshot-wrap { page-break-inside: avoid; box-shadow: none; }
+      .screenshot-wrap img { max-height: 420px; width: auto; margin: 0 auto; display: block; }
+      .video-wrap { display: none !important; }
+      .video-link-print { display: block !important; color: #1e1e2e; font-size: 0.85rem; margin-top: 10px; }
+      .divider { border-top: 1px solid #ccc; }
+      h2, h3 { page-break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<aside id="sidebar">
+  <div class="brand">
+    <h1>SweetTooth ERP</h1>
+    <p>HR Module — User Guide</p>
+  </div>
+  <nav>
+    <div class="section-label">Getting Started</div>
+    <a href="#video-demo"><span class="icon">▶️</span> Video Demo</a>
+    <a href="#getting-started"><span class="icon">🚀</span> Getting Started</a>
+    <a href="#dashboard"><span class="icon">📊</span> HR Dashboard</a>
+
+    <div class="section-label">Employee Management</div>
+    <a href="#employee-directory"><span class="icon">👥</span> Employee Directory</a>
+    <a href="#create-employee"><span class="icon">➕</span> Create Employee</a>
+    <a href="#employee-profile"><span class="icon">👤</span> Employee Profile</a>
+
+    <div class="section-label">Leave Management</div>
+    <a href="#leave-types"><span class="icon">🏷️</span> Leave Types</a>
+    <a href="#leave-allocations"><span class="icon">📋</span> Leave Allocations</a>
+    <a href="#apply-leave"><span class="icon">📝</span> Apply for Leave</a>
+    <a href="#my-leaves"><span class="icon">📅</span> My Leaves</a>
+    <a href="#leave-balance"><span class="icon">⚖️</span> Leave Balance</a>
+    <a href="#approve-leave"><span class="icon">✅</span> Approve Leave</a>
+
+    <div class="section-label">Attendance</div>
+    <a href="#clockin-today"><span class="icon">🕐</span> Clock-In Board (Today)</a>
+    <a href="#clockin-history"><span class="icon">📆</span> Attendance History</a>
+
+    <div class="section-label">Shift Management</div>
+    <a href="#shift-management"><span class="icon">🗓️</span> Shift Dashboard</a>
+    <a href="#shift-configuration"><span class="icon">⚙️</span> Shift Configuration</a>
+    <a href="#shift-assignment"><span class="icon">🔀</span> Shift Assignment</a>
+
+    <div class="section-label">Appraisals</div>
+    <a href="#appraisals"><span class="icon">⭐</span> Employee Appraisals</a>
+    <a href="#appraisal-cycles"><span class="icon">🔄</span> Appraisal Cycles</a>
+
+    <div class="section-label">Payroll</div>
+    <a href="#payroll"><span class="icon">💰</span> Payroll Hub</a>
+    <a href="#payroll-run"><span class="icon">🚀</span> Payroll Runs</a>
+    <a href="#payslip"><span class="icon">🧾</span> Payslips</a>
+
+    <div class="section-label">Reports</div>
+    <a href="#hr-reports"><span class="icon">📈</span> HR Reports</a>
+    <a href="#report-generator"><span class="icon">📄</span> Report Generator</a>
+
+    <div class="section-label">Administration</div>
+    <a href="#roles-permissions"><span class="icon">🔐</span> Roles & Permissions</a>
+    <a href="#quick-reference"><span class="icon">⚡</span> Quick Reference</a>
+  </nav>
+</aside>
+
+<!-- ═══════════════════════ CONTENT ═══════════════════════ -->
+<main id="content">
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="badge">User Guide</div>
+    <h1>SweetTooth <span>HR</span> Module</h1>
+    <p>
+      A complete guide to managing employees, leave, attendance, shift scheduling, appraisals,
+      payroll, and HR reporting in the SweetTooth ERP system for restaurant and bakery operations.
+    </p>
+    <div class="meta">
+      <div class="meta-item"><strong>Platform</strong>SweetTooth ERP</div>
+      <div class="meta-item"><strong>Module</strong>Human Resources</div>
+      <div class="meta-item"><strong>Branch</strong>SweetTooth Port Harcourt</div>
+      <div class="meta-item"><strong>Role</strong>HR Manager</div>
+    </div>
+    <div class="download-bar">
+      <a class="btn-download" href="hr-guide.pdf" download>⬇ Download PDF Guide</a>
+      <a class="btn-watch" href="https://www.canva.com/design/DAHKZm84M-Q/sEPFkM5fet0kZGd9nFnS5A/watch" target="_blank" rel="noopener">▶ Watch Video Demo</a>
+    </div>
+  </div>
+
+  <!-- Video Demo -->
+  <section class="video-section" id="video-demo">
+    <h2>▶ Video Demo</h2>
+    <p>Watch a full walkthrough of the HR Module — covering employee onboarding, leave management, clock-in monitoring, payroll processing, and HR reporting.</p>
+    <div class="video-wrap">
+      <iframe src="https://www.canva.com/design/DAHKZm84M-Q/sEPFkM5fet0kZGd9nFnS5A/view?embed"
+              allowfullscreen loading="lazy"
+              allow="fullscreen"></iframe>
+    </div>
+    <a class="video-link-print" href="https://www.canva.com/design/DAHKZm84M-Q/sEPFkM5fet0kZGd9nFnS5A/watch" target="_blank" rel="noopener">
+      ▶ Watch video demo: https://www.canva.com/design/DAHKZm84M-Q/sEPFkM5fet0kZGd9nFnS5A/watch
+    </a>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Getting Started ─── -->
+  <section class="section" id="getting-started">
+    <div class="section-header">
+      <div class="section-icon bg-purple">🚀</div>
+      <h2>Getting Started</h2>
+    </div>
+    <p class="section-intro">
+      HR staff log in through the Staff Login portal. Upon login, HR Managers are directed to the
+      HR Dashboard which provides access to all people-management tools: employee records, leave
+      management, attendance monitoring, shift scheduling, appraisals, and payroll. All functions
+      are role-gated — this guide covers the full HR Manager permission set.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Logging In as HR Staff</h3>
+          <p>Navigate to the SweetTooth portal and use the <strong>Staff Login</strong> to access the HR module.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Open your browser and go to the SweetTooth portal URL provided by your IT team.</li>
+          <li>Click <strong>Login as Staff</strong> on the landing page.</li>
+          <li>Select your branch from the <em>Select Branch</em> dropdown (e.g., <em>SweetTooth Port Harcourt</em>).</li>
+          <li>Enter your HR email and password, then click <strong>Log in</strong>.</li>
+          <li>You will be redirected to your HR Dashboard automatically.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Admin Login:</strong> If you have admin-level access you can also use the <em>I am an admin</em> link on the staff login page to access the full admin portal at <code>/login</code>.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/01-login-page.png" alt="Staff login page" loading="lazy" />
+          <div class="screenshot-caption">Fig 1 — Staff login page. Select your branch before entering credentials.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Dashboard ─── -->
+  <section class="section" id="dashboard">
+    <div class="section-header">
+      <div class="section-icon bg-blue">📊</div>
+      <h2>HR Dashboard</h2>
+    </div>
+    <p class="section-intro">
+      The HR Dashboard is your central hub. It displays summary cards for key HR metrics and provides
+      the sidebar navigation for every HR function. The dashboard adapts to your role — HR Managers
+      see all management tools while standard staff see only their personal leave and attendance pages.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Reading the HR Dashboard</h3>
+          <p>After login you land on the HR Dashboard showing headcount, leave, and attendance summaries.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Summary cards show: total employees, staff on leave today, clock-ins today, and pending approvals.</li>
+          <li>The left sidebar is your navigation — sections are grouped by function (Employees, Leave, Attendance, Shifts, Appraisals, Payroll, Reports).</li>
+          <li>Quick action buttons at the top allow fast access to common tasks.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/02-hr-dashboard.png" alt="HR Dashboard" loading="lazy" />
+          <div class="screenshot-caption">Fig 2 — HR Dashboard showing summary metrics and the full navigation sidebar.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Employee Directory ─── -->
+  <section class="section" id="employee-directory">
+    <div class="section-header">
+      <div class="section-icon bg-indigo">👥</div>
+      <h2>Employee Directory</h2>
+    </div>
+    <p class="section-intro">
+      The Employee Directory is the master list of all staff at your branch. It supports advanced
+      filtering, bulk actions, and CSV export. From here you can view any employee's profile,
+      jump to their edit form, or trigger role assignment workflows.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Browsing and Filtering Employees</h3>
+          <p>Navigate to <strong>All Employees</strong> in the sidebar to access the full employee list.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Use the <strong>Search</strong> bar to find an employee by name, email, or employee number.</li>
+          <li>Filter by <strong>Status</strong> (active / inactive), <strong>Department</strong>, <strong>Gender</strong>, or <strong>Hire Date</strong> range.</li>
+          <li>Click any employee row to open their full profile.</li>
+          <li>Use the <strong>Export CSV</strong> button to download the filtered list for payroll or reporting purposes.</li>
+          <li>Bulk actions allow you to activate, deactivate, or reassign multiple employees at once.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/03-employee-directory.png" alt="Employee directory" loading="lazy" />
+          <div class="screenshot-caption">Fig 3 — Employee Directory with search, filters, and bulk action controls.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Create Employee ─── -->
+  <section class="section" id="create-employee">
+    <div class="section-header">
+      <div class="section-icon bg-green">➕</div>
+      <h2>Create & Edit Employee</h2>
+    </div>
+    <p class="section-intro">
+      Onboarding a new employee involves filling in their personal details, employment information,
+      and financial/banking data. The system auto-generates an employee number based on the branch
+      code. Non-admin HR staff must submit an approval reason — the record enters a pending state
+      until approved by a super admin.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Creating a New Employee Record</h3>
+          <p>Navigate to <strong>Create Employee</strong> in the sidebar and complete the multi-section form.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Fill in <strong>Personal Details</strong>: first name, last name, gender, date of birth, phone, address.</li>
+          <li>Fill in <strong>Employment Details</strong>: department, job title, hire date, employment type (full-time / part-time / contract), shift.</li>
+          <li>Fill in <strong>Financial Details</strong>: base salary, bank name, account number, account name.</li>
+          <li>Upload a <strong>Profile Photo</strong> (optional).</li>
+          <li>Click <strong>Save Employee</strong>. If you are not a super admin, an approval modal appears — enter a reason and submit for review.</li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Approval Workflow:</strong> New employee records created by non-super-admin HR staff are held in a pending state. The record is visible but marked inactive until a super admin approves it via the Audit Management module.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/04-create-employee.png" alt="Create employee form" loading="lazy" />
+          <div class="screenshot-caption">Fig 4 — Create Employee form with personal, employment, and financial detail sections.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Editing an Existing Employee Record</h3>
+          <p>Click the <strong>Edit</strong> icon on any employee row in the directory, or open their profile and click <strong>Edit</strong>.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>All fields from the create form are editable. Change only the fields that need updating.</li>
+          <li>Every edit is tracked in the audit log — you can view change history from the employee profile.</li>
+          <li>Role assignments can also be managed from the edit form via the <strong>Roles</strong> section.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/05-edit-employee.png" alt="Edit employee form" loading="lazy" />
+          <div class="screenshot-caption">Fig 5 — Edit Employee form pre-filled with existing data. All changes are audit-logged.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Employee Profile ─── -->
+  <section class="section" id="employee-profile">
+    <div class="section-header">
+      <div class="section-icon bg-sky">👤</div>
+      <h2>Employee Profile</h2>
+    </div>
+    <p class="section-intro">
+      The Employee Profile is a read-only view of a staff member's complete record. It is organised
+      into tabs — Personal, Employment, Finance, and Leave — giving HR a full picture without the
+      risk of accidental edits. Use it for audits, leave queries, and onboarding verification.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Reading the Employee Profile Tabs</h3>
+          <p>Click any employee's name in the directory to open their profile.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li><strong>Personal tab:</strong> full name, gender, date of birth, phone, address, profile photo.</li>
+          <li><strong>Employment tab:</strong> employee number, department, job title, hire date, employment type, status, assigned shifts.</li>
+          <li><strong>Finance tab:</strong> base salary, hourly rate, bank account details for payroll processing.</li>
+          <li><strong>Leave tab:</strong> current leave balances by type, leave history for the current year, and any pending leave applications.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div>The Leave tab on the employee profile is the quickest way to check how many leave days a specific employee has remaining without navigating to the Leave Balance page.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/06-employee-profile.png" alt="Employee profile tabs" loading="lazy" />
+          <div class="screenshot-caption">Fig 6 — Employee Profile with Personal, Employment, Finance, and Leave tabs.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Leave Types ─── -->
+  <section class="section" id="leave-types">
+    <div class="section-header">
+      <div class="section-icon bg-purple">🏷️</div>
+      <h2>Leave Types</h2>
+    </div>
+    <p class="section-intro">
+      Leave Types define the rules for each category of leave available to employees — such as
+      Annual Leave, Sick Leave, Maternity Leave, and Casual Leave. Each type has its own default
+      allocation, payment status, maximum consecutive days, minimum notice period, and whether
+      supporting documentation is required.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Managing Leave Types</h3>
+          <p>Navigate to <strong>Leave Types</strong> in the sidebar to view, create, or edit leave categories.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Each leave type row shows: name, default days/year, paid status, max consecutive days, and notice period.</li>
+          <li>Click <strong>Add Leave Type</strong> to create a new category.</li>
+          <li>Key fields when creating a leave type:
+            <ul>
+              <li><strong>Default Days:</strong> number of days allocated per year (used for bulk allocation).</li>
+              <li><strong>Paid:</strong> whether the employee receives full pay during this leave.</li>
+              <li><strong>Max Consecutive Days:</strong> maximum days that can be taken in a single application.</li>
+              <li><strong>Min Notice Period:</strong> minimum days advance notice required.</li>
+              <li><strong>Requires Document:</strong> whether a supporting document (e.g., medical certificate) must be uploaded.</li>
+            </ul>
+          </li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/11-leave-types.png" alt="Leave types management page" loading="lazy" />
+          <div class="screenshot-caption">Fig 7 — Leave Types page showing all defined categories with their rules.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Leave Allocations ─── -->
+  <section class="section" id="leave-allocations">
+    <div class="section-header">
+      <div class="section-icon bg-amber">📋</div>
+      <h2>Leave Allocations</h2>
+    </div>
+    <p class="section-intro">
+      Leave Allocations assign the annual leave entitlement to each employee. Once leave types are
+      configured, HR uses this page to bulk-allocate the default days to all employees for the
+      current year, or to manually adjust an individual's allocation. Without an allocation, an
+      employee cannot apply for that leave type.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Allocating Leave to Employees</h3>
+          <p>Navigate to <strong>Leave Allocations</strong> in the sidebar to manage annual entitlements.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Leave Type</strong> and <strong>Year</strong> from the filters.</li>
+          <li>Click <strong>Bulk Allocate</strong> to automatically assign the leave type's default days to all eligible employees for that year.</li>
+          <li>To adjust a specific employee's allocation, find their row and click <strong>Edit</strong> to set a custom number of days.</li>
+          <li>A <strong>Note</strong> field is available to document the reason for any non-standard allocation.</li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Annual Setup:</strong> Leave allocations must be refreshed at the start of each new calendar year. Run Bulk Allocate for each leave type at the beginning of January to ensure employees can apply for leave.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/12-leave-allocations.png" alt="Leave allocations page" loading="lazy" />
+          <div class="screenshot-caption">Fig 8 — Leave Allocations page for assigning annual leave entitlements to employees.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Apply Leave ─── -->
+  <section class="section" id="apply-leave">
+    <div class="section-header">
+      <div class="section-icon bg-green">📝</div>
+      <h2>Applying for Leave</h2>
+    </div>
+    <p class="section-intro">
+      Any employee can apply for leave through the self-service portal. The system validates their
+      remaining balance, checks the notice period, and calculates working days automatically
+      (excluding weekends). Once submitted, the request enters the HR approval queue.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Submitting a Leave Application</h3>
+          <p>Navigate to <strong>Apply Leave</strong> and complete the form to request time off.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Leave Type</strong> (e.g., Annual, Sick, Casual).</li>
+          <li>Pick the <strong>Start Date</strong> and <strong>End Date</strong>.</li>
+          <li>The system calculates <strong>Working Days</strong> automatically, excluding weekends.</li>
+          <li>Enter a <strong>Reason</strong> for the leave.</li>
+          <li>Upload a <strong>Supporting Document</strong> if required by the leave type (e.g., medical certificate for sick leave).</li>
+          <li>Click <strong>Submit Application</strong>. Your request is sent to HR for approval.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Validation:</strong> The system will reject your application if: you have insufficient balance remaining, the dates violate the minimum notice period, or the requested days exceed the maximum consecutive limit set for that leave type.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/07-apply-leave.png" alt="Leave application form" loading="lazy" />
+          <div class="screenshot-caption">Fig 9 — Leave application form with leave type, date picker, and document upload.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── My Leaves & Balance ─── -->
+  <section class="section" id="my-leaves">
+    <div class="section-header">
+      <div class="section-icon bg-teal">📅</div>
+      <h2>My Leaves</h2>
+    </div>
+    <p class="section-intro">
+      The My Leaves page shows your personal leave application history — all requests you have
+      submitted, their current status, and the option to cancel pending or approved requests.
+      It is the go-to page for tracking what you have applied for and whether it has been approved.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Viewing Your Leave History</h3>
+          <p>Navigate to <strong>My Leaves</strong> to see all your leave applications and their status.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Each row shows: leave type, start/end date, days requested, date applied, and status badge.</li>
+          <li>Status options: <span class="tag tag-amber">Pending</span> <span class="tag tag-green">Approved</span> <span class="tag tag-red">Rejected</span> <span class="tag tag-gray">Cancelled</span></li>
+          <li>Click <strong>Cancel</strong> on a pending or approved request to withdraw it (you must provide a cancellation reason).</li>
+          <li>Cancelled leave days are automatically returned to your balance.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/08-my-leaves.png" alt="My leaves history page" loading="lazy" />
+          <div class="screenshot-caption">Fig 10 — My Leaves showing personal leave application history with status tracking.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Leave Balance ─── -->
+  <section class="section" id="leave-balance">
+    <div class="section-header">
+      <div class="section-icon bg-indigo">⚖️</div>
+      <h2>Leave Balance</h2>
+    </div>
+    <p class="section-intro">
+      The Leave Balance page shows your remaining entitlement for each leave type in the selected
+      year. It displays allocated days, used days, pending days (approved but not yet taken), and
+      the net balance available for new applications.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Checking Your Remaining Leave Balance</h3>
+          <p>Navigate to <strong>Leave Balance</strong> to see how many days you have left for each leave type.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Select the <strong>Year</strong> from the dropdown to view balances for past or current years.</li>
+          <li>Each leave type row shows: allocated, used, pending, and available days.</li>
+          <li>The leave history at the bottom lists all applications that have consumed or reserved balance for the selected year.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div>HR managers can also view any employee's leave balance from the employee profile's <strong>Leave tab</strong> — useful when processing leave approvals.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/09-leave-balance.png" alt="Leave balance page" loading="lazy" />
+          <div class="screenshot-caption">Fig 11 — Leave Balance showing allocated, used, pending, and available days by leave type.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Approve Leave ─── -->
+  <section class="section" id="approve-leave">
+    <div class="section-header">
+      <div class="section-icon bg-rose">✅</div>
+      <h2>Approving Leave</h2>
+    </div>
+    <p class="section-intro">
+      The Approve Leave page is the HR manager's queue for reviewing all pending leave applications
+      from employees across the branch. Each application shows the employee's details, leave type,
+      dates, and remaining balance so you can make an informed decision before approving or rejecting.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Processing a Leave Application</h3>
+          <p>Navigate to <strong>Approve Leaves</strong> to see all pending employee leave requests.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Review the pending applications list — each row shows employee name, leave type, dates, days requested, and remaining balance.</li>
+          <li>Click <strong>Approve</strong> to approve the application. Optionally add an approval note.</li>
+          <li>Click <strong>Reject</strong> to decline it. A rejection reason is required and will be shown to the employee.</li>
+          <li>Approved leaves deduct from the employee's balance immediately. Rejected leaves return the pending days to their balance.</li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Check Balance First:</strong> Before approving, confirm the employee has sufficient balance remaining. The system will warn you if balance is insufficient, but the final decision rests with you.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/10-approve-leave.png" alt="Approve leave queue" loading="lazy" />
+          <div class="screenshot-caption">Fig 12 — Approve Leaves queue showing pending applications with employee details and balance.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Clock-In Board ─── -->
+  <section class="section" id="clockin-today">
+    <div class="section-header">
+      <div class="section-icon bg-amber">🕐</div>
+      <h2>Clock-In Board — Today</h2>
+    </div>
+    <p class="section-intro">
+      The Today Clock-In Board gives a real-time view of which employees have clocked in for the
+      current working day. It shows clock-in time, punctuality status (on time / late / early),
+      and a summary count at the top. Use it to monitor attendance at the start of each shift.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Monitoring Today's Attendance</h3>
+          <p>Navigate to <strong>Today</strong> under Clock-In Board in the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>The summary bar at the top shows: <strong>Total Clocked In</strong>, <strong>Late</strong>, and <strong>Early</strong> counts.</li>
+          <li>Each row shows: employee name, department, expected start time, actual clock-in time, and punctuality badge.</li>
+          <li>Filter by <strong>Department</strong> or search by employee name to narrow the view.</li>
+          <li>Employees who have not clocked in yet are not shown — this page only lists those who are present.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div>Refresh the page periodically during the start-of-shift period to see updated clock-in data as employees arrive. The board shows live data from the moment each employee clocks in via their terminal.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/13-clockin-today.png" alt="Today's clock-in board" loading="lazy" />
+          <div class="screenshot-caption">Fig 13 — Clock-In Board (Today) showing real-time attendance with punctuality status.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Attendance History ─── -->
+  <section class="section" id="clockin-history">
+    <div class="section-header">
+      <div class="section-icon bg-sky">📆</div>
+      <h2>Attendance History</h2>
+    </div>
+    <p class="section-intro">
+      The Attendance History board shows clock-in and clock-out records for all employees across
+      a configurable date range (default: last 7 days). It includes hours worked, punctuality
+      statistics, and a CSV export for payroll and compliance audits.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Reviewing Historical Attendance Records</h3>
+          <p>Navigate to <strong>All Employees (Date Range)</strong> under Clock-In Board.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Set the <strong>Start Date</strong> and <strong>End Date</strong> to define the reporting period.</li>
+          <li>Each row shows: employee name, date, clock-in time, clock-out time, hours worked, and punctuality status.</li>
+          <li>Summary statistics below the table show: total hours logged, late percentage, and average hours per day.</li>
+          <li>Click <strong>Export CSV</strong> to download the full dataset for payroll processing or compliance records.</li>
+          <li>To view a single employee's history, navigate to their profile and use the attendance section, or drill down from this board.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/14-clockin-history.png" alt="Attendance history board" loading="lazy" />
+          <div class="screenshot-caption">Fig 14 — Attendance History board with date range filter, clock times, and export option.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Shift Management ─── -->
+  <section class="section" id="shift-management">
+    <div class="section-header">
+      <div class="section-icon bg-orange">🗓️</div>
+      <h2>Shift Management</h2>
+    </div>
+    <p class="section-intro">
+      The Shift Management module lets HR configure shift types (morning, afternoon, night) and
+      assign employees to specific shifts. Shifts define the expected clock-in window used by the
+      attendance board to calculate punctuality. They also gate POS and production operations in
+      the operational modules.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Viewing the Shift Dashboard</h3>
+          <p>Navigate to <strong>Shift Dashboard</strong> to see current shift assignments by employee and department.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>The dashboard shows all active shift assignments across departments.</li>
+          <li>Each row shows: employee name, department, and their assigned shift.</li>
+          <li>Use the department filter to narrow the view to a specific team.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/15-shift-management.png" alt="Shift management dashboard" loading="lazy" />
+          <div class="screenshot-caption">Fig 15 — Shift Management dashboard showing employee-to-shift assignments.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Shift Configuration ─── -->
+  <section class="section" id="shift-configuration">
+    <div class="section-header">
+      <div class="section-icon bg-teal">⚙️</div>
+      <h2>Shift Configuration</h2>
+    </div>
+    <p class="section-intro">
+      Shift Configuration is where HR defines the shift types available at the branch — their names,
+      start times, end times, and applicable days. These configurations are used system-wide: in
+      attendance tracking, POS session management, and production batch recording.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Defining Shift Types</h3>
+          <p>Navigate to <strong>Shift Configuration</strong> to manage shift definitions.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Click <strong>Add Shift</strong> to create a new shift type.</li>
+          <li>Enter: shift name (e.g., Morning, Afternoon, Night), start time, end time, and applicable days of the week.</li>
+          <li>Shift times determine the punctuality window used in attendance reporting.</li>
+          <li>Changes to shift times take effect from the next working day.</li>
+        </ul>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Operational Impact:</strong> Shift types are referenced by the POS, Production, and Sales modules. Changing shift names or times can affect active shifts in other departments — coordinate with department managers before making changes.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/16-shift-configuration.png" alt="Shift configuration page" loading="lazy" />
+          <div class="screenshot-caption">Fig 16 — Shift Configuration showing defined shift types with start/end times.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Shift Assignment ─── -->
+  <section class="section" id="shift-assignment">
+    <div class="section-header">
+      <div class="section-icon bg-lime">🔀</div>
+      <h2>Shift Assignment</h2>
+    </div>
+    <p class="section-intro">
+      Shift Assignment links individual employees to a specific shift type. Once assigned, the
+      employee's shift is reflected in attendance monitoring and their daily workflow gates in POS
+      and production. Reassigning an employee changes their shift effective immediately.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Assigning Employees to Shifts</h3>
+          <p>Navigate to <strong>Shift Assignment</strong> to link employees to defined shift types.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Employee</strong> from the dropdown (search by name).</li>
+          <li>Select the <strong>Shift</strong> you want to assign them to.</li>
+          <li>Optionally set an <strong>Effective Date</strong> for when the new shift starts.</li>
+          <li>Click <strong>Assign</strong>. The employee's shift is updated across all modules.</li>
+        </ol>
+        <div class="screenshot-wrap">
+          <img src="screenshots/17-shift-assignment.png" alt="Shift assignment page" loading="lazy" />
+          <div class="screenshot-caption">Fig 17 — Shift Assignment page for linking employees to their designated shift.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Appraisals ─── -->
+  <section class="section" id="appraisals">
+    <div class="section-header">
+      <div class="section-icon bg-purple">⭐</div>
+      <h2>Employee Appraisals</h2>
+    </div>
+    <p class="section-intro">
+      The Appraisals module enables structured performance reviews. HR creates appraisal cycles
+      (defined periods), then conducts individual appraisals for each employee — rating their
+      performance, documenting strengths and areas for improvement, and setting goals. Historical
+      appraisals are retained for trend analysis.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Viewing the Appraisals Dashboard</h3>
+          <p>Navigate to <strong>Employee Appraisals</strong> to see an overview of all performance reviews.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>The dashboard lists all employees with their most recent appraisal rating and date.</li>
+          <li>Filter by department or search by employee name.</li>
+          <li>Click <strong>Appraise</strong> next to an employee to open the appraisal form.</li>
+          <li>Click <strong>History</strong> to view all past appraisals for that employee.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/18-appraisals-list.png" alt="Employee appraisals list" loading="lazy" />
+          <div class="screenshot-caption">Fig 18 — Employee Appraisals dashboard with rating overview and action buttons.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Conducting an Appraisal</h3>
+          <p>Click <strong>Appraise</strong> next to an employee to open the performance review form.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Appraisal Cycle</strong> this review belongs to.</li>
+          <li>Rate the employee on each criterion using the 1–5 scale (1 = Poor, 5 = Outstanding).</li>
+          <li>Add <strong>Comments</strong> for overall performance.</li>
+          <li>Document <strong>Strengths</strong> — specific achievements and positive behaviours.</li>
+          <li>Document <strong>Areas for Improvement</strong> — constructive feedback with actionable suggestions.</li>
+          <li>Set <strong>Goals</strong> for the next review period.</li>
+          <li>Click <strong>Submit Appraisal</strong>. The record is saved and included in performance analytics.</li>
+        </ol>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div>Appraisals are linked to a specific cycle. Ensure you select the correct active cycle before submitting — you cannot change the cycle once an appraisal is saved.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/20-appraise-employee.png" alt="Appraisal form" loading="lazy" />
+          <div class="screenshot-caption">Fig 19 — Appraisal form with rating scales, comments, strengths, improvement areas, and goals.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div>
+          <h3>Viewing Appraisal History</h3>
+          <p>Click <strong>History</strong> on any employee to see all their past appraisals.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>History is listed chronologically with the most recent appraisal at the top.</li>
+          <li>Each entry shows the cycle name, date, overall rating, and the appraiser's name.</li>
+          <li>Expand any entry to read the full comments, strengths, areas for improvement, and goals set.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/21-appraisal-history.png" alt="Appraisal history page" loading="lazy" />
+          <div class="screenshot-caption">Fig 20 — Appraisal History showing an employee's full performance review timeline.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Appraisal Cycles ─── -->
+  <section class="section" id="appraisal-cycles">
+    <div class="section-header">
+      <div class="section-icon bg-green">🔄</div>
+      <h2>Appraisal Cycles</h2>
+    </div>
+    <p class="section-intro">
+      Appraisal Cycles define the review periods — for example, Q1 2025, Mid-Year 2025, or Annual
+      Review 2025. Before you can conduct any appraisals, an active cycle must exist. Cycles have
+      a status of <span class="tag tag-blue">Planned</span>, <span class="tag tag-green">Active</span>, or <span class="tag tag-gray">Completed</span>.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Managing Appraisal Cycles</h3>
+          <p>Navigate to <strong>Appraisal Cycles</strong> to create, activate, or close review periods.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Click <strong>New Cycle</strong> to create a review period.</li>
+          <li>Enter: cycle name, start date, end date, and due date (deadline for completing appraisals).</li>
+          <li>Optionally scope the cycle to a specific department.</li>
+          <li>Set the initial status to <span class="tag tag-blue">Planned</span>.</li>
+          <li>When ready to begin reviews, change the status to <span class="tag tag-green">Active</span>.</li>
+          <li>Once all appraisals are complete, mark the cycle as <span class="tag tag-gray">Completed</span>.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div>Only <strong>Active</strong> cycles appear in the appraisal form dropdown. Always ensure a cycle is set to Active before asking managers to conduct their team reviews.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/19-appraisal-cycles.png" alt="Appraisal cycles page" loading="lazy" />
+          <div class="screenshot-caption">Fig 21 — Appraisal Cycles showing defined review periods with status tracking.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Payroll ─── -->
+  <section class="section" id="payroll">
+    <div class="section-header">
+      <div class="section-icon bg-amber">💰</div>
+      <h2>Payroll Hub</h2>
+    </div>
+    <p class="section-intro">
+      The Payroll Hub is the central dashboard for all payroll activity. It shows pending payroll
+      runs, standalone payslips, and key stats — total runs, pending approvals, and total amount
+      paid this month. From here you navigate to create new payroll runs or standalone payslips.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Reading the Payroll Hub</h3>
+          <p>Navigate to <strong>All Payroll</strong> in the sidebar to access the payroll dashboard.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>The <strong>Runs</strong> tab lists all payroll runs — bulk salary payments processed for a pay period.</li>
+          <li>The <strong>Standalone</strong> tab lists individual payslips not part of a bulk run.</li>
+          <li>Status badges: <span class="tag tag-amber">Draft</span> <span class="tag tag-blue">Approved</span> <span class="tag tag-green">Paid</span> <span class="tag tag-red">Cancelled</span></li>
+          <li>Summary cards at the top show total runs, pending approval count, and total paid this month.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/22-payroll-index.png" alt="Payroll hub dashboard" loading="lazy" />
+          <div class="screenshot-caption">Fig 22 — Payroll Hub showing runs and standalone payslips with status and totals.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Payroll Run ─── -->
+  <section class="section" id="payroll-run">
+    <div class="section-header">
+      <div class="section-icon bg-indigo">🚀</div>
+      <h2>Payroll Runs</h2>
+    </div>
+    <p class="section-intro">
+      A Payroll Run processes salaries for multiple employees in a single batch. You define the pay
+      period, select employees, adjust any one-off amounts (overtime, allowances, deductions), preview
+      the totals, and submit. The run goes through Draft → Approved → Paid stages, with GL entries
+      posted automatically at each transition.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Creating a Payroll Run</h3>
+          <p>Navigate to <strong>New Payroll Run</strong> to process bulk employee salaries.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Enter a <strong>Run Name</strong> (e.g., "May 2025 Payroll").</li>
+          <li>Set the <strong>Pay Period Start</strong> and <strong>Pay Period End</strong> dates.</li>
+          <li>Set the <strong>Payment Date</strong> — when salaries will be disbursed.</li>
+          <li>Add optional <strong>Notes</strong> for the run.</li>
+          <li>In the employee table, toggle employees on or off using the checkboxes. Use <strong>Toggle All</strong> to select all.</li>
+          <li>For each employee, review and adjust:
+            <ul>
+              <li><strong>Base Salary</strong> — pre-filled from employee record.</li>
+              <li><strong>Overtime Hours</strong> and <strong>Overtime Rate</strong> — for extra hours worked.</li>
+              <li><strong>Allowances</strong> — bonuses or expense reimbursements.</li>
+              <li><strong>Tax Deductions</strong> and <strong>Other Deductions</strong>.</li>
+            </ul>
+          </li>
+          <li>Review the <strong>Preview Totals</strong> (gross, net, employee count) at the bottom.</li>
+          <li>Click <strong>Create Run</strong> to save it as a Draft.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Draft → Approved → Paid:</strong> After creating a draft run, review individual payslips, then click <strong>Approve All</strong> to post the salary accrual GL entries. Finally click <strong>Mark All Paid</strong> when payments have been disbursed — this posts the payment GL entries.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/23-payroll-run-create.png" alt="Create payroll run form" loading="lazy" />
+          <div class="screenshot-caption">Fig 23 — Create Payroll Run form with employee selection, pay period, and per-employee salary fields.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Payslip ─── -->
+  <section class="section" id="payslip">
+    <div class="section-header">
+      <div class="section-icon bg-green">🧾</div>
+      <h2>Standalone Payslips</h2>
+    </div>
+    <p class="section-intro">
+      A standalone payslip is created for a single employee outside of a bulk payroll run — useful
+      for contract payments, bonuses, or corrective payroll adjustments. It follows the same
+      Draft → Approved → Paid lifecycle as payroll runs with individual GL postings.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Creating a Standalone Payslip</h3>
+          <p>Navigate to <strong>New Payslip</strong> in the sidebar to process a single employee payment.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Employee</strong> — their base salary and hourly rate load automatically from their record.</li>
+          <li>Set the <strong>Pay Period</strong> start and end dates and the <strong>Payment Date</strong>.</li>
+          <li>Select the <strong>Bank Account</strong> the payment will be drawn from.</li>
+          <li>Review the salary components preview (base, overtime, allowances, deductions, gross, net).</li>
+          <li>Adjust any components as needed for this specific payment.</li>
+          <li>Click <strong>Create Payslip</strong> to save as Draft, then proceed through Approve → Mark Paid.</li>
+        </ol>
+        <div class="screenshot-wrap">
+          <img src="screenshots/24-payslip-create.png" alt="Create standalone payslip form" loading="lazy" />
+          <div class="screenshot-caption">Fig 24 — Standalone Payslip form for processing a single employee payment with salary preview.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── HR Reports ─── -->
+  <section class="section" id="hr-reports">
+    <div class="section-header">
+      <div class="section-icon bg-purple">📈</div>
+      <h2>HR Reports</h2>
+    </div>
+    <p class="section-intro">
+      The HR Reports Hub provides eight pre-built analytical reports covering every aspect of the
+      workforce. Select a report type, set a date range, and generate live data. Reports can be
+      saved, searched, and submitted for management review.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Generating an HR Report</h3>
+          <p>Navigate to <strong>HR Reports</strong> in the sidebar to access the reporting hub.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Report Type</strong> from the dropdown. Available types:
+            <ul>
+              <li><strong>Workforce Overview</strong> — headcount by department, branch, and status.</li>
+              <li><strong>Leave Utilization</strong> — leave taken vs allocated by type and department.</li>
+              <li><strong>Attendance &amp; Punctuality</strong> — clock-in patterns, late rates, hours worked.</li>
+              <li><strong>Payroll &amp; Compensation</strong> — salary totals, deductions, net pay by department.</li>
+              <li><strong>Turnover &amp; Retention</strong> — hiring, resignations, and retention rates over time.</li>
+              <li><strong>Appraisal &amp; Performance Ratings</strong> — rating distributions and trends.</li>
+              <li><strong>Leave Balance &amp; Accrual</strong> — remaining balance summary across all employees.</li>
+              <li><strong>Department Staffing &amp; Workload</strong> — headcount vs shift coverage by department.</li>
+            </ul>
+          </li>
+          <li>Select the <strong>Period</strong> (today, this week, this month, last month, or custom date range).</li>
+          <li>Click <strong>Generate</strong> to load the report preview.</li>
+          <li>Click <strong>Save Report</strong> to store it in the saved reports list below.</li>
+          <li>Use <strong>Submit for Review</strong> to send the report to a senior manager.</li>
+        </ol>
+        <div class="screenshot-wrap">
+          <img src="screenshots/25-hr-reports-hub.png" alt="HR Reports Hub" loading="lazy" />
+          <div class="screenshot-caption">Fig 25 — HR Reports Hub with report type selector, period filter, and saved reports list.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Workforce Overview Report</h3>
+          <p>The Workforce Overview is one of the most commonly used HR reports — it shows headcount distribution across departments and branches.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Shows total active headcount, breakdown by department, and employment type distribution.</li>
+          <li>Charts visualise department sizes and gender distribution.</li>
+          <li>Use it for board presentations, budget planning, and staffing gap analysis.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/26-workforce-overview.png" alt="Workforce overview report" loading="lazy" />
+          <div class="screenshot-caption">Fig 26 — Workforce Overview Report showing headcount by department with distribution charts.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Report Generator ─── -->
+  <section class="section" id="report-generator">
+    <div class="section-header">
+      <div class="section-icon bg-sky">📄</div>
+      <h2>Report Generator</h2>
+    </div>
+    <p class="section-intro">
+      The Report Generator is a branch-level reporting tool that allows HR managers to compose,
+      compile, and send formal reports to the Managing Director. Unlike the HR Reports hub (which
+      generates live analytics), this module produces structured narrative reports for management review.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Generating and Submitting Reports</h3>
+          <p>Navigate to <strong>Generate Reports</strong> in the sidebar under the Reporting section.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Select the report template and date range.</li>
+          <li>The generator pulls live data from the system to populate the report structure.</li>
+          <li>Review the generated content, add narrative comments where needed.</li>
+          <li>Use <strong>Compile Reports</strong> to bundle multiple reports together.</li>
+          <li>Use <strong>Send to Managing Director</strong> to dispatch the final compiled report to the MD for review.</li>
+        </ul>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div>The <strong>Send to Managing Director</strong> function requires the <code>send-reports-to-md</code> permission. HR Managers have this permission by default.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/28-report-generator.png" alt="Report generator page" loading="lazy" />
+          <div class="screenshot-caption">Fig 27 — Report Generator for creating, compiling, and sending formal management reports.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Roles & Permissions ─── -->
+  <section class="section" id="roles-permissions">
+    <div class="section-header">
+      <div class="section-icon bg-rose">🔐</div>
+      <h2>Roles & Permissions</h2>
+    </div>
+    <p class="section-intro">
+      The Roles & Permissions page lets HR managers view the full permission set for each system
+      role. While role creation and permission assignment are restricted to super admins, HR managers
+      can view current role definitions and submit change requests through the audit workflow.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Viewing Roles and Their Permissions</h3>
+          <p>Navigate to <strong>Roles &amp; Permissions</strong> to see the full permission matrix for each system role.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Roles are listed (Super Admin, Admin, Manager, Supervisor, Staff) with their assigned permissions.</li>
+          <li>Each permission is shown as a checkbox — active permissions are checked.</li>
+          <li>Filter by <strong>Guard</strong> (web or employee) to see the correct permission set.</li>
+          <li>To request a permission change, submit an audit request with the reason — a super admin must approve all role modifications.</li>
+        </ul>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Core Roles Protected:</strong> Built-in system roles (Super Admin, Admin, etc.) cannot be deleted. Modifications to these roles require super admin approval and are audit-logged permanently.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/27-roles-permissions.png" alt="Roles and permissions page" loading="lazy" />
+          <div class="screenshot-caption">Fig 28 — Roles &amp; Permissions showing role definitions and their permission assignments.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Quick Reference ─── -->
+  <section class="section" id="quick-reference">
+    <div class="section-header">
+      <div class="section-icon bg-purple">⚡</div>
+      <h2>Quick Reference</h2>
+    </div>
+    <p class="section-intro">
+      Use this section as your daily HR operations checklist and quick lookup for every module page.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Daily HR Workflow Checklist</h3>
+          <p>Follow this sequence each working day for consistent, audit-ready HR management.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li><strong>Check Clock-In Board (Today)</strong> — monitor who has clocked in and flag absentees.</li>
+          <li><strong>Review Approve Leaves</strong> — process any pending leave applications before the shift starts.</li>
+          <li><strong>Check shift assignments</strong> if any rosters have changed.</li>
+          <li><strong>Process new employees</strong> via Create Employee if onboarding is due.</li>
+          <li><strong>Run payroll</strong> on pay-period close days — create run, approve, mark paid.</li>
+          <li><strong>Generate HR Reports</strong> for weekly or monthly management review.</li>
+          <li><strong>Update appraisals</strong> when a review cycle is active — complete before the due date.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Page Reference — What to Use and When</h3>
+          <p>Quick lookup of every HR page and its primary purpose.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <table class="ref-table">
+          <thead>
+            <tr><th>Page</th><th>When to Use</th><th>Frequency</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Employee Directory</strong></td><td>Browse, search, or export staff records</td><td><span class="tag tag-gray">As needed</span></td></tr>
+            <tr><td><strong>Create Employee</strong></td><td>Onboard a new staff member</td><td><span class="tag tag-gray">As needed</span></td></tr>
+            <tr><td><strong>Employee Profile</strong></td><td>View complete details without risk of editing</td><td><span class="tag tag-gray">As needed</span></td></tr>
+            <tr><td><strong>Leave Types</strong></td><td>Add or modify leave categories and rules</td><td><span class="tag tag-gray">Rarely</span></td></tr>
+            <tr><td><strong>Leave Allocations</strong></td><td>Assign annual entitlements to employees</td><td><span class="tag tag-amber">Annually</span></td></tr>
+            <tr><td><strong>Apply Leave</strong></td><td>Submit your own leave request</td><td><span class="tag tag-gray">As needed</span></td></tr>
+            <tr><td><strong>My Leaves</strong></td><td>Track your personal leave applications</td><td><span class="tag tag-gray">As needed</span></td></tr>
+            <tr><td><strong>Leave Balance</strong></td><td>Check remaining leave days</td><td><span class="tag tag-gray">As needed</span></td></tr>
+            <tr><td><strong>Approve Leaves</strong></td><td>Review and approve/reject employee leave requests</td><td><span class="tag tag-green">Daily</span></td></tr>
+            <tr><td><strong>Clock-In Board (Today)</strong></td><td>Monitor real-time attendance at shift start</td><td><span class="tag tag-green">Daily</span></td></tr>
+            <tr><td><strong>Attendance History</strong></td><td>Review past attendance with date range filter</td><td><span class="tag tag-blue">Weekly</span></td></tr>
+            <tr><td><strong>Shift Dashboard</strong></td><td>View current shift assignments</td><td><span class="tag tag-gray">As needed</span></td></tr>
+            <tr><td><strong>Shift Configuration</strong></td><td>Define new shift types or update times</td><td><span class="tag tag-gray">Rarely</span></td></tr>
+            <tr><td><strong>Shift Assignment</strong></td><td>Assign or reassign an employee to a shift</td><td><span class="tag tag-gray">As needed</span></td></tr>
+            <tr><td><strong>Employee Appraisals</strong></td><td>Conduct and review performance evaluations</td><td><span class="tag tag-amber">Per cycle</span></td></tr>
+            <tr><td><strong>Appraisal Cycles</strong></td><td>Create and activate review periods</td><td><span class="tag tag-amber">Per cycle</span></td></tr>
+            <tr><td><strong>Payroll Hub</strong></td><td>Overview of all payroll runs and payslips</td><td><span class="tag tag-blue">Monthly</span></td></tr>
+            <tr><td><strong>New Payroll Run</strong></td><td>Process bulk monthly salaries</td><td><span class="tag tag-blue">Monthly</span></td></tr>
+            <tr><td><strong>New Payslip</strong></td><td>Process a single employee payment</td><td><span class="tag tag-gray">As needed</span></td></tr>
+            <tr><td><strong>HR Reports</strong></td><td>Generate workforce, leave, attendance analytics</td><td><span class="tag tag-blue">Weekly/Monthly</span></td></tr>
+            <tr><td><strong>Report Generator</strong></td><td>Compose and send formal management reports</td><td><span class="tag tag-blue">Monthly</span></td></tr>
+            <tr><td><strong>Roles &amp; Permissions</strong></td><td>View role permission matrix</td><td><span class="tag tag-gray">As needed</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div>
+          <h3>Common Issues & Solutions</h3>
+        </div>
+      </div>
+      <div class="step-body">
+        <table class="ref-table">
+          <thead>
+            <tr><th>Issue</th><th>Likely Cause</th><th>Solution</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Employee cannot apply for leave</td><td>No allocation exists for that leave type</td><td>Go to Leave Allocations and add an allocation for that employee and type</td></tr>
+            <tr><td>Leave application rejected by system</td><td>Insufficient balance, or notice period not met</td><td>Check Leave Balance page; adjust dates to meet notice requirement</td></tr>
+            <tr><td>Employee not showing in payroll run</td><td>No base salary set on employee record</td><td>Edit employee record and set base salary in Finance tab</td></tr>
+            <tr><td>Appraisal form has no cycles to select</td><td>No Active cycle exists</td><td>Go to Appraisal Cycles and change a Planned cycle to Active</td></tr>
+            <tr><td>Clock-in board shows no employees</td><td>No one has clocked in yet, or wrong date</td><td>Wait for staff to clock in, or check Attendance History for past dates</td></tr>
+            <tr><td>New employee record stuck as inactive</td><td>Pending approval from super admin</td><td>Contact super admin to approve via Audit Management</td></tr>
+            <tr><td>Can't see payroll menu</td><td>Missing manage-payroll permission</td><td>Contact admin to assign the correct HR Manager role</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  const sections = document.querySelectorAll('.section[id]');
+  const navLinks = document.querySelectorAll('#sidebar nav a');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const link = document.querySelector(`#sidebar nav a[href="#${e.target.id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

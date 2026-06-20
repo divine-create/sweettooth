@@ -67,7 +67,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Chatbot: bind the provider-neutral seam to the default Prism adapter.
+        $this->app->bind(
+            \App\Services\Chatbot\Contracts\ChatProvider::class,
+            \App\Services\Chatbot\Providers\PrismChatProvider::class,
+        );
     }
 
     /**

@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SweetTooth — Inventory Module User Guide</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f6fa;
+      color: #1a1a2e;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 270px;
+      min-width: 270px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 28px 0 40px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sidebar .brand {
+      padding: 0 24px 24px;
+      border-bottom: 1px solid #313244;
+    }
+
+    #sidebar .brand h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #cba6f7;
+      letter-spacing: 0.02em;
+    }
+
+    #sidebar .brand p {
+      font-size: 0.72rem;
+      color: #6c7086;
+      margin-top: 3px;
+    }
+
+    #sidebar nav { padding: 20px 0; flex: 1; }
+
+    #sidebar nav .section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6c7086;
+      padding: 14px 24px 6px;
+    }
+
+    #sidebar nav a {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 24px;
+      color: #a6adc8;
+      text-decoration: none;
+      font-size: 0.84rem;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+
+    #sidebar nav a:hover, #sidebar nav a.active {
+      color: #cba6f7;
+      background: #313244;
+      border-left-color: #cba6f7;
+    }
+
+    #sidebar nav a .icon { font-size: 1rem; width: 18px; text-align: center; }
+
+    /* ── Main content ── */
+    #content { flex: 1; padding: 48px 56px; max-width: 1080px; }
+
+    /* ── Video Demo ── */
+    .video-section {
+      margin-bottom: 52px;
+      scroll-margin-top: 32px;
+    }
+
+    .video-section .video-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .video-section .video-header h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .video-section .video-header .play-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #cba6f7;
+      color: #1e1e2e;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .video-container {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+      border: 1px solid #e0dff0;
+    }
+
+    .video-container iframe {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border: none;
+    }
+
+    .video-caption {
+      margin-top: 12px;
+      font-size: 0.82rem;
+      color: #6c7086;
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* ── Cover ── */
+    .cover {
+      background: linear-gradient(135deg, #1e1e2e 0%, #313244 100%);
+      border-radius: 16px;
+      padding: 52px 48px;
+      color: #fff;
+      margin-bottom: 52px;
+    }
+
+    .cover .badge {
+      display: inline-block;
+      background: #cba6f7;
+      color: #1e1e2e;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 18px;
+    }
+
+    .cover h1 { font-size: 2.4rem; font-weight: 800; line-height: 1.2; color: #cdd6f4; }
+    .cover h1 span { color: #cba6f7; }
+    .cover p { margin-top: 14px; color: #a6adc8; font-size: 1rem; max-width: 560px; line-height: 1.7; }
+
+    .cover .meta { display: flex; gap: 28px; margin-top: 28px; flex-wrap: wrap; }
+    .cover .meta-item { font-size: 0.8rem; color: #6c7086; }
+    .cover .meta-item strong { display: block; color: #cdd6f4; font-size: 0.9rem; }
+
+    /* ── Section ── */
+    .section { margin-bottom: 64px; scroll-margin-top: 32px; }
+
+    .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+
+    .section-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+
+    .section h2 { font-size: 1.5rem; font-weight: 700; color: #1a1a2e; }
+
+    .section-intro {
+      color: #5c5f77; font-size: 0.95rem; line-height: 1.75;
+      margin-bottom: 28px; max-width: 720px;
+      border-left: 3px solid #e0d7f8; padding-left: 16px;
+    }
+
+    /* ── Steps ── */
+    .step {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: 28px; overflow: hidden;
+      border: 1px solid #e8e8f0;
+    }
+
+    .step-header { display: flex; align-items: flex-start; gap: 16px; padding: 22px 24px 16px; }
+
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #cba6f7; color: #1e1e2e;
+      font-size: 0.8rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 2px;
+    }
+
+    .step-header h3 { font-size: 1.05rem; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+    .step-header p { font-size: 0.875rem; color: #5c5f77; line-height: 1.65; }
+
+    .step-body { padding: 0 24px 24px 72px; }
+    .step-body ol, .step-body ul { margin: 10px 0 14px 18px; font-size: 0.875rem; color: #3c3f5a; line-height: 1.8; }
+
+    /* ── Screenshots ── */
+    .screenshot-wrap {
+      margin-top: 16px; border-radius: 10px; overflow: hidden;
+      border: 1px solid #e0dff0; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    .screenshot-wrap img { display: block; width: 100%; height: auto; }
+
+    .screenshot-caption {
+      background: #f5f6fa; border-top: 1px solid #e0dff0;
+      padding: 10px 16px; font-size: 0.775rem; color: #6c7086; font-style: italic;
+    }
+
+    /* ── Callouts ── */
+    .callout {
+      border-radius: 8px; padding: 14px 18px;
+      font-size: 0.855rem; line-height: 1.65;
+      margin: 16px 0; display: flex; gap: 12px; align-items: flex-start;
+    }
+    .callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+    .callout.info  { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .callout.warn  { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .callout.tip   { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+    .callout.error { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
+
+    /* ── Tag pills ── */
+    .tag {
+      display: inline-block; font-size: 0.7rem; font-weight: 700;
+      padding: 2px 9px; border-radius: 12px; margin: 0 2px 4px 0;
+    }
+    .tag-green  { background: #dcfce7; color: #15803d; }
+    .tag-amber  { background: #fef9c3; color: #92400e; }
+    .tag-red    { background: #ffe4e6; color: #9f1239; }
+    .tag-blue   { background: #dbeafe; color: #1e40af; }
+    .tag-purple { background: #f3e8ff; color: #6b21a8; }
+    .tag-gray   { background: #f1f5f9; color: #475569; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid #e8e8f0; margin: 48px 0; }
+
+    /* ── Icon backgrounds ── */
+    .bg-purple { background: #f3e8ff; }
+    .bg-blue   { background: #eff6ff; }
+    .bg-green  { background: #f0fdf4; }
+    .bg-amber  { background: #fffbeb; }
+    .bg-rose   { background: #fff1f2; }
+    .bg-teal   { background: #f0fdfa; }
+    .bg-indigo { background: #eef2ff; }
+    .bg-orange { background: #fff7ed; }
+    .bg-sky    { background: #f0f9ff; }
+    .bg-lime   { background: #f7fee7; }
+
+    @media (max-width: 900px) {
+      #sidebar { display: none; }
+      #content { padding: 28px 20px; }
+    }
+
+    /* ── Download button ── */
+    .download-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #cba6f7;
+      color: #1e1e2e;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+
+    .btn-download:hover { background: #b77fe8; }
+
+    .btn-watch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      color: #cba6f7;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      border: 2px solid #cba6f7;
+      transition: all 0.15s;
+    }
+
+    .btn-watch:hover { background: #cba6f720; }
+
+    /* ── Print / PDF styles ── */
+    @media print {
+      @page {
+        size: A4;
+        margin: 18mm 16mm;
+      }
+
+      body { display: block; background: #fff; color: #000; }
+
+      #sidebar { display: none !important; }
+
+      #content {
+        padding: 0;
+        max-width: 100%;
+      }
+
+      .cover {
+        background: #1e1e2e !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        page-break-after: always;
+        border-radius: 0;
+      }
+
+      .download-bar { display: none !important; }
+
+      .video-container { display: none !important; }
+
+      .video-section .video-link-print {
+        display: block !important;
+        padding: 14px 18px;
+        background: #f5f6fa;
+        border: 1px solid #e0dff0;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        color: #1e40af;
+        word-break: break-all;
+      }
+
+      .section { page-break-inside: avoid; }
+
+      .step { page-break-inside: avoid; box-shadow: none; border: 1px solid #ddd; }
+
+      .screenshot-wrap {
+        page-break-inside: avoid;
+        box-shadow: none;
+      }
+
+      .screenshot-wrap img { max-height: 420px; width: auto; margin: 0 auto; display: block; }
+
+      .divider { border-top: 1px solid #ccc; }
+
+      h2 { page-break-after: avoid; }
+      h3 { page-break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<aside id="sidebar">
+  <div class="brand">
+    <h1>SweetTooth ERP</h1>
+    <p>Inventory Module — User Guide</p>
+  </div>
+  <nav>
+    <div class="section-label">Getting Started</div>
+    <a href="#video-demo"><span class="icon">▶️</span> Video Demo</a>
+    <a href="#getting-started"><span class="icon">🚀</span> Getting Started</a>
+    <a href="#dashboard"><span class="icon">📊</span> Inventory Dashboard</a>
+
+    <div class="section-label">Core Inventory</div>
+    <a href="#items"><span class="icon">📦</span> Items Catalog</a>
+    <a href="#categories"><span class="icon">🗂️</span> Item Categories</a>
+    <a href="#purchases"><span class="icon">🛒</span> Purchases</a>
+    <a href="#stocks"><span class="icon">📈</span> Stock Levels</a>
+    <a href="#stock-takes"><span class="icon">📋</span> Stock Takes</a>
+    <a href="#health-checks"><span class="icon">🩺</span> Health Checks</a>
+
+    <div class="section-label">Requests & Returns</div>
+    <a href="#material-requests"><span class="icon">📤</span> Material Requests</a>
+    <a href="#material-approvals"><span class="icon">✅</span> Material Approvals</a>
+    <a href="#callbacks"><span class="icon">↩️</span> Material Returns</a>
+
+    <div class="section-label">Shift Operations</div>
+    <a href="#shift-closing"><span class="icon">🔒</span> Shift Closing</a>
+
+    <div class="section-label">Suppliers</div>
+    <a href="#suppliers"><span class="icon">🏭</span> Suppliers</a>
+
+    <div class="section-label">Analytics</div>
+    <a href="#alerts-dashboard"><span class="icon">🚨</span> Alerts Dashboard</a>
+    <a href="#stock-analytics"><span class="icon">📉</span> Stock Level Analytics</a>
+    <a href="#stock-movement"><span class="icon">🔄</span> Stock Movement</a>
+    <a href="#stock-valuation"><span class="icon">💎</span> Stock Valuation</a>
+    <a href="#purchase-analytics"><span class="icon">💰</span> Purchase Analytics</a>
+    <a href="#item-usage"><span class="icon">🔍</span> Item Usage</a>
+    <a href="#inventory-reports"><span class="icon">📄</span> Inventory Reports</a>
+  </nav>
+</aside>
+
+<!-- ═══════════════════════ CONTENT ═══════════════════════ -->
+<main id="content">
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="badge">User Guide</div>
+    <h1>SweetTooth <span>Inventory</span> Module</h1>
+    <p>
+      A complete guide to managing stock, purchases, suppliers, material requests, health checks,
+      callbacks, and analytics in the SweetTooth ERP system for restaurant and bakery operations.
+    </p>
+    <div class="meta">
+      <div class="meta-item"><strong>Platform</strong>SweetTooth ERP</div>
+      <div class="meta-item"><strong>Module</strong>Inventory Management</div>
+      <div class="meta-item"><strong>Branch</strong>SweetTooth Port Harcourt</div>
+      <div class="meta-item"><strong>Role</strong>Inventory Manager / Staff</div>
+    </div>
+    <div class="download-bar">
+      <a class="btn-download" href="inventory-guide.pdf" download>⬇ Download PDF Guide</a>
+      <a class="btn-watch" href="https://www.canva.com/design/DAHKSERwDls/7rEKe2Yqd_wnjItLpA6rqA/watch?utm_content=DAHKSERwDls&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h80ea73c28e" target="_blank" rel="noopener">▶ Watch Video Demo</a>
+    </div>
+  </div>
+
+  <!-- ─── Video Demo ─── -->
+  <section class="video-section" id="video-demo">
+    <div class="video-header">
+      <div class="section-icon bg-purple" style="width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">▶️</div>
+      <h2>Video Demonstration</h2>
+      <span class="play-badge">▶ Watch Now</span>
+    </div>
+    <p class="section-intro" style="margin-bottom:20px;">
+      Watch the full walkthrough of the SweetTooth Inventory module — covering the daily workflow
+      from login through stock management, purchases, material requests, and shift closing.
+    </p>
+    <div class="video-container">
+      <iframe
+        src="https://www.canva.com/design/DAHKSERwDls/7rEKe2Yqd_wnjItLpA6rqA/view?embed"
+        allowfullscreen="allowfullscreen"
+        allow="fullscreen"
+        loading="lazy"
+        title="SweetTooth Inventory Module — Video Demo">
+      </iframe>
+    </div>
+    <p class="video-caption">SweetTooth Inventory Module — Full Video Demonstration. Use fullscreen for the best experience.</p>
+    <a class="video-link-print" href="https://www.canva.com/design/DAHKSERwDls/7rEKe2Yqd_wnjItLpA6rqA/watch?utm_content=DAHKSERwDls&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h80ea73c28e" style="display:none;">
+      📹 Watch the video demonstration online: https://www.canva.com/design/DAHKSERwDls/7rEKe2Yqd_wnjItLpA6rqA/watch
+    </a>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Getting Started ─── -->
+  <section class="section" id="getting-started">
+    <div class="section-header">
+      <div class="section-icon bg-purple">🚀</div>
+      <h2>Getting Started</h2>
+    </div>
+    <p class="section-intro">
+      SweetTooth uses a role-based login system with two entry points: Admin Login for managers and
+      super-admins, and Staff Login for all operational staff. Inventory staff use the Staff Login,
+      select their branch, and are directed to the Inventory Dashboard. Most operational pages
+      require an active shift — your shift supervisor opens this at the start of each working period.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Logging In as Inventory Staff</h3>
+          <p>Navigate to the SweetTooth portal and choose <strong>Login as Staff</strong>.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Open your browser and go to the SweetTooth portal URL provided by your IT team.</li>
+          <li>Click <strong>Login as Staff</strong> on the landing page.</li>
+          <li>Select your branch from the <em>Select Branch</em> dropdown (e.g., <em>SweetTooth Port Harcourt</em>).</li>
+          <li>Enter your email address and password, then click <strong>Log in</strong>.</li>
+          <li>You will be redirected automatically to your Inventory Dashboard.</li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Active Shift Required:</strong> All inventory operations (Items, Purchases, Stocks, etc.) are protected by the shift gate. If you see an "Unauthorized" or redirect page, your shift has not been opened. Contact your supervisor.</div>
+        </div>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Forgot Password?</strong> Use the <em>Forgot your password?</em> link on the login page. A reset link will be sent to your registered email address.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/01-login-page.png" alt="Staff login page with branch selector" loading="lazy" />
+          <div class="screenshot-caption">Fig 1 — Staff login page. Always select your branch before entering your credentials.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Dashboard ─── -->
+  <section class="section" id="dashboard">
+    <div class="section-header">
+      <div class="section-icon bg-blue">📊</div>
+      <h2>Inventory Dashboard</h2>
+    </div>
+    <p class="section-intro">
+      After login, you land on the Inventory Dashboard — a high-level summary of stock health,
+      pending requests, and recent activity for your branch. Use the left sidebar to navigate to
+      any inventory sub-module.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Reading the Dashboard</h3>
+          <p>The dashboard gives at-a-glance visibility into the inventory status for the current shift.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li><strong>Summary cards</strong> — total items, low-stock alerts, pending material requests, and recent purchase value.</li>
+          <li><strong>Sidebar navigation</strong> — all inventory sub-modules are accessible from the left panel, grouped by function.</li>
+          <li><strong>Branch context</strong> — all data is scoped to your currently logged-in branch. You cannot view data from other branches.</li>
+          <li><strong>Quick links</strong> — common actions like <em>New Purchase</em> or <em>View Requests</em> may appear as dashboard shortcuts.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/02-dashboard.png" alt="Inventory dashboard overview" loading="lazy" />
+          <div class="screenshot-caption">Fig 2 — Inventory Dashboard showing key metrics and the full navigation sidebar.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Items ─── -->
+  <section class="section" id="items">
+    <div class="section-header">
+      <div class="section-icon bg-green">📦</div>
+      <h2>Items Catalog</h2>
+    </div>
+    <p class="section-intro">
+      The Items page is the master catalog of every raw material, packaging component, and consumable
+      tracked in inventory. Each item has a SKU, unit of measure (UOM), category, reorder level,
+      maximum stock level, and a current stock value. This is the foundation all other inventory
+      operations are built on.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div>
+          <h3>Browsing and Filtering Items</h3>
+          <p>Go to <strong>Inventory → Items</strong> in the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li><strong>Search</strong> — filter items by name or SKU code using the search bar.</li>
+          <li><strong>Category filter</strong> — narrow the list to a specific item group (e.g., Dairy, Packaging).</li>
+          <li><strong>Status filter</strong> — toggle between active and inactive items.</li>
+          <li>Items flagged as <span class="tag tag-red">Low Stock</span> are shown with a red indicator when quantity falls below the reorder level.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/03-items.png" alt="Inventory items catalog" loading="lazy" />
+          <div class="screenshot-caption">Fig 3 — Items catalog with search, category filter, and low-stock indicators.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">4</div>
+        <div>
+          <h3>Creating and Editing Items</h3>
+          <p>Click <strong>Add Item</strong> (top-right) to register a new inventory item.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Enter the item <strong>Name</strong> — a SKU is auto-generated but can be overridden.</li>
+          <li>Select the <strong>Category</strong> and <strong>Unit of Measure (UOM)</strong>.</li>
+          <li>Set the <strong>Reorder Level</strong> (minimum stock before an alert is raised) and <strong>Maximum Stock Level</strong> (to prevent overstocking).</li>
+          <li>Optionally enable <strong>Requires Request</strong> — items with this flag can only be issued via an approved material request.</li>
+          <li>Click <strong>Save</strong> to create the item.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Approval Workflow:</strong> For non-manager accounts, creating or editing an item submits an audit request. A supervisor must approve the change before it takes effect. Super admin and manager roles save directly.</div>
+        </div>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Bulk Actions:</strong> Select multiple items using the checkboxes to perform bulk exports or bulk deactivation in one step.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Categories ─── -->
+  <section class="section" id="categories">
+    <div class="section-header">
+      <div class="section-icon bg-indigo">🗂️</div>
+      <h2>Item Categories</h2>
+    </div>
+    <p class="section-intro">
+      Categories group related inventory items together — for example, <em>Dairy</em>,
+      <em>Packaging</em>, <em>Dry Goods</em>, or <em>Cleaning Supplies</em>. Well-organized
+      categories make filtering, stock reporting, and material requests significantly easier.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">5</div>
+        <div>
+          <h3>Managing Item Categories</h3>
+          <p>Go to <strong>Inventory → Item Categories</strong> to create and manage groupings.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Click <strong>Add Category</strong> to open the creation modal — enter a name, optional description, and status.</li>
+          <li>Click any existing category row to edit its name, description, or toggle it active/inactive.</li>
+          <li>Categories with items assigned cannot be deleted — deactivate them instead to hide from dropdowns.</li>
+          <li>Use the search bar to find categories by name or description.</li>
+        </ol>
+        <div class="screenshot-wrap">
+          <img src="screenshots/04-item-categories.png" alt="Item categories page" loading="lazy" />
+          <div class="screenshot-caption">Fig 4 — Item Categories — create and manage item groupings for filtering and reporting.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Purchases ─── -->
+  <section class="section" id="purchases">
+    <div class="section-header">
+      <div class="section-icon bg-amber">🛒</div>
+      <h2>Purchases</h2>
+    </div>
+    <p class="section-intro">
+      The Purchases page records every stock receipt from suppliers — quantities received, unit
+      prices, batch numbers, and expiry dates. Purchases go through a draft → approval → approved
+      workflow before they affect stock levels. The system also tracks payment status separately
+      from receipt status.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">6</div>
+        <div>
+          <h3>Recording a New Purchase</h3>
+          <p>Go to <strong>Inventory → Purchases</strong> and click <strong>New Purchase</strong>.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Supplier</strong> from the dropdown — contact details auto-populate.</li>
+          <li>Enter the <strong>Purchase Date</strong> and optionally an invoice or reference number.</li>
+          <li>Add line items: for each item select the inventory item, enter the quantity received, unit cost, and UOM. The system auto-fills the base UOM from the item record and handles any UOM conversion.</li>
+          <li>For perishable goods, enter the <strong>Batch Number</strong> and <strong>Expiry Date</strong> per line — this enables batch tracking and expiry alerts.</li>
+          <li>Click <strong>Submit</strong> to save as a draft, then request approval. Stock levels only update after a manager approves the purchase.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Batch Tracking:</strong> Each purchase line creates a batch record tied to a specific delivery. The system uses FEFO (First Expiry, First Out) logic — the oldest batches are consumed first during dispatches.</div>
+        </div>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Payment Status:</strong> After a purchase is approved, update the payment status (Paid / Partial / Pending) as invoices are settled. This feeds the Accounts Payable module.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/05-purchases.png" alt="Purchases list" loading="lazy" />
+          <div class="screenshot-caption">Fig 5 — Purchases page listing all purchase records with status, supplier, and total value. Use the table/timeline/stats toggle to switch views.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Stock Levels ─── -->
+  <section class="section" id="stocks">
+    <div class="section-header">
+      <div class="section-icon bg-teal">📈</div>
+      <h2>Stock Levels</h2>
+    </div>
+    <p class="section-intro">
+      Stock Levels is the real-time view of the quantity on hand for every inventory item.
+      Each row shows the current available, reserved, and damaged quantities, weighted average cost,
+      total stock value, and health status. This is the primary screen for day-to-day stock monitoring.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">7</div>
+        <div>
+          <h3>Reading Stock Quantities</h3>
+          <p>Go to <strong>Inventory → Stocks</strong> to view live stock quantities.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li><strong>Available</strong> — quantity ready for dispatch.</li>
+          <li><strong>Reserved</strong> — quantity held against approved-but-not-yet-dispatched requests.</li>
+          <li><strong>Damaged</strong> — quantity flagged as unusable (via Health Checks or Callbacks).</li>
+          <li><strong>Average Cost</strong> — weighted average unit cost, updated on every approved purchase.</li>
+          <li><strong>Health Status</strong> — <span class="tag tag-green">Good</span> <span class="tag tag-amber">Warning</span> <span class="tag tag-red">Critical</span> <span class="tag tag-red">Expired</span> based on expiry proximity and reorder levels.</li>
+          <li><strong>Batch Panel</strong> — click any item row to open a side panel showing all individual batches with their expiry dates, quantities, and source purchase reference.</li>
+        </ul>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Never manually set closing quantities.</strong> Stock levels are always auto-calculated from movements. Use a Stock Take or Shift Closing to reconcile discrepancies.</div>
+        </div>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Stock Adjustments:</strong> To manually adjust a stock quantity (e.g., after a count correction), click the edit icon on any row. Non-manager accounts must submit an audit reason — the adjustment is held pending supervisor approval.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/06-stocks.png" alt="Stock levels page" loading="lazy" />
+          <div class="screenshot-caption">Fig 6 — Stock Levels showing real-time quantities, health status, and average cost per item.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Stock Takes ─── -->
+  <section class="section" id="stock-takes">
+    <div class="section-header">
+      <div class="section-icon bg-rose">📋</div>
+      <h2>Stock Takes</h2>
+    </div>
+    <p class="section-intro">
+      A Stock Take is a formal physical count of items on the shelf, compared against the system
+      balance. Any difference (surplus or shortage) is flagged as a variance that must be reviewed
+      and resolved by a supervisor before stock records are adjusted.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">8</div>
+        <div>
+          <h3>Conducting a Stock Take</h3>
+          <p>Go to <strong>Inventory → Stock Takes</strong> and click <strong>New Stock Take</strong>.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Choose the <strong>Stock Take Type</strong>:
+            <span class="tag tag-blue">Daily</span>
+            <span class="tag tag-blue">Weekly</span>
+            <span class="tag tag-blue">Monthly</span>
+            <span class="tag tag-blue">Annual</span>
+            <span class="tag tag-blue">Ad Hoc</span>
+          </li>
+          <li>The system pre-fills the <em>System Quantity</em> column from current stock records.</li>
+          <li>Enter the <strong>Physical Count</strong> for each item based on your manual shelf count.</li>
+          <li>The system automatically calculates and classifies each variance:
+            <ul>
+              <li><span class="tag tag-green">Match</span> — physical equals system quantity.</li>
+              <li><span class="tag tag-amber">Surplus</span> — more found than expected.</li>
+              <li><span class="tag tag-red">Shortage</span> — less found than expected.</li>
+            </ul>
+          </li>
+          <li>Click <strong>Complete</strong> to submit. A supervisor must review and approve variances before stock is adjusted.</li>
+        </ol>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div><strong>Best Practice:</strong> Run daily stock takes for high-value or fast-moving items, and weekly for everything else. Catching variances early prevents accumulation into large write-offs.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/07-stock-takes.png" alt="Stock takes page" loading="lazy" />
+          <div class="screenshot-caption">Fig 7 — Stock Takes listing all physical count sessions with type, status, and variance summary.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Health Checks ─── -->
+  <section class="section" id="health-checks">
+    <div class="section-header">
+      <div class="section-icon bg-lime">🩺</div>
+      <h2>Health Checks</h2>
+    </div>
+    <p class="section-intro">
+      Health Checks are quality monitoring records for stock condition. When items are found to be
+      damaged, deteriorating, or near expiry during a physical inspection, a Health Check is logged.
+      The page also surfaces automatic alerts for batches approaching or past their expiry date.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">9</div>
+        <div>
+          <h3>Logging a Health Check</h3>
+          <p>Go to <strong>Inventory → Health Checks</strong> and click <strong>New Health Check</strong>.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Stock Item</strong> affected from the dropdown.</li>
+          <li>Choose a <strong>Condition</strong>:
+            <span class="tag tag-green">Good</span>
+            <span class="tag tag-blue">Fair</span>
+            <span class="tag tag-amber">Poor</span>
+            <span class="tag tag-red">Damaged</span>
+            <span class="tag tag-red">Expired</span>
+          </li>
+          <li>Enter the <strong>Quantity Affected</strong> — cannot exceed the item's available stock.</li>
+          <li>Fill in <strong>Observations</strong> (what you found) and <strong>Action Taken</strong> (what was done, e.g., quarantined, disposed).</li>
+          <li>Click <strong>Save</strong>. Damaged or expired quantities are moved to the damaged stock bucket automatically.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">10</div>
+        <div>
+          <h3>Expiry Alerts Panel</h3>
+          <p>The top of the Health Checks page shows two critical alert sections.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li><strong>Expiring Soon</strong> — batches with an expiry date within the configured warning window (default: 7 days). Act on these before they become write-offs.</li>
+          <li><strong>Expired Batches in Stock</strong> — batches that have already passed their expiry date but are still recorded as available stock. These must be removed immediately.</li>
+        </ul>
+        <div class="callout error">
+          <span class="callout-icon">🚨</span>
+          <div><strong>Expired stock is a compliance and safety risk.</strong> Any batch appearing in the <em>Expired Batches in Stock</em> panel must be quarantined and logged as a Health Check before the end of the shift.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/15-health-checks.png" alt="Health checks page" loading="lazy" />
+          <div class="screenshot-caption">Fig 8 — Health Checks page with expiry alert panels at the top and the health check log below.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Material Requests ─── -->
+  <section class="section" id="material-requests">
+    <div class="section-header">
+      <div class="section-icon bg-purple">📤</div>
+      <h2>Material Requests</h2>
+    </div>
+    <p class="section-intro">
+      Production and sales departments raise Material Requests when they need raw materials or
+      supplies from the inventory store. As an inventory team member you can both raise requests
+      (for internal transfers) and review incoming ones from other departments.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">11</div>
+        <div>
+          <h3>Reviewing Incoming Requests</h3>
+          <p>Go to <strong>Inventory → Material Requests</strong> to see all department requests.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Requests move through the following states:
+            <span class="tag tag-gray">Pending</span> →
+            <span class="tag tag-blue">Approved</span> →
+            <span class="tag tag-green">Dispatched</span> →
+            <span class="tag tag-green">Completed</span>
+            (or <span class="tag tag-red">Rejected</span>)
+          </li>
+          <li>Each request shows the requesting <strong>Department</strong>, the <strong>Shift</strong> (Morning / Afternoon), the list of items requested, and quantities.</li>
+          <li>Click any request row to open the detail modal — review each item's requested quantity against current stock levels before approving.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">12</div>
+        <div>
+          <h3>Creating a New Material Request</h3>
+          <p>Click <strong>New Request</strong> to raise a request from the inventory team.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Select the <strong>Target Department</strong> that will receive the items.</li>
+          <li>Choose the <strong>Shift</strong> (Morning or Afternoon) the request applies to.</li>
+          <li>Add line items — for each, select the inventory item and enter the quantity needed. The UOM auto-fills from the item record.</li>
+          <li>Click <strong>Submit</strong> to send the request through the approval workflow.</li>
+        </ol>
+        <div class="screenshot-wrap">
+          <img src="screenshots/08-material-requests.png" alt="Material requests list" loading="lazy" />
+          <div class="screenshot-caption">Fig 9 — Material Requests from production and sales departments. Filter by status to focus on pending items.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Material Approvals ─── -->
+  <section class="section" id="material-approvals">
+    <div class="section-header">
+      <div class="section-icon bg-green">✅</div>
+      <h2>Material Approvals</h2>
+    </div>
+    <p class="section-intro">
+      Material Approvals is the dispatch workflow. Once a request is approved by a supervisor,
+      inventory staff physically pick the items and confirm dispatch. The system handles all
+      stock deductions, FEFO batch consumption, and routing automatically.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">13</div>
+        <div>
+          <h3>Approving and Dispatching Items</h3>
+          <p>Go to <strong>Inventory → Material Approvals</strong> to process approved requests.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Open an approved request. The approval modal shows each item with the requested quantity and available stock — adjust the <strong>Approved Quantity</strong> if needed (e.g., partial fulfillment).</li>
+          <li>The system validates stock availability before allowing approval. If stock is insufficient, you must either reduce the quantity or reject the line.</li>
+          <li>Click <strong>Approve &amp; Dispatch</strong> to confirm. The system:
+            <ul>
+              <li>Deducts the dispatched quantity from available stock using <strong>FEFO</strong> — the batch with the nearest expiry date is consumed first.</li>
+              <li>If the requesting department is a <strong>Production</strong> department, the items are routed to that department's Production Store.</li>
+              <li>For non-production departments (e.g., Sales), items go directly to department fulfillment.</li>
+              <li>A stock movement record and audit entry are created automatically.</li>
+            </ul>
+          </li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>GL Integration:</strong> Dispatching materials triggers an automatic journal entry in the accounting module, moving the cost from the Inventory asset account to the relevant cost centre.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/09-material-approvals.png" alt="Material approvals page" loading="lazy" />
+          <div class="screenshot-caption">Fig 10 — Material Approvals — review, adjust quantities, and dispatch to requesting departments.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Callbacks ─── -->
+  <section class="section" id="callbacks">
+    <div class="section-header">
+      <div class="section-icon bg-rose">↩️</div>
+      <h2>Material Returns (Callbacks)</h2>
+    </div>
+    <p class="section-intro">
+      When production or sales departments return previously dispatched items — whether due to excess
+      stock, wrong items sent, damage, or expiry — those returns appear here as Callbacks for the
+      inventory team to review, approve, and reintegrate into stock (or log as damaged).
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">14</div>
+        <div>
+          <h3>Processing a Material Return</h3>
+          <p>Go to <strong>Inventory → Material Returns</strong> (Callbacks) in the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>The page shows summary counts: <span class="tag tag-gray">Total</span> <span class="tag tag-amber">Pending</span> <span class="tag tag-green">Approved</span> <span class="tag tag-red">Rejected</span></li>
+          <li>Returns are classified by reason:
+            <span class="tag tag-blue">Excess Return</span>
+            <span class="tag tag-amber">Wrong Item</span>
+            <span class="tag tag-red">Damaged</span>
+            <span class="tag tag-red">Expired</span>
+          </li>
+        </ul>
+        <ol>
+          <li>Click a return record to open the detail modal — it shows the item, quantity, return reason, and the original dispatch it references.</li>
+          <li>Click <strong>Approve</strong> to accept the return. The system:
+            <ul>
+              <li>Deducts the quantity from the returning department's Production Store.</li>
+              <li>If condition is <strong>good</strong> (excess / wrong item): quantity is restored to the main inventory available stock.</li>
+              <li>If condition is <strong>damaged or expired</strong>: quantity is moved to the damaged stock bucket, not back to available.</li>
+            </ul>
+          </li>
+          <li>Click <strong>Reject</strong> if the return is invalid — enter a rejection reason that will be visible to the requesting department.</li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Do not approve damaged returns as good stock.</strong> Always inspect returned items before approving. Damaged items approved as good will inflate available stock and distort valuations.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/16-callbacks.png" alt="Material returns callbacks page" loading="lazy" />
+          <div class="screenshot-caption">Fig 11 — Material Returns showing all callbacks from production and sales, with status filters and summary counts.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Shift Closing ─── -->
+  <section class="section" id="shift-closing">
+    <div class="section-header">
+      <div class="section-icon bg-rose">🔒</div>
+      <h2>Shift Closing</h2>
+    </div>
+    <p class="section-intro">
+      At the end of every shift, the inventory team performs a Shift Close to reconcile all stock
+      movements — purchases received, items dispatched, and returns processed — against the physical
+      closing count. Closing the shift locks the period and sets the opening stock for the next shift.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">15</div>
+        <div>
+          <h3>Closing the Inventory Shift</h3>
+          <p>Go to <strong>Inventory → Shift Closing</strong> at the end of your shift.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>The table shows each item's <strong>Opening Quantity</strong>, all <strong>movements</strong> during the shift (purchases in, dispatches out, returns), and the <strong>Expected Closing</strong> balance.</li>
+          <li>Enter your <strong>Physical Count</strong> — the actual quantity you counted on the shelf.</li>
+          <li>Any difference between the expected and physical count is flagged as a variance for supervisor review.</li>
+          <li>Click <strong>Close Shift</strong> to lock the period. This action cannot be undone without a supervisor override.</li>
+          <li>The next shift's opening stock is automatically set from this closing balance.</li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-icon">⚠️</span>
+          <div><strong>Important:</strong> Ensure all purchases and dispatches for the shift are finalized <em>before</em> closing. Any pending transactions after closing must be handled in the next shift and will create an opening variance.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/10-shift-closing.png" alt="Inventory shift closing page" loading="lazy" />
+          <div class="screenshot-caption">Fig 12 — Shift Closing — reconcile all movements and lock the shift record at end of day.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Suppliers ─── -->
+  <section class="section" id="suppliers">
+    <div class="section-header">
+      <div class="section-icon bg-orange">🏭</div>
+      <h2>Suppliers</h2>
+    </div>
+    <p class="section-intro">
+      The Suppliers directory maintains profiles for every vendor your branch purchases from.
+      Each profile includes contact details, payment terms, and a performance history tracking
+      delivery accuracy and price consistency over time.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">16</div>
+        <div>
+          <h3>Managing the Supplier Directory</h3>
+          <p>Navigate to <strong>Suppliers</strong> in the sidebar (under Inventory Management).</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>The list shows all active suppliers with their contact details and last purchase date.</li>
+          <li>Click a supplier name to view their full profile, purchase history, and performance metrics.</li>
+          <li>Open the <strong>Performance</strong> tab on any supplier to see:
+            <ul>
+              <li>On-time delivery rate.</li>
+              <li>Average price variance (how much unit prices fluctuate between orders).</li>
+              <li>Order fulfillment history.</li>
+            </ul>
+          </li>
+          <li>Click <strong>Add Supplier</strong> to register a new vendor — fill in name, address, phone, email, and payment terms.</li>
+          <li>Deactivate suppliers who are no longer in use. This preserves their purchase history while removing them from active dropdowns.</li>
+        </ol>
+        <div class="screenshot-wrap">
+          <img src="screenshots/11-suppliers.png" alt="Suppliers list" loading="lazy" />
+          <div class="screenshot-caption">Fig 13 — Supplier directory with contact details, last purchase date, and performance overview.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Alerts Dashboard ─── -->
+  <section class="section" id="alerts-dashboard">
+    <div class="section-header">
+      <div class="section-icon bg-rose">🚨</div>
+      <h2>Alerts Dashboard</h2>
+    </div>
+    <p class="section-intro">
+      The Alerts Dashboard is the central view for all critical inventory issues — low stock,
+      overstocked items, expiring batches, and expired batches still in inventory. Check this
+      page at the start of every shift to prioritize actions.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">17</div>
+        <div>
+          <h3>Acting on Inventory Alerts</h3>
+          <p>Go to <strong>Analytics → Alerts Dashboard</strong> from the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li><span class="tag tag-red">Expired Stock</span> — items past their expiry date still recorded as available. Must be removed immediately.</li>
+          <li><span class="tag tag-amber">Expiring Soon</span> — batches within the warning window (default 7 days). Plan usage or return to supplier.</li>
+          <li><span class="tag tag-red">Low Stock</span> — items below their reorder level. Raise a purchase order promptly.</li>
+          <li><span class="tag tag-blue">Overstock</span> — items exceeding their maximum stock level. Review procurement frequency.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div>For each alert, the dashboard links directly to the affected item's stock or batch record so you can act without needing to navigate separately.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/19-alerts-dashboard.png" alt="Alerts dashboard" loading="lazy" />
+          <div class="screenshot-caption">Fig 14 — Alerts Dashboard — centralized view of all critical inventory issues requiring action.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Stock Level Analytics ─── -->
+  <section class="section" id="stock-analytics">
+    <div class="section-header">
+      <div class="section-icon bg-blue">📉</div>
+      <h2>Stock Level Analytics</h2>
+    </div>
+    <p class="section-intro">
+      Stock Level Analytics visualizes stock trends over time, helping you identify fast-moving items,
+      seasonal consumption patterns, and items that are consistently over- or under-stocked.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">18</div>
+        <div>
+          <h3>Analyzing Stock Trends</h3>
+          <p>Go to <strong>Analytics → Stock Levels</strong> from the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Use the <strong>Date Range</strong> filter to focus on a specific period.</li>
+          <li>Filter by <strong>Category</strong> to compare items within a group.</li>
+          <li>Charts show opening vs. closing stock over time, highlighting consumption velocity.</li>
+          <li>Items consistently below their reorder line are highlighted in red.</li>
+          <li>Use this data to refine reorder levels and adjust procurement frequency.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/12-stock-level-analytics.png" alt="Stock level analytics" loading="lazy" />
+          <div class="screenshot-caption">Fig 15 — Stock Level Analytics showing trends, reorder alerts, and consumption rates by item.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Stock Movement Analytics ─── -->
+  <section class="section" id="stock-movement">
+    <div class="section-header">
+      <div class="section-icon bg-sky">🔄</div>
+      <h2>Stock Movement Analytics</h2>
+    </div>
+    <p class="section-intro">
+      Stock Movement Analytics breaks down every inflow and outflow — purchases, dispatches,
+      adjustments, damage write-offs, and returns — giving a detailed audit trail of how stock
+      moved through the warehouse over any period.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">19</div>
+        <div>
+          <h3>Reviewing Stock Movements</h3>
+          <p>Go to <strong>Analytics → Stock Movement</strong> from the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li><strong>Movement Types:</strong>
+            <span class="tag tag-green">Purchase In</span>
+            <span class="tag tag-red">Dispatch Out</span>
+            <span class="tag tag-amber">Adjustment</span>
+            <span class="tag tag-red">Damage / Write-off</span>
+            <span class="tag tag-green">Return In</span>
+            <span class="tag tag-blue">Transfer</span>
+          </li>
+          <li>Filter by <strong>Item</strong>, <strong>Movement Type</strong>, <strong>Shift</strong>, <strong>Department</strong>, or <strong>Date Range</strong>.</li>
+          <li>The daily inflow vs. outflow chart helps identify days with unusually high consumption or unexplained losses.</li>
+          <li>Each movement row links to its source document (purchase, material request, or health check).</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div>Use stock movement data during investigations into discrepancies — it provides a full chronological record of every change made to a stock item.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/17-stock-movement.png" alt="Stock movement analytics" loading="lazy" />
+          <div class="screenshot-caption">Fig 16 — Stock Movement Analytics — full audit trail of every inflow and outflow by item and movement type.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Stock Valuation ─── -->
+  <section class="section" id="stock-valuation">
+    <div class="section-header">
+      <div class="section-icon bg-amber">💎</div>
+      <h2>Stock Valuation</h2>
+    </div>
+    <p class="section-intro">
+      Stock Valuation calculates the total monetary value of current inventory using the
+      weighted average cost method. This figure feeds directly into the Balance Sheet and
+      is used for financial reporting and insurance purposes.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">20</div>
+        <div>
+          <h3>Viewing Inventory Value</h3>
+          <p>Go to <strong>Analytics → Stock Valuation</strong> from the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li><strong>Total Inventory Value</strong> — sum of (available quantity × weighted average cost) for all active items.</li>
+          <li><strong>Value by Category</strong> — breakdown of inventory value per item category.</li>
+          <li><strong>Value by Item</strong> — sortable table showing each item's quantity, average cost, and total value.</li>
+          <li>The valuation reflects the current moment — run it at shift close or month-end for periodic reporting.</li>
+        </ul>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Accounting Integration:</strong> The Inventory Valuation figure here should match the <em>Inventory Asset</em> account balance in the Chart of Accounts. If they diverge, check for unapproved purchases or unposted dispatches.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/18-stock-valuation.png" alt="Stock valuation page" loading="lazy" />
+          <div class="screenshot-caption">Fig 17 — Stock Valuation showing total inventory value broken down by category and item.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Purchase Analytics ─── -->
+  <section class="section" id="purchase-analytics">
+    <div class="section-header">
+      <div class="section-icon bg-amber">💰</div>
+      <h2>Purchase Analytics</h2>
+    </div>
+    <p class="section-intro">
+      Purchase Analytics provides a financial breakdown of all procurement activity — spend by
+      supplier, spend by category, purchase frequency, and unit price variance trends over time.
+      Use it to identify cost savings and negotiate better terms with suppliers.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">21</div>
+        <div>
+          <h3>Reviewing Procurement Spend</h3>
+          <p>Go to <strong>Analytics → Purchases</strong> from the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li><strong>Top Suppliers by Spend</strong> — your highest-cost vendors over the selected period.</li>
+          <li><strong>Category Breakdown</strong> — which item categories drive the most procurement cost.</li>
+          <li><strong>Price Trends</strong> — tracks unit cost changes over time for key items, helping spot inflation early.</li>
+          <li>Click <strong>Export</strong> to download the data as Excel for budget reporting.</li>
+        </ul>
+        <div class="screenshot-wrap">
+          <img src="screenshots/13-purchase-analytics.png" alt="Purchase analytics" loading="lazy" />
+          <div class="screenshot-caption">Fig 18 — Purchase Analytics showing spend distribution by supplier and category with trend charts.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Item Usage Analytics ─── -->
+  <section class="section" id="item-usage">
+    <div class="section-header">
+      <div class="section-icon bg-teal">🔍</div>
+      <h2>Item Usage Analytics</h2>
+    </div>
+    <p class="section-intro">
+      Item Usage Analytics tracks how each inventory item is consumed across shifts and departments.
+      This is the key data source for recipe costing, waste reduction analysis, and procurement planning.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">22</div>
+        <div>
+          <h3>Understanding Item Consumption</h3>
+          <p>Go to <strong>Analytics → Item Usage</strong> from the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ul>
+          <li>Filter by <strong>Item</strong>, <strong>Department</strong>, or <strong>Date Range</strong> to narrow results.</li>
+          <li><strong>Total Issued</strong> — total quantity dispatched to all departments in the period.</li>
+          <li><strong>Usage by Shift</strong> — morning, afternoon, and night breakdown to spot shift-level patterns.</li>
+          <li><strong>Usage by Department</strong> — see which production or sales department consumes the most of each item.</li>
+          <li>Items with unusually high consumption compared to their historical average may indicate waste, over-portioning, or recipe deviations.</li>
+        </ul>
+        <div class="callout tip">
+          <span class="callout-icon">💡</span>
+          <div>Share Item Usage data with the Production Manager monthly to align raw material procurement with actual production output and reduce over-ordering.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/14-item-usage.png" alt="Item usage analytics" loading="lazy" />
+          <div class="screenshot-caption">Fig 19 — Item Usage Analytics showing consumption per item across departments and shifts.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Inventory Reports ─── -->
+  <section class="section" id="inventory-reports">
+    <div class="section-header">
+      <div class="section-icon bg-indigo">📄</div>
+      <h2>Inventory Reports</h2>
+    </div>
+    <p class="section-intro">
+      Inventory Reports are formal, dated report documents generated by the inventory team and
+      submitted to management through the Reporting Department workflow. Unlike live analytics,
+      these reports capture a snapshot for a specific period and can be reviewed, compiled, and
+      forwarded to the Managing Director.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">23</div>
+        <div>
+          <h3>Generating and Viewing Reports</h3>
+          <p>Go to <strong>Inventory → Reports</strong> from the sidebar.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Filter the report list by <strong>Status</strong>
+            (<span class="tag tag-gray">Draft</span>
+            <span class="tag tag-amber">Pending Review</span>
+            <span class="tag tag-green">Approved</span>)
+            or by <strong>Type</strong> and <strong>Date Range</strong>.
+          </li>
+          <li>Click <strong>View</strong> on any report to open the full detail page — it includes all inventory metrics for the report period.</li>
+          <li>Completed reports can be printed using the print icon on the detail page.</li>
+          <li>Reports submitted here feed into the <em>Reporting Department</em> workflow, where they are compiled into branch reports for senior management review.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div><strong>Report Workflow:</strong> After generating a report, it moves to the Reporting Department dashboard where it is reviewed, compiled with other department reports, and sent to the Managing Director for final review.</div>
+        </div>
+        <div class="screenshot-wrap">
+          <img src="screenshots/20-inventory-reports.png" alt="Inventory reports list" loading="lazy" />
+          <div class="screenshot-caption">Fig 20 — Inventory Reports listing generated reports with status, type, and date filters.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── Quick Reference ─── -->
+  <section class="section" id="quick-reference">
+    <div class="section-header">
+      <div class="section-icon bg-indigo">📌</div>
+      <h2>Quick Reference — Daily Workflow</h2>
+    </div>
+    <p class="section-intro">
+      Follow this sequence each shift for smooth, compliant inventory operations.
+    </p>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">✦</div>
+        <div>
+          <h3>Shift Checklist</h3>
+          <p>Complete these steps in order at the start, during, and end of every shift.</p>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li><strong>Log in</strong> via Staff Login and confirm your shift is active.</li>
+          <li><strong>Check Alerts Dashboard</strong> — act on any expired or critically low stock before operations begin.</li>
+          <li><strong>Review Stock Levels</strong> — verify opening quantities flag any discrepancies from the previous shift.</li>
+          <li><strong>Process Purchases</strong> — record supplier deliveries received and submit for approval.</li>
+          <li><strong>Review Material Requests</strong> — approve or reject incoming requests from production and sales departments.</li>
+          <li><strong>Dispatch Approved Materials</strong> — physically issue items and confirm dispatch in the system.</li>
+          <li><strong>Log Health Checks</strong> — record any damaged, poor condition, or expiring items found during the shift.</li>
+          <li><strong>Process Returns (Callbacks)</strong> — review and approve any materials returned from production or sales.</li>
+          <li><strong>Close Shift</strong> — reconcile all movements, enter physical counts, and lock the shift record.</li>
+        </ol>
+        <div class="callout info">
+          <span class="callout-icon">ℹ️</span>
+          <div>
+            <strong>Key Rules to Remember:</strong>
+            <ul style="margin-top:8px; margin-left:16px;">
+              <li>Never manually edit closing stock — use Stock Takes or Shift Closing to reconcile.</li>
+              <li>Purchases must be approved before they affect stock levels.</li>
+              <li>Damaged returns must never be approved as good stock.</li>
+              <li>Expired batches must be removed from available stock the same day they are found.</li>
+              <li>Conduct daily stock takes for high-value items; weekly for everything else.</li>
+              <li>Contact your supervisor for any shift-gate or access errors.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  const sections = document.querySelectorAll('.section');
+  const links = document.querySelectorAll('#sidebar nav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`#sidebar nav a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
