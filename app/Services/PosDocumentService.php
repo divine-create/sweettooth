@@ -66,7 +66,7 @@ class PosDocumentService
 
         $taxRow = $sale->tax > 0 ? "
             <tr>
-                <td colspan=\"3\" style=\"text-align: right; padding: 4px 8px;\">Tax:</td>
+                <td colspan=\"3\" style=\"text-align: right; padding: 4px 8px;\">VAT (incl.):</td>
                 <td style=\"text-align: right; padding: 4px 0;\">{$symbol}{$tax}</td>
             </tr>" : '';
 
@@ -196,7 +196,7 @@ class PosDocumentService
 
         $taxRow = $sale->tax > 0 ? "
             <tr>
-                <td colspan=\"2\" style=\"text-align: right; padding: 8px;\">Tax:</td>
+                <td colspan=\"2\" style=\"text-align: right; padding: 8px;\">VAT (incl.):</td>
                 <td style=\"text-align: right; padding: 8px;\">{$symbol}{$tax}</td>
             </tr>" : '';
 

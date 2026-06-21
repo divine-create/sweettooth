@@ -409,14 +409,29 @@ class Index extends BaseComponent
 
     protected function recalculateTotals(): void
     {
-        $this->subtotal = 0.0;
+        $gross = 0.0;
         foreach ($this->cart as $line) {
-            $this->subtotal += $line['price'] * $line['qty'];
+            $gross += $line['price'] * $line['qty'];
         }
-        $subAfterDiscount = max(0, $this->subtotal - (float)($this->discount ?: 0));
-        $this->tax = 0.0; // hook if needed
-        $this->total = $subAfterDiscount + $this->tax;
+        $grossAfterDiscount = max(0, $gross - (float)($this->discount ?: 0));
+        $rate = $this->vatRate();
+        // VAT is INCLUSIVE: the cart prices already contain VAT, so extract the
+        // VAT portion from the (post-discount) gross and leave the customer total unchanged.
+        $this->tax = $rate > 0 ? round($grossAfterDiscount * $rate / (100 + $rate), 2) : 0.0;
+        $this->total = $grossAfterDiscount;                          // amount the customer pays (VAT included)
+        $this->subtotal = round($grossAfterDiscount - $this->tax, 2); // net of VAT (recorded as revenue)
         $this->changeDue = max(0, $this->paymentTotal - $this->total);
+    }
+
+    /**
+     * VAT rate (%) for this branch. Inclusive. Configurable via POS settings,
+     * defaults to the Nigerian standard rate of 7.5%.
+     */
+    protected function vatRate(): float
+    {
+        return (float) (\App\Models\BranchPosConfiguration::query()
+            ->where('branch_id', $this->branchId)
+            ->value('vat_rate') ?? 7.5);
     }
 
     public function addPaymentRow(): void

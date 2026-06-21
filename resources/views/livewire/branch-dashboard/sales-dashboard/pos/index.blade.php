@@ -524,7 +524,7 @@
                         <input type="number" step="0.01" wire:model.live="discount" class="w-28 text-right rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-2 py-1" />
                     </div>
                     <div class="flex items-center justify-between text-sm text-zinc-700 dark:text-zinc-300">
-                        <span>Tax</span>
+                        <span>VAT (incl.)</span>
                         <span>{{ $this->formatCurrency($tax) }}</span>
                     </div>
                     <div class="flex items-center justify-between text-base font-semibold text-zinc-900 dark:text-zinc-100">
@@ -734,7 +734,7 @@
                             @endif
                             @if($sale->tax > 0)
                                 <div class="flex justify-between">
-                                    <span>Tax:</span>
+                                    <span>VAT (incl.):</span>
                                     <span>{{ $this->formatCurrency($sale->tax) }}</span>
                                 </div>
                             @endif

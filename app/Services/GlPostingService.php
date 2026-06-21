@@ -193,21 +193,9 @@ class GlPostingService
             if ($sale->tax > 0) {
                 $taxAccount = $this->getTaxAccountForDepartment($department);
 
-                $this->createEntry([
-                    'gl_account_id' => $receivableAccount->id,
-                    'accounting_period_id' => $period->id,
-                    'entry_type' => 'sale_tax',
-                    'reference_type' => Sale::class,
-                    'reference_id' => $sale->id,
-                    'reference_number' => $sale->reference_number ?? "SAL-{$sale->id}",
-                    'description' => "Sales Tax - {$sale->reference_number}",
-                    'debit' => $sale->tax,
-                    'credit' => 0,
-                    'entry_date' => $sale->sale_time,
-                    'status' => 'draft',
-                    'entered_by_id' => auth()->id(),
-                ])->post(auth()->id());
-
+                // VAT is INCLUSIVE: Accounts Receivable was already debited the full
+                // (VAT-inclusive) total in Entry A, and revenue was credited net of VAT,
+                // so here we only credit the VAT liability. (total = net subtotal + tax)
                 $this->createEntry([
                     'gl_account_id' => $taxAccount->id,
                     'accounting_period_id' => $period->id,
