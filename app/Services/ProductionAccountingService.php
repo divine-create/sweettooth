@@ -36,8 +36,9 @@ class ProductionAccountingService
                 throw new Exception('Recipe not found for production record');
             }
 
-            $rmAccount = GlAccount::where('account_number', '1200')->firstOrFail();
-            $wipAccount = GlAccount::where('account_number', '1200')->firstOrFail();
+            $branchId = $recipe->branch_id;
+            $rmAccount = $this->resolveAccount('inventory', $branchId);
+            $wipAccount = $this->resolveAccount('inventory', $branchId);
 
             // Calculate raw materials cost from recipe
             $rmCost = $this->calculateRawMaterialsCost($recipe, $production->quantity_produced);
@@ -121,12 +122,12 @@ class ProductionAccountingService
             $branchId = $recipe->branch_id;
 
             // Account numbers match the seeded chart of accounts.
-            $rawMaterials  = GlAccount::where('account_number', '1200')->firstOrFail(); // Raw Materials Inventory
-            $wipAccount    = GlAccount::where('account_number', '1200')->firstOrFail(); // Work in Progress
-            $fgAccount     = GlAccount::where('account_number', '1200')->firstOrFail(); // Finished Goods Inventory
-            $laborAccount  = GlAccount::where('account_number', '6020')->firstOrFail(); // Direct Labor
-            $overheadAcct  = GlAccount::where('account_number', '6030')->firstOrFail(); // Manufacturing Overhead
-            $writeOffAcct  = GlAccount::where('account_number', '5040')->firstOrFail(); // Write-off Loss
+            $rawMaterials  = $this->resolveAccount('inventory', $branchId);              // Raw Materials Inventory
+            $wipAccount    = $this->resolveAccount('inventory', $branchId);              // Work in Progress
+            $fgAccount     = $this->resolveAccount('inventory', $branchId);              // Finished Goods Inventory
+            $laborAccount  = $this->resolveAccount('labor_direct', $branchId);           // Direct Labor
+            $overheadAcct  = $this->resolveAccount('overhead_manufacturing', $branchId); // Manufacturing Overhead
+            $writeOffAcct  = $this->resolveAccount('adjustment_write_off', $branchId);   // Write-off Loss
 
             $producedQty = (float) $production->quantity_produced;
             if ($producedQty <= 0) {
@@ -331,8 +332,9 @@ class ProductionAccountingService
 
             $totalRejectionCost = $rmCost + $laborCost + $overheadCost;
 
-            $wipAccount = GlAccount::where('account_number', '1200')->firstOrFail();
-            $writeoffAccount = GlAccount::where('account_number', '5040')->firstOrFail();
+            $branchId = $recipe->branch_id;
+            $wipAccount = $this->resolveAccount('inventory', $branchId);
+            $writeoffAccount = $this->resolveAccount('adjustment_write_off', $branchId);
 
             // Entry: Debit Writeoff, Credit WIP
             $this->createEntry([

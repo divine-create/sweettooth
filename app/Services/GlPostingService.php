@@ -553,8 +553,8 @@ class GlPostingService
                 throw new Exception('Bank accounts not found for transfer');
             }
 
-            $fromGlAccount = $fromAccount->glAccount ?? $this->getGlAccount('1050');
-            $toGlAccount = $toAccount->glAccount ?? $this->getGlAccount('1050');
+            $fromGlAccount = $fromAccount->glAccount ?? $this->account('bank_main');
+            $toGlAccount = $toAccount->glAccount ?? $this->account('bank_main');
 
             // Debit: To Bank Account
             $this->createEntry([
@@ -876,8 +876,8 @@ class GlPostingService
             $finishedGoodsAccount = $this->account('inventory'); // Finished Goods
             $rawMaterialsAccount = $this->account('inventory'); // Raw Materials
             $wipAccount = $this->account('inventory'); // Work in Progress (if exists)
-            $laborAccount = $this->getGlAccount('6100'); // Direct Labor (if exists)
-            $overheadAccount = $this->getGlAccount('6200'); // Manufacturing Overhead (if exists)
+            $laborAccount = $this->account('labor_direct'); // Direct Labor
+            $overheadAccount = $this->account('overhead_manufacturing'); // Manufacturing Overhead
 
             // Debit: Finished Goods Inventory
             $this->createEntry([
@@ -1078,22 +1078,22 @@ class GlPostingService
     protected function getExpenseAccountForCategory(string $category): GlAccount
     {
         $mapping = [
-            'travel' => '6300',         // Travel Expenses
-            'meals' => '6310',          // Meals & Entertainment
-            'supplies' => '6320',       // Office Supplies
-            'communication' => '6330',  // Communication
-            'accommodation' => '6340',  // Accommodation
-            'professional' => '6350',   // Professional Services
-            'other' => '6900',          // Other Expenses
+            'travel' => 'expense_travel',
+            'meals' => 'expense_meals',
+            'supplies' => 'expense_office',
+            'communication' => 'expense_communication',
+            'accommodation' => 'expense_accommodation',
+            'professional' => 'expense_professional',
+            'other' => 'other_expense',
         ];
 
-        $accountNumber = $mapping[$category] ?? '6900';
+        $key = $mapping[$category] ?? 'other_expense';
 
         try {
-            return $this->getGlAccount($accountNumber);
+            return $this->account($key);
         } catch (Exception $e) {
-            // Fallback to general expense account
-            return $this->getGlAccount('6900');
+            // Fallback to the general "other expense" account
+            return $this->account('other_expense');
         }
     }
 
@@ -1103,22 +1103,22 @@ class GlPostingService
     protected function getAdjustmentAccountForType(string $type): GlAccount
     {
         $mapping = [
-            'damage' => '5020',      // Damage Loss
-            'shrinkage' => '5030',   // Shrinkage Loss
-            'write_off' => '5040',   // Write-off Loss
-            'adjustment' => '5050',  // Inventory Adjustment
-            'count' => '5050',       // Stock Count Adjustment
-            'transfer' => '5050',    // Transfer Adjustment
-            'production' => '5010',  // Production COGS
+            'damage' => 'adjustment_damage',
+            'shrinkage' => 'adjustment_shrinkage',
+            'write_off' => 'adjustment_write_off',
+            'adjustment' => 'inventory_adjustment',
+            'count' => 'inventory_adjustment',
+            'transfer' => 'inventory_adjustment',
+            'production' => 'cogs',
         ];
 
-        $accountNumber = $mapping[$type] ?? '5050';
+        $key = $mapping[$type] ?? 'inventory_adjustment';
 
         try {
-            return $this->getGlAccount($accountNumber);
+            return $this->account($key);
         } catch (Exception $e) {
-            // Fallback to general adjustment account
-            return $this->getGlAccount('5020');
+            // Fallback to the damage-loss account
+            return $this->account('adjustment_damage');
         }
     }
 
@@ -1159,10 +1159,10 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $expenseAccount = $this->getGlAccount('6100'); // Salaries & Wages Expense
-            $payableAccount = $this->getGlAccount('2110'); // Payroll Payable
-            $taxPayableAccount = $this->getGlAccount('2120'); // Payroll Tax Payable
-            $deductionPayableAccount = $this->getGlAccount('2130'); // Other Deductions Payable
+            $expenseAccount = $this->account('payroll_expense'); // Salaries & Wages Expense
+            $payableAccount = $this->account('payroll_payable'); // Payroll Payable
+            $taxPayableAccount = $this->account('payroll_tax_payable'); // Payroll Tax Payable
+            $deductionPayableAccount = $this->account('payroll_deduction_payable'); // Other Deductions Payable
 
             $gross = (float) $payroll->gross_salary;
             $net = (float) $payroll->net_salary;
@@ -1266,8 +1266,8 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $payableAccount = $this->getGlAccount('2110');
-            $cashAccount = $payroll->bankAccount?->glAccount ?? $this->getGlAccount('1050');
+            $payableAccount = $this->account('payroll_payable');
+            $cashAccount = $payroll->bankAccount?->glAccount ?? $this->account('bank_main');
 
             $amount = (float) $payroll->net_salary;
 
@@ -1335,7 +1335,7 @@ class GlPostingService
             }
 
             $apAccount = $this->account('accounts_payable');
-            $cashAccount = $payment->bankAccount?->glAccount ?? $this->getGlAccount('1050');
+            $cashAccount = $payment->bankAccount?->glAccount ?? $this->account('bank_main');
 
             $this->createEntry([
                 'gl_account_id' => $apAccount->id,
@@ -1400,8 +1400,8 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $taxAccount = $this->getGlAccount('2100');
-            $cashAccount = $payment->bankAccount?->glAccount ?? $this->getGlAccount('1050');
+            $taxAccount = $this->account('tax_payable');
+            $cashAccount = $payment->bankAccount?->glAccount ?? $this->account('bank_main');
 
             $this->createEntry([
                 'gl_account_id' => $taxAccount->id,
@@ -1466,10 +1466,10 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $assetAccount = $this->getGlAccount('1500'); // Fixed Assets
+            $assetAccount = $this->account('fixed_asset'); // Fixed Assets
             $creditAccount = $asset->funding_source === 'ap'
                 ? $this->account('accounts_payable')
-                : ($asset->bankAccount?->glAccount ?? $this->getGlAccount('1050'));
+                : ($asset->bankAccount?->glAccount ?? $this->account('bank_main'));
 
             $this->createEntry([
                 'gl_account_id' => $assetAccount->id,
@@ -1534,8 +1534,8 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $expenseAccount = $this->getGlAccount('6200'); // Depreciation Expense
-            $accumAccount = $this->getGlAccount('1510');  // Accumulated Depreciation
+            $expenseAccount = $this->account('depreciation_expense'); // Depreciation Expense
+            $accumAccount = $this->account('accumulated_depreciation');  // Accumulated Depreciation
 
             $this->createEntry([
                 'gl_account_id' => $expenseAccount->id,
@@ -1608,9 +1608,9 @@ class GlPostingService
             $today             = now()->toDateString();
             $ref               = $asset->asset_tag ?? "ASSET-{$asset->id}";
 
-            $assetAccount      = $this->getGlAccount('1500'); // Fixed Assets
-            $accumAccount      = $this->getGlAccount('1510'); // Accumulated Depreciation
-            $lossAccount       = $this->getGlAccount('7100'); // Loss on Disposal / Other Expenses
+            $assetAccount      = $this->account('fixed_asset'); // Fixed Assets
+            $accumAccount      = $this->account('accumulated_depreciation'); // Accumulated Depreciation
+            $lossAccount       = $this->account('loss_on_disposal'); // Loss on Disposal / Other Expenses
 
             // Remove the accumulated depreciation (debit the contra-asset to zero it out)
             if ($accumulatedDepr > 0) {
@@ -1699,9 +1699,9 @@ class GlPostingService
 
             $expenseAccount = $entry->gl_account_id
                 ? $this->getGlAccount($entry->glAccount->account_number)
-                : $this->getGlAccount('6000');
+                : $this->account('general_expense');
 
-            $cashAccount = $entry->bankAccount?->glAccount ?? $this->getGlAccount('1050');
+            $cashAccount = $entry->bankAccount?->glAccount ?? $this->account('bank_main');
 
             $ref = $entry->reference ?? "EXP-{$entry->id}";
 
