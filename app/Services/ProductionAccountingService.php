@@ -9,12 +9,15 @@ use App\Models\ProductionRecord;
 use App\Models\DailyProduce;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
+use App\Services\Accounting\Concerns\ResolvesAccountDefaults;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProductionAccountingService
 {
+    use ResolvesAccountDefaults;
+
     /**
      * Record production start - transfer raw materials to WIP
      */

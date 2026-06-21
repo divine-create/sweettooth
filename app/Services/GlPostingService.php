@@ -22,6 +22,7 @@ use App\Models\FixedAsset;
 use App\Models\AssetDepreciation;
 use App\Models\User;
 use App\Notifications\GlPostingFailedNotification;
+use App\Services\Accounting\Concerns\ResolvesAccountDefaults;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -29,9 +30,21 @@ use Exception;
 
 class GlPostingService
 {
+    use ResolvesAccountDefaults;
+
     protected ?AccountingPeriod $currentPeriod = null;
     protected array $accountCache = [];
     protected ?string $branchId = null;
+
+    /**
+     * Resolve a GL account for the active branch by its configurable accounting
+     * key (e.g. 'cogs', 'inventory', 'bank_main') from branch_accounting_defaults.
+     * Preferred over getGlAccount(): no hard-coded account numbers.
+     */
+    protected function account(string $key): GlAccount
+    {
+        return $this->resolveAccount($key, $this->branchId);
+    }
 
     /**
      * Get current accounting period, scoped to the active branch.
