@@ -55,9 +55,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         // === SHIFT SYSTEM AUTOMATION ===
 
-        // Auto clock out expired shifts every 5 minutes during business hours
+        // Auto clock out expired shifts once a day, at end of day
         $schedule->command('shifts:auto-clock-out')
-            ->everyFiveMinutes()
+            ->dailyAt('23:59')
             ->withoutOverlapping(10) // 10 minute timeout
             ->runInBackground()
             ->evenInMaintenanceMode()

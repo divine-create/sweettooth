@@ -15,8 +15,3 @@ Schedule::command('accounting:run-depreciation')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/depreciation.log'));
 
-// Auto-clock-out any shifts still open at 11:59 PM daily
-Schedule::command('shifts:auto-clock-out')
-    ->dailyAt('23:59')
-    ->withoutOverlapping();
-
