@@ -33,8 +33,8 @@ class ProductionAccountingService
                 throw new Exception('Recipe not found for production record');
             }
 
-            $rmAccount = GlAccount::where('account_number', '1240')->firstOrFail();
-            $wipAccount = GlAccount::where('account_number', '1250')->firstOrFail();
+            $rmAccount = GlAccount::where('account_number', '1200')->firstOrFail();
+            $wipAccount = GlAccount::where('account_number', '1200')->firstOrFail();
 
             // Calculate raw materials cost from recipe
             $rmCost = $this->calculateRawMaterialsCost($recipe, $production->quantity_produced);
@@ -118,9 +118,9 @@ class ProductionAccountingService
             $branchId = $recipe->branch_id;
 
             // Account numbers match the seeded chart of accounts.
-            $rawMaterials  = GlAccount::where('account_number', '1240')->firstOrFail(); // Raw Materials Inventory
-            $wipAccount    = GlAccount::where('account_number', '1250')->firstOrFail(); // Work in Progress
-            $fgAccount     = GlAccount::where('account_number', '1230')->firstOrFail(); // Finished Goods Inventory
+            $rawMaterials  = GlAccount::where('account_number', '1200')->firstOrFail(); // Raw Materials Inventory
+            $wipAccount    = GlAccount::where('account_number', '1200')->firstOrFail(); // Work in Progress
+            $fgAccount     = GlAccount::where('account_number', '1200')->firstOrFail(); // Finished Goods Inventory
             $laborAccount  = GlAccount::where('account_number', '6020')->firstOrFail(); // Direct Labor
             $overheadAcct  = GlAccount::where('account_number', '6030')->firstOrFail(); // Manufacturing Overhead
             $writeOffAcct  = GlAccount::where('account_number', '5040')->firstOrFail(); // Write-off Loss
@@ -328,7 +328,7 @@ class ProductionAccountingService
 
             $totalRejectionCost = $rmCost + $laborCost + $overheadCost;
 
-            $wipAccount = GlAccount::where('account_number', '1250')->firstOrFail();
+            $wipAccount = GlAccount::where('account_number', '1200')->firstOrFail();
             $writeoffAccount = GlAccount::where('account_number', '5040')->firstOrFail();
 
             // Entry: Debit Writeoff, Credit WIP

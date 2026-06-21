@@ -143,7 +143,7 @@ class GlPostingService
             // Entry B: Record COGS
             // Debit: COGS, Credit: Inventory
             $cogsAccount = $this->getGlAccount('5010');
-            $inventoryAccount = $this->getGlAccount('1220');
+            $inventoryAccount = $this->getGlAccount('1200');
 
             $totalCogs = $sale->saleItems->sum(function ($item) {
                 if (! empty($item->line_cost)) {
@@ -415,7 +415,7 @@ class GlPostingService
                 return true; // No explicit adjustment reason to post
             }
 
-            $inventoryAccount = $this->getGlAccount('1220');
+            $inventoryAccount = $this->getGlAccount('1200');
             $adjustmentAccount = $this->getAdjustmentAccountForType($reason);
 
             $amount = $movement->cost_impact ?? ($movement->quantity * ($movement->unit_cost ?? 0));
@@ -697,7 +697,7 @@ class GlPostingService
 
             $revenueAccount = $this->getGlAccount('4000');
             $receivableAccount = $this->getGlAccount('1100'); // Accounts Receivable
-            $inventoryAccount = $this->getGlAccount('1220');
+            $inventoryAccount = $this->getGlAccount('1200');
             $cogsAccount = $this->getGlAccount('5010');
 
             // Debit: Sales Revenue (reducing revenue)
@@ -872,9 +872,9 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $finishedGoodsAccount = $this->getGlAccount('1220'); // Finished Goods
+            $finishedGoodsAccount = $this->getGlAccount('1200'); // Finished Goods
             $rawMaterialsAccount = $this->getGlAccount('1200'); // Raw Materials
-            $wipAccount = $this->getGlAccount('1210'); // Work in Progress (if exists)
+            $wipAccount = $this->getGlAccount('1200'); // Work in Progress (if exists)
             $laborAccount = $this->getGlAccount('6100'); // Direct Labor (if exists)
             $overheadAccount = $this->getGlAccount('6200'); // Manufacturing Overhead (if exists)
 
@@ -989,7 +989,7 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $inventoryAccount = $this->getGlAccount('1220');
+            $inventoryAccount = $this->getGlAccount('1200');
             $adjustmentAccount = $this->getAdjustmentAccountForType($adjustment->type);
 
             $amount = abs($adjustment->cost_impact);
