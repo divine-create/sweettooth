@@ -111,6 +111,14 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(10)
             ->runInBackground();
         // === END INVENTORY EXPIRY AUTOMATION ===
+
+        // === ACCOUNTING PERIOD AUTO-PROVISIONING ===
+        // Keep the current + next month's periods open so GL posting never stalls.
+        $schedule->command('accounting:ensure-periods')
+            ->dailyAt('00:15')
+            ->withoutOverlapping(10)
+            ->runInBackground();
+        // === END ACCOUNTING PERIOD AUTO-PROVISIONING ===
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
