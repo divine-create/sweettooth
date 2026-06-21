@@ -155,8 +155,8 @@ class GlPostingService
 
             // Entry B: Record COGS
             // Debit: COGS, Credit: Inventory
-            $cogsAccount = $this->getGlAccount('5010');
-            $inventoryAccount = $this->getGlAccount('1200');
+            $cogsAccount = $this->account('cogs');
+            $inventoryAccount = $this->account('inventory');
 
             $totalCogs = $sale->saleItems->sum(function ($item) {
                 if (! empty($item->line_cost)) {
@@ -258,8 +258,8 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $inventoryAccount = $this->getGlAccount('1200');
-            $apAccount = $this->getGlAccount('2010');
+            $inventoryAccount = $this->account('inventory');
+            $apAccount = $this->account('accounts_payable');
 
             $landingCost = $purchase->total_fob_ngn + ($purchase->other_costs ?? 0);
 
@@ -332,11 +332,11 @@ class GlPostingService
             $receivableAccount = $this->getReceivableAccountForDepartment($department);
             $cashAccount = null;
             if (strtolower($payment->payment_method) === 'pos') {
-                $cashAccount = $this->getGlAccount($this->getCashAccountNumberForPaymentMethod('pos'));
+                $cashAccount = $this->account($this->getCashAccountKeyForPaymentMethod('pos'));
             } else {
                 $cashAccount = $payment->bankAccount?->glAccount
                     ?? ($department?->cashAccount)
-                    ?? $this->getGlAccount($this->getCashAccountNumberForPaymentMethod($payment->payment_method));
+                    ?? $this->account($this->getCashAccountKeyForPaymentMethod($payment->payment_method));
             }
 
             // Debit: Cash/Bank
@@ -416,7 +416,7 @@ class GlPostingService
                 return true; // No explicit adjustment reason to post
             }
 
-            $inventoryAccount = $this->getGlAccount('1200');
+            $inventoryAccount = $this->account('inventory');
             $adjustmentAccount = $this->getAdjustmentAccountForType($reason);
 
             $amount = $movement->cost_impact ?? ($movement->quantity * ($movement->unit_cost ?? 0));
@@ -623,7 +623,7 @@ class GlPostingService
 
             // Determine payment account
             $cashAccount = $claim->paidViaBankAccount?->glAccount
-                ?? $this->getGlAccount('1010');
+                ?? $this->account('cash_on_hand');
 
             // Post each expense item to its respective expense account
             foreach ($claim->items as $item) {
@@ -696,10 +696,10 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $revenueAccount = $this->getGlAccount('4000');
-            $receivableAccount = $this->getGlAccount('1100'); // Accounts Receivable
-            $inventoryAccount = $this->getGlAccount('1200');
-            $cogsAccount = $this->getGlAccount('5010');
+            $revenueAccount = $this->account('sales_revenue');
+            $receivableAccount = $this->account('accounts_receivable'); // Accounts Receivable
+            $inventoryAccount = $this->account('inventory');
+            $cogsAccount = $this->account('cogs');
 
             // Debit: Sales Revenue (reducing revenue)
             $this->createEntry([
@@ -805,8 +805,8 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $apAccount = $this->getGlAccount('2010');
-            $inventoryAccount = $this->getGlAccount('1200');
+            $apAccount = $this->account('accounts_payable');
+            $inventoryAccount = $this->account('inventory');
 
             // Debit: Accounts Payable (reducing what we owe)
             $this->createEntry([
@@ -873,9 +873,9 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $finishedGoodsAccount = $this->getGlAccount('1200'); // Finished Goods
-            $rawMaterialsAccount = $this->getGlAccount('1200'); // Raw Materials
-            $wipAccount = $this->getGlAccount('1200'); // Work in Progress (if exists)
+            $finishedGoodsAccount = $this->account('inventory'); // Finished Goods
+            $rawMaterialsAccount = $this->account('inventory'); // Raw Materials
+            $wipAccount = $this->account('inventory'); // Work in Progress (if exists)
             $laborAccount = $this->getGlAccount('6100'); // Direct Labor (if exists)
             $overheadAccount = $this->getGlAccount('6200'); // Manufacturing Overhead (if exists)
 
@@ -990,7 +990,7 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $inventoryAccount = $this->getGlAccount('1200');
+            $inventoryAccount = $this->account('inventory');
             $adjustmentAccount = $this->getAdjustmentAccountForType($adjustment->type);
 
             $amount = abs($adjustment->cost_impact);
@@ -1125,18 +1125,18 @@ class GlPostingService
     /**
      * Get appropriate cash account number based on payment method
      */
-    protected function getCashAccountNumberForPaymentMethod(string $paymentMethod): string
+    protected function getCashAccountKeyForPaymentMethod(string $paymentMethod): string
     {
         $mapping = [
-            'cash' => '1010',              // Cash - Head Office
-            'transfer' => '1050',          // Bank Account - Main
-            'bank_transfer' => '1050',     // Bank Account - Main
-            'card' => '1050',              // Bank Account - Main
-            'pos' => '1060',               // POS Clearing
-            'cheque' => '1050',            // Bank Account - Main
+            'cash' => 'cash_on_hand',
+            'transfer' => 'bank_main',
+            'bank_transfer' => 'bank_main',
+            'card' => 'bank_main',
+            'pos' => 'pos_clearing',
+            'cheque' => 'bank_main',
         ];
 
-        return $mapping[$paymentMethod] ?? '1010';
+        return $mapping[$paymentMethod] ?? 'cash_on_hand';
     }
 
     /**
@@ -1334,7 +1334,7 @@ class GlPostingService
                 throw new Exception('No open accounting period found');
             }
 
-            $apAccount = $this->getGlAccount('2010');
+            $apAccount = $this->account('accounts_payable');
             $cashAccount = $payment->bankAccount?->glAccount ?? $this->getGlAccount('1050');
 
             $this->createEntry([
@@ -1468,7 +1468,7 @@ class GlPostingService
 
             $assetAccount = $this->getGlAccount('1500'); // Fixed Assets
             $creditAccount = $asset->funding_source === 'ap'
-                ? $this->getGlAccount('2010')
+                ? $this->account('accounts_payable')
                 : ($asset->bankAccount?->glAccount ?? $this->getGlAccount('1050'));
 
             $this->createEntry([
@@ -1769,7 +1769,7 @@ class GlPostingService
             return $department->revenueAccount;
         }
 
-        return $this->getGlAccount('4000');
+        return $this->account('sales_revenue');
     }
 
     /**
@@ -1781,7 +1781,7 @@ class GlPostingService
             return $department->taxAccount;
         }
 
-        return $this->getGlAccount('2020');
+        return $this->account('sales_tax_payable');
     }
 
     /**
@@ -1793,7 +1793,7 @@ class GlPostingService
             return $department->receivableAccount;
         }
 
-        return $this->getGlAccount('1100');
+        return $this->account('accounts_receivable');
     }
 
     /**
@@ -1810,8 +1810,7 @@ class GlPostingService
             return $department->cashAccount;
         }
 
-        $cashAccountNumber = $this->getCashAccountNumberForPaymentMethod($paymentMethod);
-        return $this->getGlAccount((string) $cashAccountNumber);
+        return $this->account($this->getCashAccountKeyForPaymentMethod($paymentMethod));
     }
 
     private function dispatchGlFailureNotification(string $entityType, string $entityId, string $error): void
