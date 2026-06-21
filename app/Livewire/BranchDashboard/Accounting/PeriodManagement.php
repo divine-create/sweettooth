@@ -56,9 +56,12 @@ class PeriodManagement extends Component
             return;
         }
 
-        // Check if period already exists
+        $branchId = current_branch_id();
+
+        // Check if period already exists (for this branch)
         $exists = AccountingPeriod::where('year', $this->newYear)
             ->where('month', $this->newMonth)
+            ->where('branch_id', $branchId)
             ->exists();
 
         if ($exists) {
@@ -76,6 +79,7 @@ class PeriodManagement extends Component
         $endDate = $startDate->copy()->endOfMonth();
 
         AccountingPeriod::create([
+            'branch_id' => $branchId,
             'year' => $this->newYear,
             'month' => $this->newMonth,
             'period_start' => $startDate,
