@@ -692,7 +692,7 @@
                     @endphp
                     @if($sale)
                         <div class="text-center mb-4">
-                            <div class="text-2xl font-bold">{{ \App\Helpers\Settings::businessConfiguration('business_name', config('app.name')) }}</div>
+                            <div class="text-2xl font-bold">{{ $departmentName ?: \App\Helpers\Settings::businessConfiguration('business_name', config('app.name')) }}</div>
                             <div class="text-sm text-zinc-600">Sales Receipt</div>
                             <div class="text-xs text-zinc-500 mt-1">{{ $sale->sale_number }}</div>
                             <div class="text-xs text-zinc-500">{{ $sale->sale_time->format('d M Y, h:i A') }}</div>

@@ -156,7 +156,7 @@
         <div class="relative w-full max-w-sm mx-auto bg-white shadow-2xl" id="bill-to-print">
             <div class="p-6">
                 <div class="text-center mb-4">
-                    <div class="text-2xl font-bold">{{ \App\Helpers\Settings::businessConfiguration('business_name', config('app.name')) }}</div>
+                    <div class="text-2xl font-bold">{{ $departmentName ?: \App\Helpers\Settings::businessConfiguration('business_name', config('app.name')) }}</div>
                     @if(!empty($branchName))
                         <div class="text-xs text-zinc-500">{{ $branchName }}</div>
                     @endif
