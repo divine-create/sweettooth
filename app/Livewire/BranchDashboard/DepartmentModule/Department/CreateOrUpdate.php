@@ -97,6 +97,7 @@ class CreateOrUpdate extends Component
     public ?int $tax_account_id = null;
     public ?int $receivable_account_id = null;
     public ?int $cash_account_id = null;
+    public ?int $expense_account_id = null;
 
     /**
      * ID of department being edited (create mode = empty)
@@ -209,6 +210,7 @@ class CreateOrUpdate extends Component
             'revenue' => $accounts->where('account_type', 'revenue')->values(),
             'tax'     => $accounts->whereIn('account_type', ['liability', 'tax'])->values(),
             'asset'   => $accounts->where('account_type', 'asset')->values(),
+            'expense' => $accounts->where('account_type', 'expense')->values(),
         ];
     }
 
@@ -274,6 +276,7 @@ class CreateOrUpdate extends Component
         $this->tax_account_id = $department->tax_account_id;
         $this->receivable_account_id = $department->receivable_account_id;
         $this->cash_account_id = $department->cash_account_id;
+        $this->expense_account_id = $department->expense_account_id;
     }
 
     /**
@@ -298,6 +301,7 @@ class CreateOrUpdate extends Component
         $this->tax_account_id = null;
         $this->receivable_account_id = null;
         $this->cash_account_id = null;
+        $this->expense_account_id = null;
     }
 
     /**
@@ -327,6 +331,7 @@ class CreateOrUpdate extends Component
         $this->validateGlAccountType($this->tax_account_id, ['liability', 'tax'], 'tax_account_id');
         $this->validateGlAccountType($this->receivable_account_id, ['asset'], 'receivable_account_id');
         $this->validateGlAccountType($this->cash_account_id, ['asset'], 'cash_account_id');
+        $this->validateGlAccountType($this->expense_account_id, ['expense'], 'expense_account_id');
 
         if ($this->getErrorBag()->isNotEmpty()) {
             return;
@@ -456,6 +461,7 @@ class CreateOrUpdate extends Component
             'tax_account_id' => $this->tax_account_id,
             'receivable_account_id' => $this->receivable_account_id,
             'cash_account_id' => $this->cash_account_id,
+            'expense_account_id' => $this->expense_account_id,
         ];
 
         if ($this->isEditing && $this->selectedDepartmentId) {

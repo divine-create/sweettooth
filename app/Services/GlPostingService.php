@@ -9,6 +9,7 @@ use App\Models\Sale;
 use App\Models\Purchase;
 use App\Models\Payment;
 use App\Models\StockMovement;
+use App\Models\Department;
 use App\Models\AccountTransfer;
 use App\Models\ExpenseClaim;
 use App\Models\CreditNote;
@@ -497,6 +498,93 @@ class GlPostingService
                 'error' => $e->getMessage(),
             ]);
             $this->dispatchGlFailureNotification('inventory_adjustment', (string) $movement->id, $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Post a material/consumable dispatch to a NON-production department as an
+     * expense (e.g. Cleaning consuming cleaning agents).
+     *
+     * Dr [department expense account] · Cr Inventory, at moving-average cost.
+     * Production dispatches are intentionally NOT posted here — under the
+     * one-box model their value stays inside inventory until sold.
+     */
+    public function postMaterialConsumption(StockMovement $movement, Department $department, float $unitCost): bool
+    {
+        try {
+            DB::beginTransaction();
+            $this->branchId = $movement->branch_id;
+
+            if ($this->alreadyPosted(StockMovement::class, (int) $movement->id, ['material_dispatch'])) {
+                DB::commit();
+                return true;
+            }
+
+            $amount = round(abs((float) $movement->quantity) * $unitCost, 2);
+
+            if ($amount <= 0) {
+                // No cost basis (e.g. item has no average cost yet) — nothing to post.
+                DB::commit();
+                return true;
+            }
+
+            $period = $this->getCurrentPeriod();
+            if (! $period) {
+                throw new Exception('No open accounting period found');
+            }
+
+            $expenseAccount = $this->getExpenseAccountForDepartment($department);
+            $inventoryAccount = $this->account('inventory');
+
+            $reference = "MTD-{$movement->id}";
+            $deptName = $department->name ?? 'Department';
+            $entryDate = $movement->movement_date ?? $movement->created_at;
+
+            // Dr Department Expense
+            $this->createEntry([
+                'gl_account_id' => $expenseAccount->id,
+                'accounting_period_id' => $period->id,
+                'entry_type' => 'material_dispatch',
+                'reference_type' => StockMovement::class,
+                'reference_id' => $movement->id,
+                'reference_number' => $reference,
+                'description' => "Material consumption - {$deptName}",
+                'debit' => $amount,
+                'credit' => 0,
+                'entry_date' => $entryDate,
+                'status' => 'draft',
+                'entered_by_id' => auth()->id(),
+                'cost_center' => $deptName,
+            ])->post(auth()->id());
+
+            // Cr Inventory
+            $this->createEntry([
+                'gl_account_id' => $inventoryAccount->id,
+                'accounting_period_id' => $period->id,
+                'entry_type' => 'material_dispatch',
+                'reference_type' => StockMovement::class,
+                'reference_id' => $movement->id,
+                'reference_number' => $reference,
+                'description' => "Inventory issued to {$deptName}",
+                'debit' => 0,
+                'credit' => $amount,
+                'entry_date' => $entryDate,
+                'status' => 'draft',
+                'entered_by_id' => auth()->id(),
+                'cost_center' => $deptName,
+            ])->post(auth()->id());
+
+            DB::commit();
+            return true;
+        } catch (Exception $e) {
+            DB::rollBack();
+            \Log::error('GL Posting Error - Material Consumption', [
+                'movement_id' => $movement->id,
+                'department_id' => $department->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            $this->dispatchGlFailureNotification('material_dispatch', (string) $movement->id, $e->getMessage());
             throw $e;
         }
     }
@@ -1770,6 +1858,19 @@ class GlPostingService
         }
 
         return $this->account('sales_revenue');
+    }
+
+    /**
+     * Department-specific expense account with fallback to the global
+     * consumables_expense default.
+     */
+    protected function getExpenseAccountForDepartment($department): GlAccount
+    {
+        if ($department && $department->expenseAccount) {
+            return $department->expenseAccount;
+        }
+
+        return $this->account('consumables_expense');
     }
 
     /**

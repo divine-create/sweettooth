@@ -137,6 +137,9 @@ class MaterialApprovals extends Component
             $quantityToDispatch = $item['quantity_approved'] - $item['quantity_dispatched'];
 
             if ($quantityToDispatch > 0) {
+                $movement = null;
+                $unitCost = 0.0;
+
                 // Deplete inventory stock
                 $stock = Stock::where('branch_id', $branchId)
                     ->where('item_id', $item['item_id'])
@@ -145,6 +148,8 @@ class MaterialApprovals extends Component
                 if ($stock) {
                     $oldQty = (float) $stock->quantity_available;
                     $newQty = $oldQty - $quantityToDispatch;
+                    // Capture moving-average cost before depletion for GL posting.
+                    $unitCost = (float) $stock->average_cost;
                     $stock->quantity_available = $newQty;
                     $stock->save();
 
@@ -162,7 +167,7 @@ class MaterialApprovals extends Component
                     }
 
                     // Record stock movement
-                    StockMovement::create([
+                    $movement = StockMovement::create([
                         'stock_id' => $stock->id,
                         'branch_id' => $branchId,
                         'type' => 'out',
@@ -201,6 +206,22 @@ class MaterialApprovals extends Component
                         'dispatched_by_id' => $actor?->id,
                         'dispatched_by_type' => get_class($actor),
                     ];
+
+                    // Non-production consumption (e.g. Cleaning using cleaning
+                    // agents): expense the value out of inventory to the
+                    // department's expense account. Production stays GL-neutral.
+                    if ($movement && $targetDept) {
+                        try {
+                            app(\App\Services\GlPostingService::class)
+                                ->postMaterialConsumption($movement, $targetDept, $unitCost);
+                        } catch (\Throwable $e) {
+                            Log::error('Material consumption GL posting failed', [
+                                'movement_id' => $movement->id,
+                                'department_id' => $targetDept->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
                 }
 
                 $detail->quantity_dispatched += $quantityToDispatch;

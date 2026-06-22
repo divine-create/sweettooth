@@ -186,6 +186,17 @@
                     </select>
                     @error('cash_account_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Expense Account <span class="text-xs text-zinc-400">(Expense type — non-production material consumption posts here)</span></label>
+                    <select wire:model="expense_account_id" class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm">
+                        <option value="">-- None (uses default Consumables Expense) --</option>
+                        @foreach($this->getGlAccountsByType()['expense'] as $acct)
+                            <option value="{{ $acct->id }}">{{ $acct->account_number }} — {{ $acct->account_name }}</option>
+                        @endforeach
+                    </select>
+                    @error('expense_account_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
             </div>
 
             <button type="button" wire:click="initiateSave"

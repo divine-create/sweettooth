@@ -24,6 +24,7 @@ class Department extends Model
         'tax_account_id',
         'receivable_account_id',
         'cash_account_id',
+        'expense_account_id',
         'bank_account_id',
     ];
 
@@ -83,6 +84,15 @@ class Department extends Model
     public function cashAccount()
     {
         return $this->belongsTo(GlAccount::class, 'cash_account_id');
+    }
+
+    /**
+     * Get the expense GL account for this department (material/consumable
+     * dispatches to non-production departments post here).
+     */
+    public function expenseAccount()
+    {
+        return $this->belongsTo(GlAccount::class, 'expense_account_id');
     }
 
     /**
