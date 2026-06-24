@@ -58,6 +58,16 @@ class ValidateSalesDepartmentContext
                 // Sales managers can access all sales departments in the category.
                 // Other roles are restricted to their assigned sales department.
                 $userLevel = $this->getUserRoleLevel($employee);
+
+                // Level 4+ (Admin tier — e.g. Operations Manager) oversees all departments
+                // in the branch, across categories. Consistent with DepartmentScopeMiddleware.
+                // The department is already confirmed to belong to the user's branch above,
+                // and the route's view-sales permission gate still governs entry here.
+                if ($userLevel >= 4) {
+                    $request->merge(['current_department' => $department]);
+                    return $next($request);
+                }
+
                 $salesRoles = [
                     'Sales Manager', 'Sales Staff', 'Floor Manager', 'Assistant Shop Floor Manager',
                     'Cashier', 'Wait Staff', 'Lobby Host', 'Lobby Host Supervisor',
