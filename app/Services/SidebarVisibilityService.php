@@ -282,7 +282,9 @@ class SidebarVisibilityService
     public static function canSeeAdministration($user = null): bool
     {
         $user = $user ?? auth()->user();
-        return self::getRoleLevel($user) >= self::LEVEL_ADMIN
+        // Blanket access is reserved for Super Admin (level 5). Level-4 oversight
+        // roles (e.g. Operations Manager) must hold an explicit admin permission.
+        return self::getRoleLevel($user) >= self::LEVEL_SUPER_ADMIN
             || self::hasAnyPermission($user, ['manage-organization', 'manage-branches']);
     }
 
@@ -297,8 +299,8 @@ class SidebarVisibilityService
             return true;
         }
 
-        // Admins can see organization
-        if ($level >= self::LEVEL_ADMIN) {
+        // Blanket access reserved for Super Admin; level-4 oversight roles need permission/category
+        if ($level >= self::LEVEL_SUPER_ADMIN) {
             return true;
         }
 
@@ -322,8 +324,8 @@ class SidebarVisibilityService
             return true;
         }
 
-        // Admins can see employee management
-        if ($level >= self::LEVEL_ADMIN) {
+        // Blanket access reserved for Super Admin; level-4 oversight roles need permission/category
+        if ($level >= self::LEVEL_SUPER_ADMIN) {
             return true;
         }
 
@@ -339,7 +341,7 @@ class SidebarVisibilityService
     public static function canSeeDepartments($user = null): bool
     {
         $user = $user ?? auth()->user();
-        return self::getRoleLevel($user) >= self::LEVEL_ADMIN
+        return self::getRoleLevel($user) >= self::LEVEL_SUPER_ADMIN
             || self::hasAnyPermission($user, ['manage-departments', 'manage-organization']);
     }
 
@@ -348,7 +350,7 @@ class SidebarVisibilityService
         $user = $user ?? auth()->user();
         $level = self::getRoleLevel($user);
 
-        return $level >= self::LEVEL_ADMIN
+        return $level >= self::LEVEL_SUPER_ADMIN
             || self::hasAnyPermission($user, ['manage-leave', 'view-hr-reports']);
     }
 
@@ -369,8 +371,8 @@ class SidebarVisibilityService
             return true;
         }
 
-        // Admins can see inventory
-        if ($level >= self::LEVEL_ADMIN) {
+        // Blanket access reserved for Super Admin; level-4 oversight roles need permission/category
+        if ($level >= self::LEVEL_SUPER_ADMIN) {
             return true;
         }
 
@@ -578,8 +580,8 @@ class SidebarVisibilityService
             return true;
         }
 
-        // Admins can see accounting
-        if ($level >= self::LEVEL_ADMIN) {
+        // Blanket access reserved for Super Admin; level-4 oversight roles need permission/category
+        if ($level >= self::LEVEL_SUPER_ADMIN) {
             return true;
         }
 
