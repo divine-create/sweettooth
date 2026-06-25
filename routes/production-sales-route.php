@@ -35,6 +35,9 @@ Route::prefix('production')->name('production.')->middleware(['department.scope'
         // Production Store
         Route::get('store/{deptSlug}', App\Livewire\BranchDashboard\Production\Store\Stock::class)->name('store.stock');
 
+        // Finished Goods - Daily Sheet (Opening / Produced / Sent out / Closing)
+        Route::get('finished-goods/{deptSlug?}', App\Livewire\BranchDashboard\Production\FinishedGoods\Index::class)->name('finished-goods.index');
+
         // Quick Produce - Finished Goods
         Route::get('quick-produce/finished-good/{deptSlug}', App\Livewire\BranchDashboard\Production\QuickProduceFinishedGood::class)->name('quick-produce.finished-good');
 

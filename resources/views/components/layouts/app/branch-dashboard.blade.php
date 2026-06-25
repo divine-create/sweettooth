@@ -755,6 +755,12 @@
                             {{ __('Production Store') }}
                         </flux:navlist.item>
 
+                        <flux:navlist.item icon="clipboard-document-list"
+                            :href="branch_route('branch-dashboard.production.finished-goods.index', ['deptSlug' => $dept->slug])"
+                            :current="request()->routeIs('branch-dashboard.production.finished-goods.*')" wire:navigate>
+                            {{ __('Finished Goods') }}
+                        </flux:navlist.item>
+
                         <flux:navlist.item icon="play"
                             :href="branch_route('branch-dashboard.production.quick-produce.finished-good', ['deptSlug' => $dept->slug])"
                             :current="request()->routeIs('branch-dashboard.production.quick-produce.finished-good.*')" wire:navigate>
