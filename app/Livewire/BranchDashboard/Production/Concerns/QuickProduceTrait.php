@@ -468,31 +468,51 @@ trait QuickProduceTrait
         }
 
         $record = \App\Models\ProductionRecord::find($this->lastProductionRecordId);
+        $store = $this->productionStore;
 
-        ProductDispatch::create([
-            'branch_id' => $this->getBranchId(),
-            'department_id' => $this->department->id,
-            'production_record_id' => $this->lastProductionRecordId,
-            'daily_produce_id' => $record?->daily_produce_id,
-            'production_shift_id' => $shift?->id,
-            'shift_type' => $shift?->shift_type,
-            'recipe_id' => $this->selectedRecipe->id,
-            'product_id' => $this->selectedRecipe->product_id,
-            'sales_department_id' => $this->selectedSalesDepartmentId,
-            'quantity' => $this->yieldOutput,
-            'uom' => $this->selectedRecipe->unitOfMeasure->symbol ?? 'units',
-            'status' => 'pending_verification',
-            'dispatched_by_id' => $actor?->id,
-            'dispatched_by_type' => get_class($actor),
-            'dispatch_date' => now()->toDateString(),
-            'notes' => 'Quick Produce Dispatch',
-        ]);
+        DB::transaction(function () use ($record, $store, $actor, $shift) {
+            $dispatch = ProductDispatch::create([
+                'branch_id' => $this->getBranchId(),
+                'department_id' => $this->department->id,
+                'production_record_id' => $this->lastProductionRecordId,
+                'daily_produce_id' => $record?->daily_produce_id,
+                'production_shift_id' => $shift?->id,
+                'shift_type' => $shift?->shift_type,
+                'recipe_id' => $this->selectedRecipe->id,
+                'product_id' => $this->selectedRecipe->product_id,
+                'sales_department_id' => $this->selectedSalesDepartmentId,
+                'quantity' => $this->yieldOutput,
+                'uom' => $this->selectedRecipe->unitOfMeasure->symbol ?? 'units',
+                'status' => 'pending_verification',
+                'dispatched_by_id' => $actor?->id,
+                'dispatched_by_type' => get_class($actor),
+                'dispatch_date' => now()->toDateString(),
+                'notes' => 'Quick Produce Dispatch',
+            ]);
 
-        // Update production record remaining quantity if linked
-        if ($record) {
-            $record->quantity_sent_out += $this->yieldOutput;
-            $record->updateQuantityRemaining();
-        }
+            // Update production record remaining quantity if linked
+            if ($record) {
+                $record->quantity_sent_out += $this->yieldOutput;
+                $record->updateQuantityRemaining();
+            }
+
+            // Draw down the held finished-goods balance — the goods have left
+            // production for sales (the shop confirms receipt separately).
+            if ($store) {
+                $product = \App\Models\Product::find($this->selectedRecipe->product_id);
+                if ($product) {
+                    app(ProductionStoreService::class)->recordDispatch(
+                        $store,
+                        $product,
+                        (float) $this->yieldOutput,
+                        'transfer',
+                        $dispatch,
+                        $actor,
+                        'Dispatched to sales (pending verification)'
+                    );
+                }
+            }
+        });
 
         $this->toast()->success('Dispatched to Sales! Pending confirmation.')->send();
         $this->resetProduction();
@@ -563,6 +583,24 @@ trait QuickProduceTrait
         if ($record) {
             $record->quantity_for_order += $this->yieldOutput;
             $record->updateQuantityRemaining();
+        }
+
+        // Draw down the held finished-goods balance — the goods have left
+        // production to fulfil a customer order.
+        $store = $this->productionStore;
+        if ($store) {
+            $orderProduct = \App\Models\Product::find($this->selectedRecipe->product_id);
+            if ($orderProduct) {
+                app(ProductionStoreService::class)->recordDispatch(
+                    $store,
+                    $orderProduct,
+                    (float) $this->yieldOutput,
+                    'out',
+                    $dispatch,
+                    $actor,
+                    "Dispatched to customer order {$order->order_number}"
+                );
+            }
         }
 
         // Advance customer order status (IN_PRODUCTION or COMPLETED)

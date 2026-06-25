@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\Item;
 use App\Models\ItemDispatch;
 use App\Models\ItemRequest;
+use App\Models\ProductDispatch;
 use App\Models\ProductionStore;
 use App\Models\ProductionStoreMovement;
 use App\Models\ProductionStoreStock;
@@ -103,6 +104,106 @@ class ProductionStoreService
         ]);
 
         return $stock;
+    }
+
+    /**
+     * Draw down held finished-goods stock when it is dispatched out of production
+     * (to a sales department or a customer order). The goods have physically left
+     * production, so the held balance is reduced and an out/transfer movement is
+     * recorded. The balance is allowed to go negative on purpose: a negative held
+     * balance flags "dispatched more than was produced/held" for reconciliation.
+     */
+    public function recordDispatch(
+        ProductionStore $store,
+        $product,
+        float $quantity,
+        string $type = 'transfer',
+        $reference = null,
+        $actor = null,
+        ?string $note = null
+    ): ProductionStoreStock {
+        $productId = $product instanceof \Illuminate\Database\Eloquent\Model ? $product->id : $product;
+        $unitCost = $product instanceof \App\Models\Product ? (float) ($product->cost ?? 0) : 0.0;
+        $actor = $actor ?? current_actor();
+        $type = in_array($type, ['out', 'transfer'], true) ? $type : 'transfer';
+
+        $stock = ProductionStoreStock::firstOrNew([
+            'store_id' => $store->id,
+            'item_id' => $productId,
+        ]);
+
+        $before = (float) ($stock->quantity_available ?? 0);
+        $after = $before - $quantity;
+        $stock->quantity_available = $after;
+        $stock->save();
+
+        ProductionStoreMovement::create([
+            'store_id' => $store->id,
+            'item_id' => $productId,
+            'type' => $type,
+            'quantity' => -$quantity,
+            'quantity_before' => $before,
+            'quantity_after' => $after,
+            'unit_cost' => $unitCost,
+            'reference_type' => $reference ? get_class($reference) : null,
+            'reference_id' => $reference?->id,
+            'moved_by_id' => $actor?->id,
+            'moved_by_type' => $actor ? get_class($actor) : null,
+            'movement_date' => now(),
+            'notes' => $note ?? 'Dispatched out of production',
+        ]);
+
+        return $stock;
+    }
+
+    /**
+     * Reconcile production dispatches against what sales actually received, for a
+     * day — the "kitchen sent vs shop received" check. Returns only flagged rows:
+     * those still awaiting verification, or where the received quantity differs
+     * from what was dispatched (a transit shortfall/over-receipt to investigate).
+     *
+     * Pass $productIds to scope to a production department's finished goods.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function getDispatchVariances(string $branchId, $date, ?array $productIds = null): array
+    {
+        $query = ProductDispatch::query()
+            ->where('branch_id', $branchId)
+            ->whereDate('dispatch_date', $date);
+
+        if (! empty($productIds)) {
+            $query->whereIn('product_id', $productIds);
+        }
+
+        $rows = [];
+        foreach ($query->with('product')->get() as $d) {
+            $dispatched = (float) $d->quantity;
+            $received = $d->received_quantity !== null ? (float) $d->received_quantity : null;
+            $variance = $received === null ? null : $received - $dispatched;
+
+            // Flag if not yet confirmed received, or received differs from sent.
+            $flagged = $d->status !== 'received'
+                ? true
+                : ($variance !== null && abs($variance) > 0.001);
+
+            if (! $flagged) {
+                continue;
+            }
+
+            $rows[] = [
+                'dispatch_id' => $d->id,
+                'product_id' => $d->product_id,
+                'product_name' => $d->product?->name ?? 'Unknown',
+                'sales_department_id' => $d->sales_department_id,
+                'dispatched' => $dispatched,
+                'received' => $received,
+                'variance' => $variance,
+                'status' => $d->status,
+            ];
+        }
+
+        return $rows;
     }
 
     /**
