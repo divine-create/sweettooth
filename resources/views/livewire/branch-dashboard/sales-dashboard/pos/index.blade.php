@@ -602,6 +602,16 @@
                         </button>
                         <button type="button" @click="showReceipt = true" class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm">Print</button>
                     </div>
+                    <button type="button" wire:click="openQuotationModal"
+                        @if(count($cart) === 0) disabled @endif
+                        class="mt-2 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                        Save as Quotation
+                    </button>
+                    @if($convertingQuotationId)
+                        <div class="mt-2 text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 rounded-md px-2 py-1.5 text-center">
+                            Converting quotation — complete the sale to finalize it.
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -849,6 +859,51 @@
                             Create Table
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Save as Quotation Modal -->
+    @if($showQuotationModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/50" wire:click="closeQuotationModal"></div>
+            <div class="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-xl shadow-2xl">
+                <div class="flex items-center justify-between p-5 border-b border-zinc-200 dark:border-zinc-700">
+                    <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Save as Quotation</h3>
+                    <button type="button" wire:click="closeQuotationModal" class="text-zinc-400 hover:text-zinc-600 text-2xl leading-none">&times;</button>
+                </div>
+                <div class="p-5 space-y-3">
+                    <div>
+                        <label class="block text-sm text-zinc-600 dark:text-zinc-300 mb-1">Customer name</label>
+                        <input type="text" wire:model="quotationCustomerName" placeholder="Optional"
+                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 text-sm" />
+                    </div>
+                    <div>
+                        <label class="block text-sm text-zinc-600 dark:text-zinc-300 mb-1">Customer phone</label>
+                        <input type="text" wire:model="quotationCustomerPhone" placeholder="Optional"
+                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 text-sm" />
+                    </div>
+                    <div>
+                        <label class="block text-sm text-zinc-600 dark:text-zinc-300 mb-1">Valid until</label>
+                        <input type="date" wire:model="quotationValidUntil"
+                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 text-sm" />
+                    </div>
+                    <div>
+                        <label class="block text-sm text-zinc-600 dark:text-zinc-300 mb-1">Notes</label>
+                        <textarea wire:model="quotationNotes" rows="2" placeholder="Optional"
+                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 text-sm"></textarea>
+                    </div>
+                    <div class="flex justify-between items-center pt-1 text-sm">
+                        <span class="text-zinc-500">Total</span>
+                        <span class="font-semibold">{{ $this->formatCurrency($total) }}</span>
+                    </div>
+                </div>
+                <div class="flex gap-2 p-5 border-t border-zinc-200 dark:border-zinc-700">
+                    <button type="button" wire:click="closeQuotationModal"
+                        class="flex-1 px-4 py-2 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200">Cancel</button>
+                    <button type="button" wire:click="saveAsQuotation"
+                        class="flex-1 px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-500">Save Quotation</button>
                 </div>
             </div>
         </div>

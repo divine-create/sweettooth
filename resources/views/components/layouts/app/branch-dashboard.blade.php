@@ -992,6 +992,16 @@
                             {{ __('Production Dispatches') }}
                         </flux:navlist.item>
 
+                        <flux:navlist.item icon="document-text"
+                            :href="branch_route('branch-dashboard.sales-dashboard.quotations.index', [
+                                'salesDeptSlug' => $dept->slug,
+                                'sales_dept_slug' => $dept->slug,
+                                'page' => 'Quotations' . '_' . $dept->slug
+                            ])"
+                            :current="request()->get('page') === 'Quotations' . '_' . $dept->slug" wire:navigate>
+                            {{ __('Quotations') }}
+                        </flux:navlist.item>
+
                         <flux:navlist.item icon="chart-bar"
                             :href="branch_route('branch-dashboard.sales-dashboard.my-sales.index', [
                                 'salesDeptSlug' => $dept->slug,

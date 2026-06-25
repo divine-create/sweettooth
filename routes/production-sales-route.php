@@ -131,6 +131,11 @@ Route::prefix('sales-dashboard')->name('sales-dashboard.')->middleware([
             Route::get('/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\ShiftClosing\Index::class)->name('index');
         });
 
+        // Quotations / draft orders - no workflow validation (no stock/GL impact)
+        Route::prefix('quotations')->name('quotations.')->group(function () {
+            Route::get('/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\Quotations\Index::class)->name('index');
+        });
+
         // Callbacks - Sales callbacks management
         Route::prefix('callbacks')->name('callbacks.')->group(function () {
             Route::get('/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\Callbacks\Index::class)->name('index');

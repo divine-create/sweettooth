@@ -10,6 +10,8 @@ use App\Models\MaterialRequestDispatch;
 use App\Models\Product;
 use App\Models\ProductDispatch;
 use App\Models\ProductStock;
+use App\Models\Quotation;
+use App\Models\QuotationItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Payment;
@@ -69,6 +71,16 @@ class Index extends BaseComponent
         parent::__set($name, $value);
     }
 
+    // Quotations / draft orders
+    public bool $showQuotationModal = false;
+    public string $quotationCustomerName = '';
+    public string $quotationCustomerPhone = '';
+    public ?string $quotationValidUntil = null;
+    public string $quotationNotes = '';
+    // Set when the current cart was loaded from a quotation; on successful sale
+    // completion the quotation is marked converted and linked to the new sale.
+    public ?int $convertingQuotationId = null;
+
     // Table Management
     public ?int $selectedTableId = null;
     public bool $showTableManagement = false;
@@ -107,6 +119,12 @@ class Index extends BaseComponent
         $this->recalculateTotals();
         $this->recalcPayments();
         $this->checkTableManagement();
+
+        // Arriving from the Quotations list with ?quotation=ID loads it into the cart.
+        $quotationId = (int) (request()->query('quotation') ?? 0);
+        if ($quotationId > 0) {
+            $this->loadQuotationToCart($quotationId);
+        }
     }
 
     #[On('branch-changed')]
@@ -729,6 +747,17 @@ class Index extends BaseComponent
             }
         });
 
+            // If this sale was converted from a quotation, close the quotation out
+            // and link it to the new sale.
+            if ($this->convertingQuotationId && $this->currentSaleId) {
+                $quotation = Quotation::find($this->convertingQuotationId);
+                $sale = Sale::find($this->currentSaleId);
+                if ($quotation && $sale && $quotation->status !== 'converted') {
+                    $quotation->markConverted($sale);
+                }
+                $this->convertingQuotationId = null;
+            }
+
             $this->clearCart();
             $this->discount = 0;
             $this->orderType = 'dine-in';
@@ -837,6 +866,146 @@ class Index extends BaseComponent
         $this->discount = (float) $sale->discount;
         $this->orderType = $sale->order_type ?? 'dine-in';
         $this->recalculateTotals();
+    }
+
+    /**
+     * Open the "Save as Quotation" modal. A quotation is a non-binding priced
+     * offer — it never touches stock or the GL, so (unlike completing a sale)
+     * it does not require a verified shift, only a non-empty cart.
+     */
+    public function openQuotationModal(): void
+    {
+        if (empty($this->cart)) {
+            $this->toast()->error('Add items to the cart before saving a quotation.')->send();
+            return;
+        }
+
+        $this->quotationCustomerName = '';
+        $this->quotationCustomerPhone = '';
+        $this->quotationValidUntil = Carbon::now()->addDays(7)->toDateString();
+        $this->quotationNotes = '';
+        $this->showQuotationModal = true;
+    }
+
+    public function closeQuotationModal(): void
+    {
+        $this->showQuotationModal = false;
+    }
+
+    /** Persist the current cart as a quotation. No stock or GL side effects. */
+    public function saveAsQuotation(): void
+    {
+        if (empty($this->cart)) {
+            $this->toast()->error('Cart is empty.')->send();
+            return;
+        }
+
+        $this->validate([
+            'quotationCustomerName' => 'nullable|string|max:255',
+            'quotationCustomerPhone' => 'nullable|string|max:50',
+            'quotationValidUntil' => 'nullable|date',
+            'quotationNotes' => 'nullable|string|max:1000',
+        ]);
+
+        DB::transaction(function () {
+            $quotation = Quotation::create([
+                'quotation_number' => $this->uniqueQuotationNumber(),
+                'branch_id' => $this->branchId,
+                'department_id' => $this->departmentId,
+                'created_by_id' => auth()->id(),
+                'created_by_type' => \App\Models\User::class,
+                'customer_name' => $this->quotationCustomerName ?: null,
+                'customer_phone' => $this->quotationCustomerPhone ?: null,
+                'status' => 'draft',
+                'subtotal' => $this->subtotal,
+                'discount' => (float) ($this->discount ?: 0),
+                'total' => $this->total,
+                'valid_until' => $this->quotationValidUntil ?: null,
+                'notes' => $this->quotationNotes ?: null,
+            ]);
+
+            $sort = 0;
+            foreach ($this->cart as $line) {
+                $qty = (float) ($line['qty'] ?? 0);
+                $price = (float) ($line['price'] ?? 0);
+                QuotationItem::create([
+                    'quotation_id' => $quotation->id,
+                    'product_id' => isset($line['item_id']) ? null : ($line['product_id'] ?? null),
+                    'item_id' => $line['item_id'] ?? null,
+                    'name' => $line['name'] ?? 'Item',
+                    'quantity' => $qty,
+                    'unit_price' => $price,
+                    'subtotal' => $qty * $price,
+                    'sort_order' => $sort++,
+                ]);
+            }
+        });
+
+        $this->showQuotationModal = false;
+        $this->convertingQuotationId = null;
+        $this->toast()->success('Quotation saved.')->send();
+        $this->clearCart();
+    }
+
+    /** Generate a quotation number, retrying on the rare random collision. */
+    protected function uniqueQuotationNumber(): string
+    {
+        do {
+            $number = Quotation::generateNumber();
+        } while (Quotation::where('quotation_number', $number)->exists());
+
+        return $number;
+    }
+
+    /**
+     * Load a quotation's lines into the POS cart so the cashier can take payment
+     * through the normal completeSale() flow. Remembers the quotation id so the
+     * sale, once completed, marks the quotation as converted.
+     */
+    public function loadQuotationToCart(int $quotationId): void
+    {
+        $quotation = Quotation::with(['items.product', 'items.item'])->find($quotationId);
+        if (! $quotation) {
+            $this->toast()->warning('Quotation not found.')->send();
+            return;
+        }
+        if ($quotation->status === 'converted') {
+            $this->toast()->warning('This quotation has already been converted to a sale.')->send();
+            return;
+        }
+
+        $this->cart = [];
+        foreach ($quotation->items as $line) {
+            if ($line->item_id) {
+                $key = 'item_' . $line->item_id;
+                $available = (float) (Stock::where('item_id', $line->item_id)
+                    ->where('branch_id', $this->branchId)
+                    ->value('quantity_available') ?? 0);
+                $this->cart[$key] = [
+                    'item_id' => $line->item_id,
+                    'name' => $line->item->name ?? $line->name,
+                    'price' => (float) $line->unit_price,
+                    'qty' => (float) $line->quantity,
+                    'uom' => $line->item->unitOfMeasure?->symbol ?? '',
+                    'available' => $available,
+                    'type' => 'inventory_item',
+                ];
+            } elseif ($line->product_id) {
+                $this->cart[(string) $line->product_id] = [
+                    'product_id' => $line->product_id,
+                    'name' => $line->product->name ?? $line->name,
+                    'price' => (float) $line->unit_price,
+                    'qty' => (float) $line->quantity,
+                    'low_stock' => false,
+                    'available' => $this->availableQuantity($this->getTodayStockForProduct($line->product_id)),
+                ];
+            }
+        }
+
+        $this->discount = (float) $quotation->discount;
+        $this->convertingQuotationId = $quotation->id;
+        $this->recalculateTotals();
+        $this->toast()->info("Quotation {$quotation->quotation_number} loaded. Take payment to convert it to a sale.")->send();
     }
 
     public function getProductsProperty(): CursorPaginator
