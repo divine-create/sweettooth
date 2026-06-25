@@ -366,44 +366,26 @@ trait QuickProduceTrait
                 // 5b. Track raw material utilization for reporting
                 $this->trackIngredientUtilization($shift, (float) $this->yieldOutput);
 
-                // 6. Only add APPROVED quantity to WIP stock if it's a WIP
-                if ($this->selectedRecipe->is_wip) {
-                    if (!$this->selectedRecipe->product_id) {
-                        throw new \Exception('WIP recipe must be linked to a product for auto-stocking.');
+                // 6. Add APPROVED quantity to the production store as held stock.
+                //    WIP products are intermediate stock consumed by other recipes;
+                //    finished goods are held in production until dispatched to sales.
+                //    Persisting both means the produced quantity not yet sent out
+                //    remains as the closing balance (= next shift's opening).
+                if ($this->approvedQuantity > 0 && $this->selectedRecipe->product_id) {
+                    $producedProduct = \App\Models\Product::find($this->selectedRecipe->product_id);
+
+                    if ($producedProduct) {
+                        app(ProductionStoreService::class)->recordProduction(
+                            $store,
+                            $producedProduct,
+                            (float) $this->approvedQuantity,
+                            $this->selectedRecipe,
+                            $actor,
+                            (bool) $this->selectedRecipe->is_wip
+                        );
                     }
-
-                    if ($this->approvedQuantity > 0) {
-                        $existingStock = ProductionStoreStock::where('store_id', $store->id)
-                            ->where('item_id', $this->selectedRecipe->product_id)
-                            ->first();
-
-                        if ($existingStock) {
-                            $existingStock->quantity_available = $existingStock->quantity_available + $this->approvedQuantity;
-                            $existingStock->save();
-                            $stock = $existingStock;
-                        } else {
-                            $stock = ProductionStoreStock::create([
-                                'store_id' => $store->id,
-                                'item_id' => $this->selectedRecipe->product_id,
-                                'quantity_available' => $this->approvedQuantity,
-                                'quantity_reserved' => 0,
-                                'quantity_minimum' => 0,
-                            ]);
-                        }
-
-                        ProductionStoreMovement::create([
-                            'store_id' => $store->id,
-                            'stock_id' => $stock->id,
-                            'item_id' => $this->selectedRecipe->product_id,
-                            'quantity' => $this->approvedQuantity,
-                            'type' => 'in',
-                            'reference_type' => Recipe::class,
-                            'reference_id' => $this->selectedRecipe->id,
-                            'created_by_id' => $actor?->id,
-                            'created_by_type' => get_class($actor),
-                            'notes' => "WIP Production (Approved): {$this->selectedRecipe->product_name}",
-                        ]);
-                    }
+                } elseif ($this->selectedRecipe->is_wip && ! $this->selectedRecipe->product_id) {
+                    throw new \Exception('WIP recipe must be linked to a product for auto-stocking.');
                 }
                 
                 // If there's rejected quantity, log it for audit/reports

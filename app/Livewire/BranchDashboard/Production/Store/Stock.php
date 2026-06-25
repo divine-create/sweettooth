@@ -70,8 +70,13 @@ class Stock extends Component
             ->first();
 
         $stocks = collect();
-        $stockCounts = ['all' => 0, 'wip' => 0, 'raw' => 0];
+        $stockCounts = ['all' => 0, 'wip' => 0, 'raw' => 0, 'finished' => 0];
         $wipProductIds = [];
+
+        // Raw materials have numeric item_id (Items); products (WIP / finished
+        // goods) have UUID item_id. A product is "finished goods" when it is held
+        // in the store but is NOT a WIP recipe output.
+        $numericRegex = "item_id REGEXP '^[0-9]+$'";
 
         if ($store) {
             $wipProductIds = \App\Models\Recipe::where('is_wip', true)
@@ -90,8 +95,12 @@ class Stock extends Component
                 ->when($this->stockFilter === 'wip', function ($query) use ($wipProductIds) {
                     $query->whereIn('item_id', $wipProductIds);
                 })
-                ->when($this->stockFilter === 'raw', function ($query) use ($wipProductIds) {
-                    $query->whereNotIn('item_id', $wipProductIds);
+                ->when($this->stockFilter === 'raw', function ($query) use ($numericRegex) {
+                    $query->whereRaw($numericRegex);
+                })
+                ->when($this->stockFilter === 'finished', function ($query) use ($wipProductIds, $numericRegex) {
+                    $query->whereRaw("NOT ($numericRegex)")
+                        ->whereNotIn('item_id', $wipProductIds);
                 })
                 ->orderBy('quantity_available', 'desc')
                 ->get();
@@ -114,10 +123,15 @@ class Stock extends Component
                 ->count();
 
             $stockCounts['raw'] = (clone $baseQuery)
+                ->whereRaw($numericRegex)
+                ->count();
+
+            $stockCounts['finished'] = (clone $baseQuery)
+                ->whereRaw("NOT ($numericRegex)")
                 ->whereNotIn('item_id', $wipProductIds)
                 ->count();
 
-            $stockCounts['all'] = $stockCounts['wip'] + $stockCounts['raw'];
+            $stockCounts['all'] = $stockCounts['wip'] + $stockCounts['raw'] + $stockCounts['finished'];
         }
 
         $totalValue = $stocks->sum(function ($stock) {

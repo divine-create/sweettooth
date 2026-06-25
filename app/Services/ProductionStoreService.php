@@ -50,6 +50,62 @@ class ProductionStoreService
     }
 
     /**
+     * Record produced output into the store as held stock.
+     *
+     * Used by the Produce flow for BOTH:
+     *  - WIP products (intermediate stock consumed by other recipes), and
+     *  - finished goods (held in production until dispatched to sales).
+     *
+     * Adds the approved quantity to the product's store balance and writes a
+     * correctly-attributed `in` movement (quantity_before/after + actor), so the
+     * produced quantity not yet sent out remains as the closing balance.
+     */
+    public function recordProduction(
+        ProductionStore $store,
+        $product,
+        float $quantity,
+        ?Recipe $recipe = null,
+        $actor = null,
+        bool $isWip = false
+    ): ProductionStoreStock {
+        $productId = $product instanceof \Illuminate\Database\Eloquent\Model ? $product->id : $product;
+        $unitCost = $product instanceof \App\Models\Product ? (float) ($product->cost ?? 0) : 0.0;
+        $actor = $actor ?? current_actor();
+
+        $stock = ProductionStoreStock::firstOrNew([
+            'store_id' => $store->id,
+            'item_id' => $productId,
+        ]);
+
+        $before = (float) ($stock->quantity_available ?? 0);
+        $stock->quantity_available = $before + $quantity;
+        if (! $stock->average_cost && $unitCost > 0) {
+            $stock->average_cost = $unitCost;
+        }
+        $stock->save();
+
+        ProductionStoreMovement::create([
+            'store_id' => $store->id,
+            'item_id' => $productId,
+            'type' => 'in',
+            'quantity' => $quantity,
+            'quantity_before' => $before,
+            'quantity_after' => $before + $quantity,
+            'unit_cost' => $unitCost,
+            'reference_type' => $recipe ? Recipe::class : null,
+            'reference_id' => $recipe?->id,
+            'moved_by_id' => $actor?->id,
+            'moved_by_type' => $actor ? get_class($actor) : null,
+            'movement_date' => now(),
+            'notes' => ($isWip ? 'WIP' : 'Finished Goods')
+                . ' Production (Approved): '
+                . ($recipe?->product_name ?? ($product->name ?? '')),
+        ]);
+
+        return $stock;
+    }
+
+    /**
      * Consume ingredients from store for production.
      * Returns consumption result with details.
      */
