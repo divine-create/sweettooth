@@ -4,14 +4,18 @@ namespace App\Livewire\BranchDashboard\Production\FinishedGoods;
 
 use App\Models\Department;
 use App\Models\Product;
+use App\Models\ProductDispatch;
 use App\Models\ProductionStore;
 use App\Models\ProductionStoreMovement;
 use App\Models\Recipe;
+use App\Models\Shift;
 use App\Services\ProductionStoreService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use TallStackUi\Traits\Interactions;
 
 /**
  * Daily Finished-Goods Sheet — the digital version of the kitchen's paper
@@ -25,6 +29,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app.branch-dashboard')]
 class Index extends Component
 {
+    use Interactions;
+
     #[Url(keep: true)]
     public ?string $b_id = null;
 
@@ -37,6 +43,24 @@ class Index extends Component
     public string $search = '';
 
     public ?Department $department = null;
+
+    // --- Send to Sales modal state ---
+    public bool $showSendModal = false;
+
+    public ?string $sendProductId = null;
+
+    public string $sendProductName = '';
+
+    public string $sendUom = '';
+
+    public float $sendAvailable = 0.0;
+
+    public $sendQuantity = null;
+
+    public ?int $sendSalesDepartmentId = null;
+
+    /** @var array<int,string> sales departments the product may be sent to (id => name) */
+    public array $sendDepartments = [];
 
     public function mount($deptSlug = null)
     {
@@ -151,6 +175,155 @@ class Index extends Component
         ];
 
         return ['rows' => $rows, 'totals' => $totals];
+    }
+
+    /**
+     * Open the "Send to Sales" modal for one finished-goods product, defaulting
+     * the quantity to its held closing balance for today's sheet.
+     */
+    public function openSendModal(string $productId): void
+    {
+        $sheet = $this->buildSheet();
+        $row = collect($sheet['rows'])->firstWhere('product_id', $productId);
+
+        if (! $row) {
+            $this->toast()->error('Product not found on this sheet.')->send();
+
+            return;
+        }
+
+        $available = (float) $row['closing'];
+
+        if ($available <= 0) {
+            $this->toast()->warning('No held stock available to send for this product.')->send();
+
+            return;
+        }
+
+        $this->sendProductId = $productId;
+        $this->sendProductName = $row['name'];
+        $this->sendUom = $row['uom'];
+        $this->sendAvailable = $available;
+        $this->sendQuantity = $available;
+        $this->sendSalesDepartmentId = null;
+        $this->sendDepartments = $this->resolveSalesDepartmentsForProduct($productId);
+        $this->showSendModal = true;
+    }
+
+    public function closeSendModal(): void
+    {
+        $this->showSendModal = false;
+        $this->sendProductId = null;
+        $this->sendProductName = '';
+        $this->sendUom = '';
+        $this->sendAvailable = 0.0;
+        $this->sendQuantity = null;
+        $this->sendSalesDepartmentId = null;
+        $this->sendDepartments = [];
+    }
+
+    /**
+     * Sales departments a product may be dispatched to — limited to the sales-
+     * category departments the product is assigned to (mirrors the Quick Produce
+     * dispatch scoping).
+     *
+     * @return array<int,string>
+     */
+    protected function resolveSalesDepartmentsForProduct(string $productId): array
+    {
+        $product = Product::with('departments:id')->find($productId);
+
+        if (! $product) {
+            return [];
+        }
+
+        $allowedIds = $product->departments->pluck('id')->all();
+        if ($product->sales_department_id) {
+            $allowedIds[] = (int) $product->sales_department_id;
+        }
+        $allowedIds = array_values(array_unique($allowedIds));
+
+        if (empty($allowedIds)) {
+            return [];
+        }
+
+        return Department::with('category')
+            ->whereHas('category', fn ($q) => $q->whereRaw('LOWER(name) = ?', ['sales']))
+            ->where(fn ($q) => $q->where('branch_id', $this->getBranchId())->orWhereNull('branch_id'))
+            ->where('is_active', true)
+            ->whereIn('id', $allowedIds)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    /**
+     * Dispatch held finished goods to a sales department. Creates a
+     * ProductDispatch (pending_verification) and draws the held balance down via
+     * an out/transfer movement, so the sheet's "Sent out" reflects it and the
+     * sales Dispatches screen can confirm receipt (sent-vs-received reconcile).
+     */
+    public function sendToSales(): void
+    {
+        $store = $this->getStore();
+
+        if (! $store || ! $this->sendProductId) {
+            $this->toast()->error('No production store or product selected.')->send();
+
+            return;
+        }
+
+        $this->validate([
+            'sendQuantity' => 'required|numeric|min:0.01|max:' . $this->sendAvailable,
+            'sendSalesDepartmentId' => 'required|integer',
+        ], [], [
+            'sendQuantity' => 'quantity',
+            'sendSalesDepartmentId' => 'sales department',
+        ]);
+
+        $product = Product::find($this->sendProductId);
+
+        if (! $product) {
+            $this->toast()->error('Product not found.')->send();
+
+            return;
+        }
+
+        $actor = current_actor();
+        $shift = $actor
+            ? Shift::where('employee_id', $actor->id)->where('status', 'active')->first()
+            : null;
+        $quantity = (float) $this->sendQuantity;
+
+        DB::transaction(function () use ($store, $product, $actor, $shift, $quantity) {
+            $dispatch = ProductDispatch::create([
+                'branch_id' => $this->getBranchId(),
+                'production_shift_id' => $shift?->id,
+                'shift_type' => $shift?->shift_type,
+                'product_id' => $product->id,
+                'sales_department_id' => $this->sendSalesDepartmentId,
+                'quantity' => $quantity,
+                'uom' => $this->sendUom ?: ($product->unitOfMeasure->symbol ?? 'units'),
+                'status' => 'pending_verification',
+                'dispatched_by_id' => $actor?->id,
+                'dispatched_by_type' => $actor ? get_class($actor) : null,
+                'dispatch_date' => now()->toDateString(),
+                'notes' => 'Sent to sales from Finished Goods sheet',
+            ]);
+
+            app(ProductionStoreService::class)->recordDispatch(
+                $store,
+                $product,
+                $quantity,
+                'transfer',
+                $dispatch,
+                $actor,
+                'Dispatched to sales from Finished Goods sheet (pending verification)'
+            );
+        });
+
+        $this->toast()->success("Sent {$quantity} {$this->sendUom} of {$this->sendProductName} to sales (pending confirmation).")->send();
+        $this->closeSendModal();
     }
 
     public function exportCsv()
