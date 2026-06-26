@@ -27,6 +27,11 @@ trait QuickProduceTrait
 
     public $yieldOutput = 0;
 
+    // Quantity to dispatch from the just-produced batch (defaults to the full
+    // approved output; the cashier may send only part and keep the rest in
+    // finished goods to dispatch later).
+    public $dispatchQuantity = 0;
+
     public $approvedQuantity = 0;
 
     public $rejectedQuantity = 0;
@@ -64,8 +69,6 @@ trait QuickProduceTrait
 
     public ?int $lastProductionRecordId = null;
 
-    public array $pendingProductionRecords = [];
-
     public bool $isRedispatch = false;
 
     abstract public function getBranchId(): ?string;
@@ -89,7 +92,6 @@ trait QuickProduceTrait
             ->first();
 
         $this->loadPendingOrders();
-        $this->loadPendingProductionRecords();
     }
 
     protected function getCurrentShift(): ?Shift
@@ -413,8 +415,11 @@ trait QuickProduceTrait
                 $this->resetProduction();
             } else {
                 $this->toast()->success("Produced {$this->approvedQuantity} units of {$this->selectedRecipe->product_name}")->send();
-                // Set quantity for dispatch to only the APPROVED amount
+                // Set quantity for dispatch to only the APPROVED amount; default
+                // the dispatch quantity to the full batch (cashier may reduce it
+                // or keep the batch in finished goods).
                 $this->yieldOutput = $this->approvedQuantity;
+                $this->dispatchQuantity = $this->approvedQuantity;
                 $this->isRedispatch = false;
                 $this->showDispatchModal = true;
             }
@@ -431,6 +436,42 @@ trait QuickProduceTrait
         return \App\Models\DailyProduce::where('shift_id', $shift->id)
             ->where('recipe_id', $this->selectedRecipe->id)
             ->first();
+    }
+
+    /**
+     * Close the dispatch modal without sending. The approved output is already
+     * held as finished-goods stock (recorded during produce), so it simply stays
+     * in the production store to be dispatched later from the Finished Goods sheet
+     * or the pending-batches list.
+     */
+    public function keepInFinishedGoods(): void
+    {
+        $this->toast()->success('Kept in finished goods. You can send it to sales later.')->send();
+        $this->resetProduction();
+    }
+
+    /**
+     * Resolve and validate how much of the current batch to dispatch. Returns
+     * null (with a toast) when the requested quantity is invalid.
+     */
+    protected function resolveDispatchQuantity(): ?float
+    {
+        $max = (float) $this->yieldOutput;
+        $qty = (float) ($this->dispatchQuantity > 0 ? $this->dispatchQuantity : $max);
+
+        if ($qty <= 0) {
+            $this->toast()->error('Enter a quantity to send.')->send();
+
+            return null;
+        }
+
+        if ($qty > $max + 0.0001) {
+            $this->toast()->error('Cannot send more than was produced (max ' . rtrim(rtrim(number_format($max, 2), '0'), '.') . ').')->send();
+
+            return null;
+        }
+
+        return $qty;
     }
 
     public function dispatchToSales()
@@ -467,10 +508,15 @@ trait QuickProduceTrait
             return;
         }
 
+        $qty = $this->resolveDispatchQuantity();
+        if ($qty === null) {
+            return;
+        }
+
         $record = \App\Models\ProductionRecord::find($this->lastProductionRecordId);
         $store = $this->productionStore;
 
-        DB::transaction(function () use ($record, $store, $actor, $shift) {
+        DB::transaction(function () use ($record, $store, $actor, $shift, $qty) {
             $dispatch = ProductDispatch::create([
                 'branch_id' => $this->getBranchId(),
                 'department_id' => $this->department->id,
@@ -481,7 +527,7 @@ trait QuickProduceTrait
                 'recipe_id' => $this->selectedRecipe->id,
                 'product_id' => $this->selectedRecipe->product_id,
                 'sales_department_id' => $this->selectedSalesDepartmentId,
-                'quantity' => $this->yieldOutput,
+                'quantity' => $qty,
                 'uom' => $this->selectedRecipe->unitOfMeasure->symbol ?? 'units',
                 'status' => 'pending_verification',
                 'dispatched_by_id' => $actor?->id,
@@ -492,7 +538,7 @@ trait QuickProduceTrait
 
             // Update production record remaining quantity if linked
             if ($record) {
-                $record->quantity_sent_out += $this->yieldOutput;
+                $record->quantity_sent_out += $qty;
                 $record->updateQuantityRemaining();
             }
 
@@ -504,7 +550,7 @@ trait QuickProduceTrait
                     app(ProductionStoreService::class)->recordDispatch(
                         $store,
                         $product,
-                        (float) $this->yieldOutput,
+                        (float) $qty,
                         'transfer',
                         $dispatch,
                         $actor,
@@ -514,7 +560,12 @@ trait QuickProduceTrait
             }
         });
 
-        $this->toast()->success('Dispatched to Sales! Pending confirmation.')->send();
+        $kept = (float) $this->yieldOutput - $qty;
+        $this->toast()->success(
+            $kept > 0.0001
+                ? 'Sent ' . rtrim(rtrim(number_format($qty, 2), '0'), '.') . ' to sales; ' . rtrim(rtrim(number_format($kept, 2), '0'), '.') . ' kept in finished goods.'
+                : 'Dispatched to Sales! Pending confirmation.'
+        )->send();
         $this->resetProduction();
     }
 
@@ -558,6 +609,11 @@ trait QuickProduceTrait
             return;
         }
 
+        $qty = $this->resolveDispatchQuantity();
+        if ($qty === null) {
+            return;
+        }
+
         $record = \App\Models\ProductionRecord::find($this->lastProductionRecordId);
 
         $dispatch = ProductDispatch::create([
@@ -570,7 +626,7 @@ trait QuickProduceTrait
             'recipe_id' => $this->selectedRecipe->id,
             'product_id' => $this->selectedRecipe->product_id,
             'customer_order_id' => $order->id,
-            'quantity' => $this->yieldOutput,
+            'quantity' => $qty,
             'uom' => $this->selectedRecipe->unitOfMeasure->symbol ?? 'units',
             'status' => 'pending_verification',
             'dispatched_by_id' => $actor?->id,
@@ -581,7 +637,7 @@ trait QuickProduceTrait
 
         // Update production record remaining quantity if linked
         if ($record) {
-            $record->quantity_for_order += $this->yieldOutput;
+            $record->quantity_for_order += $qty;
             $record->updateQuantityRemaining();
         }
 
@@ -594,7 +650,7 @@ trait QuickProduceTrait
                 app(ProductionStoreService::class)->recordDispatch(
                     $store,
                     $orderProduct,
-                    (float) $this->yieldOutput,
+                    (float) $qty,
                     'out',
                     $dispatch,
                     $actor,
@@ -606,7 +662,11 @@ trait QuickProduceTrait
         // Advance customer order status (IN_PRODUCTION or COMPLETED)
         app(CustomerOrderService::class)->recordDispatch($order, $dispatch);
 
-        $this->toast()->success("Dispatched to Order {$order->order_number} ({$order->customer_name})")->send();
+        $kept = (float) $this->yieldOutput - $qty;
+        $this->toast()->success(
+            "Dispatched {$order->order_number} ({$order->customer_name})"
+            . ($kept > 0.0001 ? '; ' . rtrim(rtrim(number_format($kept, 2), '0'), '.') . ' kept in finished goods.' : '')
+        )->send();
         $this->resetProduction();
     }
 
@@ -620,6 +680,7 @@ trait QuickProduceTrait
         $this->lastProductionRecordId = null;
         $this->quantity = 1;
         $this->yieldOutput = 0;
+        $this->dispatchQuantity = 0;
         $this->approvedQuantity = 0;
         $this->rejectedQuantity = 0;
         $this->rejectionReason = null;
@@ -629,7 +690,6 @@ trait QuickProduceTrait
         $this->insufficientItems = [];
         $this->pendingOrders = [];
         $this->isRedispatch = false;
-        $this->loadPendingProductionRecords();
     }
 
     protected function loadPendingOrders()
@@ -672,66 +732,6 @@ trait QuickProduceTrait
                 ]);
             }
         }
-    }
-
-    public function loadPendingProductionRecords(): void
-    {
-        if (!$this->department) {
-            $this->pendingProductionRecords = [];
-            return;
-        }
-
-        $this->pendingProductionRecords = \App\Models\ProductionRecord::with('recipe')
-            ->whereHas('dailyProduce', function ($q) {
-                $q->whereHas('shift', function ($sq) {
-                    $sq->where('department_id', $this->department->id)
-                       ->whereDate('shift_date', today());
-                });
-            })
-            ->whereIn('dispatch_status', ['available', 'partial'])
-            ->where('quantity_remaining', '>', 0)
-            ->orderBy('production_time', 'desc')
-            ->get()
-            ->map(fn ($r) => [
-                'id'                 => $r->id,
-                'recipe_name'        => $r->recipe?->product_name ?? 'Unknown',
-                'recipe_id'          => $r->recipe_id,
-                'batch_number'       => $r->batch_number,
-                'quantity_remaining' => (float) $r->quantity_remaining,
-                'quantity_approved'  => (float) $r->quantity_approved,
-                'dispatch_status'    => $r->dispatch_status,
-                'produced_at'        => $r->production_time?->format('H:i'),
-            ])
-            ->toArray();
-    }
-
-    public function redispatch(int $recordId): void
-    {
-        $record = \App\Models\ProductionRecord::with('recipe')->find($recordId);
-
-        if (!$record || $record->quantity_remaining <= 0) {
-            $this->toast()->error('Record not found or already fully dispatched.')->send();
-            return;
-        }
-
-        $belongsToDept = \App\Models\DailyProduce::where('id', $record->daily_produce_id)
-            ->whereHas('shift', fn ($q) => $q->where('department_id', $this->department->id))
-            ->exists();
-
-        if (!$belongsToDept) {
-            $this->toast()->error('Unauthorized.')->send();
-            return;
-        }
-
-        $this->selectedRecipe        = $record->recipe;
-        $this->lastProductionRecordId = $record->id;
-        $this->yieldOutput           = (float) $record->quantity_remaining;
-        $this->dispatchType          = '';
-        $this->selectedSalesDepartmentId = null;
-        $this->selectedOrderId       = null;
-        $this->isRedispatch          = true;
-        $this->loadPendingOrders();
-        $this->showDispatchModal     = true;
     }
 
     public function getSalesDepartments()

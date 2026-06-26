@@ -144,53 +144,6 @@
             </div>
         @endif
 
-        <!-- Pending Dispatch -->
-        @if(!empty($pendingProductionRecords))
-            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow border border-amber-200 dark:border-amber-700 p-4">
-                <div class="flex items-center gap-2 mb-3">
-                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <h3 class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Pending Dispatch — Today's Batches</h3>
-                    <span class="ml-auto text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-semibold px-2 py-0.5 rounded-full">
-                        {{ count($pendingProductionRecords) }} batch{{ count($pendingProductionRecords) > 1 ? 'es' : '' }}
-                    </span>
-                </div>
-                <div class="space-y-2">
-                    @foreach($pendingProductionRecords as $pending)
-                        <div class="flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800">
-                            <div class="flex-1 min-w-0">
-                                <p class="font-medium text-zinc-800 dark:text-zinc-100 truncate">{{ $pending['recipe_name'] }}</p>
-                                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                                    {{ $pending['batch_number'] }} &bull; Produced at {{ $pending['produced_at'] }}
-                                </p>
-                            </div>
-                            <div class="flex items-center gap-3 ml-3 shrink-0">
-                                <div class="text-right">
-                                    <p class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-                                        {{ number_format($pending['quantity_remaining'], 2) }}
-                                        @if($pending['dispatch_status'] === 'partial')
-                                            / {{ number_format($pending['quantity_approved'], 2) }}
-                                        @endif
-                                        units
-                                    </p>
-                                    <span class="text-xs px-1.5 py-0.5 rounded font-medium
-                                        {{ $pending['dispatch_status'] === 'partial'
-                                            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                                            : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' }}">
-                                        {{ $pending['dispatch_status'] === 'partial' ? 'Partially Dispatched' : 'Not Dispatched' }}
-                                    </span>
-                                </div>
-                                <button wire:click="redispatch({{ $pending['id'] }})"
-                                        class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-                                    Dispatch
-                                </button>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        @endif
     @endif
 
     <!-- Dispatch Modal -->
@@ -240,6 +193,15 @@
                                 <span class="text-xs text-zinc-500 text-center">Fulfils a pending order</span>
                             </button>
                         </div>
+
+                        @if(!$isRedispatch)
+                            <button wire:click="keepInFinishedGoods"
+                                    class="w-full flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed border-zinc-200 dark:border-zinc-600 hover:border-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700/40 transition mb-1">
+                                <svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+                                <span class="text-sm font-medium text-zinc-700 dark:text-zinc-200">Don't send now — keep in Finished Goods</span>
+                            </button>
+                            <p class="text-xs text-zinc-400 text-center">It stays as held stock; send it later from the Finished Goods sheet.</p>
+                        @endif
                     @endif
 
                     {{-- Sales flow --}}
@@ -255,6 +217,14 @@
                                     <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Quantity to send</label>
+                            <input type="number" step="0.01" min="0" max="{{ $yieldOutput }}" wire:model="dispatchQuantity"
+                                   class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600" />
+                            <p class="text-xs text-zinc-400 mt-1">
+                                Max {{ rtrim(rtrim(number_format($yieldOutput,2),'0'),'.') }} {{ $selectedRecipe->uomSymbol ?? '' }}. Any remainder stays in finished goods.
+                            </p>
                         </div>
                         <div class="flex justify-end">
                             <button wire:click="dispatchToSales" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
@@ -288,6 +258,14 @@
                             @endif
                         </div>
                         @if(!empty($pendingOrders))
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Quantity to send</label>
+                            <input type="number" step="0.01" min="0" max="{{ $yieldOutput }}" wire:model="dispatchQuantity"
+                                   class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600" />
+                            <p class="text-xs text-zinc-400 mt-1">
+                                Max {{ rtrim(rtrim(number_format($yieldOutput,2),'0'),'.') }} {{ $selectedRecipe->uomSymbol ?? '' }}. Any remainder stays in finished goods.
+                            </p>
+                        </div>
                         <div class="flex justify-end">
                             <button wire:click="dispatchToOrder"
                                     @disabled(!$selectedOrderId)
