@@ -693,6 +693,24 @@ class Index extends BaseComponent
                     }
                 }
 
+                // Customer receipt reflects the product price only — never the surplus a
+                // customer overpaid (whether returned as change or kept as overage). Trim
+                // any overpayment from cash so the receipt's payment lines net to the bill.
+                $receiptPayments = $this->payments;
+                $remainingReceiptTrim = $overage;
+                foreach ($receiptPayments as $i => $row) {
+                    if ($remainingReceiptTrim <= 0.0001) {
+                        break;
+                    }
+                    if (($row['method'] ?? '') !== 'cash') {
+                        continue;
+                    }
+                    $amt = (float) ($row['amount'] ?? 0);
+                    $trim = min($amt, $remainingReceiptTrim);
+                    $receiptPayments[$i]['amount'] = round($amt - $trim, 2);
+                    $remainingReceiptTrim = round($remainingReceiptTrim - $trim, 2);
+                }
+
                 $sale = Sale::create([
                     'sales_shift_id' => null, // Nullable - using general shifts table instead
                     'shift_id' => $this->activeShiftId,
@@ -826,8 +844,8 @@ class Index extends BaseComponent
                     'tax' => $this->tax,
                     'discount' => $this->discount,
                     'total' => $this->total,
-                    'payments' => $paymentRows,
-                    'change_due' => $changeGiven,
+                    'payments' => $receiptPayments,
+                    'change_due' => 0,
                     'meta' => [
                         'order_type' => $this->orderType,
                         'warnings' => $lowStockWarnings,
