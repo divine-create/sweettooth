@@ -400,23 +400,26 @@ class ReportRegistry
             return null;
         }
 
-        // Manager roles are scoped to their own department category
+        // Manager roles are scoped to their own department category. A role may
+        // map to one or more categories (e.g. Operations Manager oversees both
+        // production and sales).
         $managerCategoryMap = [
-            'Production Manager'  => 'production',
-            'Sales Manager'       => 'sales',
-            'Inventory Manager'   => 'inventory',
-            'Accounting Manager'  => 'accounting',
+            'Production Manager'  => ['production'],
+            'Sales Manager'       => ['sales'],
+            'Inventory Manager'   => ['inventory'],
+            'Accounting Manager'  => ['accounting'],
+            'Operations Manager'  => ['production', 'sales'],
         ];
 
         $allowed = [];
-        foreach ($managerCategoryMap as $role => $category) {
+        foreach ($managerCategoryMap as $role => $categories) {
             if ($user->hasRole($role)) {
-                $allowed[] = $category;
+                $allowed = array_merge($allowed, $categories);
             }
         }
 
         // Return matched categories, or empty array (no access) if no manager role matched
-        return $allowed;
+        return array_values(array_unique($allowed));
     }
 
     private static function userCanAccess(?User $user, array $permissions): bool
