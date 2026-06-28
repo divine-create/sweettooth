@@ -47,6 +47,14 @@
                                 {{ \App\Helpers\LocalizationHelper::formatCurrency($salesSummary['total_sales'] ?? 0) }}
                             </span>
                         </div>
+                        @if(($salesSummary['overage_total'] ?? 0) > 0)
+                        <div class="flex justify-between">
+                            <span class="text-gray-600 dark:text-gray-400">Overage (kept):</span>
+                            <span class="font-semibold text-emerald-600 dark:text-emerald-400">
+                                {{ \App\Helpers\LocalizationHelper::formatCurrency($salesSummary['overage_total'] ?? 0) }}
+                            </span>
+                        </div>
+                        @endif
                         <div class="flex justify-between">
                             <span class="text-gray-600 dark:text-gray-400">Total Orders:</span>
                             <span class="font-semibold text-gray-900 dark:text-gray-100">{{ number_format($salesSummary['total_orders'] ?? 0) }}</span>
@@ -117,8 +125,18 @@
                     <div class="border dark:border-gray-700 rounded-lg p-4">
                         <h4 class="font-medium text-gray-900 dark:text-white mb-3">Cash</h4>
                         <div class="space-y-2">
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-600 dark:text-gray-400">Expected:</span>
+                            @if(($cashReconciliation['overage_cash'] ?? 0) > 0)
+                                <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                                    <span>From product sales:</span>
+                                    <span>{{ \App\Helpers\LocalizationHelper::formatCurrency($cashReconciliation['product_cash'] ?? 0) }}</span>
+                                </div>
+                                <div class="flex justify-between text-xs text-emerald-600 dark:text-emerald-400">
+                                    <span>Overage (customers kept change):</span>
+                                    <span>{{ \App\Helpers\LocalizationHelper::formatCurrency($cashReconciliation['overage_cash'] ?? 0) }}</span>
+                                </div>
+                            @endif
+                            <div class="flex justify-between text-sm {{ ($cashReconciliation['overage_cash'] ?? 0) > 0 ? 'pt-1 border-t dark:border-gray-700' : '' }}">
+                                <span class="text-gray-600 dark:text-gray-400">Expected in drawer:</span>
                                 <span class="font-medium">
                                     {{ \App\Helpers\LocalizationHelper::formatCurrency($cashReconciliation['expected_cash'] ?? 0) }}
                                 </span>

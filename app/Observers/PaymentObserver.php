@@ -116,5 +116,32 @@ class PaymentObserver
                 'gl_posting_error' => $e->getMessage(),
             ]);
         }
+
+        // Post the cash-overage income adjustment if the customer overpaid and kept
+        // the change. Idempotent and self-balancing (Dr Cash / Cr Overage Income).
+        $this->postOverShortToGL($sale);
+    }
+
+    /**
+     * Recognise kept overage as income. No-op for ordinary sales.
+     */
+    private function postOverShortToGL(\App\Models\Sale $sale): void
+    {
+        if ($sale->over_short_disposition !== 'overage'
+            || (float) ($sale->over_short_amount ?? 0) <= 0
+            || $sale->over_short_gl_status === 'posted') {
+            return;
+        }
+
+        try {
+            $this->glPostingService->postSaleOverShortAdjustment($sale);
+            $sale->update(['over_short_gl_status' => 'posted']);
+        } catch (Exception $e) {
+            $sale->update(['over_short_gl_status' => 'failed']);
+            \Log::error('Failed to post sale overage to GL', [
+                'sale_id' => $sale->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

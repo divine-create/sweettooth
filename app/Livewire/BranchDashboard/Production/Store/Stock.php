@@ -3,18 +3,25 @@
 namespace App\Livewire\BranchDashboard\Production\Store;
 
 use App\Models\Department;
+use App\Models\Product;
+use App\Models\ProductDispatch;
 use App\Models\ProductionStore;
 use App\Models\ProductionStoreStock;
+use App\Models\Recipe;
+use App\Models\Shift;
 use App\Services\ProductionStoreService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 use TallStackUi\Traits\Interactions;
 
 #[Layout('components.layouts.app.branch-dashboard')]
 class Stock extends Component
 {
-    use Interactions;
+    use Interactions, WithPagination;
 
     #[Url(keep: true)]
     public ?string $b_id = null;
@@ -30,7 +37,42 @@ class Stock extends Component
 
     public string $stockFilter = 'all';
 
+    public int $perPage = 50;
+
     public int $quantity = 15;
+
+    // Reset to the first page when the filter/search changes, so pagination
+    // doesn't land on an out-of-range page.
+    public function updatingStockFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    // --- Send to Sales modal state ---
+    public bool $showSendModal = false;
+
+    public ?string $sendProductId = null;
+
+    public string $sendProductName = '';
+
+    public string $sendUom = '';
+
+    public float $sendAvailable = 0.0;
+
+    public $sendQuantity = null;
+
+    public ?int $sendSalesDepartmentId = null;
+
+    /** @var array<int,string> sales departments the product may be sent to (id => name) */
+    public array $sendDepartments = [];
+
+    // The "Transfer to another store" modal is opened client-side (Alpine) for an
+    // instant response; only the actual transfer (transferStock) hits the server.
 
     public function mount($deptSlug)
     {
@@ -38,7 +80,7 @@ class Stock extends Component
         $this->b_id = request()->query('b_id');
         $this->department = Department::where('slug', $deptSlug)->first();
 
-        if (!$this->department) {
+        if (! $this->department) {
             abort(404, 'Department not found');
         }
 
@@ -78,18 +120,21 @@ class Stock extends Component
         // in the store but is NOT a WIP recipe output.
         $numericRegex = "item_id REGEXP '^[0-9]+$'";
 
+        $totalValue = 0;
+
         if ($store) {
-            $wipProductIds = \App\Models\Recipe::where('is_wip', true)
+            $wipProductIds = Recipe::where('is_wip', true)
                 ->whereNotNull('product_id')
                 ->pluck('product_id')
                 ->toArray();
 
-            $stocks = ProductionStoreStock::where('store_id', $store->id)
-                ->with('item.category', 'item.unitOfMeasure')
+            // Single filtered query, reused for the page, the total value, and the
+            // row count — so we only build the WHERE clause once.
+            $filtered = ProductionStoreStock::where('store_id', $store->id)
                 ->when($this->search, function ($query) {
                     $query->whereHas('item', function ($q) {
-                        $q->where('name', 'like', '%' . $this->search . '%')
-                            ->orWhere('sku', 'like', '%' . $this->search . '%');
+                        $q->where('name', 'like', '%'.$this->search.'%')
+                            ->orWhere('sku', 'like', '%'.$this->search.'%');
                     });
                 })
                 ->when($this->stockFilter === 'wip', function ($query) use ($wipProductIds) {
@@ -101,18 +146,30 @@ class Stock extends Component
                 ->when($this->stockFilter === 'finished', function ($query) use ($wipProductIds, $numericRegex) {
                     $query->whereRaw("NOT ($numericRegex)")
                         ->whereNotIn('item_id', $wipProductIds);
-                })
-                ->orderBy('quantity_available', 'desc')
-                ->get();
+                });
 
-            // Load product information for WIP items
-            $wipProducts = \App\Models\Product::whereIn('id', $stocks->pluck('item_id')->toArray())->get()->keyBy('id');
-            $stocks->each(function ($stock) use ($wipProducts) {
-                if (isset($wipProducts[$stock->item_id])) {
-                    $stock->displayItem = $wipProducts[$stock->item_id];
-                } else {
-                    $stock->displayItem = $stock->item;
-                }
+            // Total value across the whole filtered set (not just the current page).
+            $totalValue = (float) (clone $filtered)->sum(DB::raw('quantity_available * average_cost'));
+
+            // Only load + render one page of rows.
+            $stocks = (clone $filtered)
+                ->with('item.category', 'item.unitOfMeasure')
+                ->orderBy('quantity_available', 'desc')
+                ->paginate($this->perPage);
+
+            // Enrich only the product (UUID) rows on this page; raw rows resolve to
+            // their Item, so there is no Product lookup for the Raw Materials tab.
+            $productIds = collect($stocks->items())
+                ->reject(fn ($s) => ctype_digit((string) $s->item_id))
+                ->pluck('item_id')
+                ->all();
+
+            $wipProducts = empty($productIds)
+                ? collect()
+                : Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+            $stocks->getCollection()->each(function ($stock) use ($wipProducts) {
+                $stock->displayItem = $wipProducts[$stock->item_id] ?? $stock->item;
             });
 
             $baseQuery = ProductionStoreStock::where('store_id', $store->id)
@@ -134,21 +191,273 @@ class Stock extends Component
             $stockCounts['all'] = $stockCounts['wip'] + $stockCounts['raw'] + $stockCounts['finished'];
         }
 
-        $totalValue = $stocks->sum(function ($stock) {
-            return ($stock->quantity_available ?? 0) * ($stock->average_cost ?? 0);
-        });
-
         return view('livewire.branch-dashboard.production.store.stock', [
             'stocks' => $stocks,
             'store' => $store,
             'totalValue' => $totalValue,
             'stockCounts' => $stockCounts,
             'wipProductIds' => $wipProductIds,
+            'transferDepartments' => $this->resolveTransferDepartments(),
         ]);
     }
 
     public function getStoreName(): string
     {
         return $this->store?->name ?? 'Production Store';
+    }
+
+    /**
+     * Open the "Send to Sales" modal for one finished-goods product, defaulting
+     * the quantity to its currently held balance in this store.
+     */
+    public function openSendModal(string $productId): void
+    {
+        $store = $this->store ?? $this->getStoreModel();
+
+        if (! $store) {
+            $this->toast()->error('No production store found.')->send();
+
+            return;
+        }
+
+        $stock = ProductionStoreStock::where('store_id', $store->id)
+            ->where('item_id', $productId)
+            ->first();
+
+        $available = (float) ($stock->quantity_available ?? 0);
+
+        if ($available <= 0) {
+            $this->toast()->warning('No held stock available to send for this product.')->send();
+
+            return;
+        }
+
+        $product = Product::with('unitOfMeasure')->find($productId);
+
+        if (! $product) {
+            $this->toast()->error('Product not found.')->send();
+
+            return;
+        }
+
+        $this->sendProductId = $productId;
+        $this->sendProductName = $product->name;
+        $this->sendUom = $product->unitOfMeasure?->symbol ?? '';
+        $this->sendAvailable = $available;
+        $this->sendQuantity = $available;
+        $this->sendSalesDepartmentId = null;
+        $this->sendDepartments = $this->resolveSalesDepartmentsForProduct($productId);
+        $this->showSendModal = true;
+    }
+
+    public function closeSendModal(): void
+    {
+        $this->showSendModal = false;
+        $this->sendProductId = null;
+        $this->sendProductName = '';
+        $this->sendUom = '';
+        $this->sendAvailable = 0.0;
+        $this->sendQuantity = null;
+        $this->sendSalesDepartmentId = null;
+        $this->sendDepartments = [];
+    }
+
+    /**
+     * Sales departments a product may be dispatched to — limited to the sales-
+     * category departments the product is assigned to (mirrors the Finished
+     * Goods sheet / Quick Produce dispatch scoping).
+     *
+     * @return array<int,string>
+     */
+    protected function resolveSalesDepartmentsForProduct(string $productId): array
+    {
+        $product = Product::with('departments:id')->find($productId);
+
+        if (! $product) {
+            return [];
+        }
+
+        $allowedIds = $product->departments->pluck('id')->all();
+        if ($product->sales_department_id) {
+            $allowedIds[] = (int) $product->sales_department_id;
+        }
+        $allowedIds = array_values(array_unique($allowedIds));
+
+        if (empty($allowedIds)) {
+            return [];
+        }
+
+        return Department::with('category')
+            ->whereHas('category', fn ($q) => $q->whereRaw('LOWER(name) = ?', ['sales']))
+            ->where(fn ($q) => $q->where('branch_id', $this->getBranchId())->orWhereNull('branch_id'))
+            ->where('is_active', true)
+            ->whereIn('id', $allowedIds)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    /**
+     * Dispatch held finished goods to a sales department. Creates a
+     * ProductDispatch (pending_verification) and draws the held balance down via
+     * a transfer movement, so the sales Dispatches screen can confirm receipt.
+     */
+    public function sendToSales(): void
+    {
+        $store = $this->store ?? $this->getStoreModel();
+
+        if (! $store || ! $this->sendProductId) {
+            $this->toast()->error('No production store or product selected.')->send();
+
+            return;
+        }
+
+        $this->validate([
+            'sendQuantity' => 'required|numeric|min:0.01|max:'.$this->sendAvailable,
+            'sendSalesDepartmentId' => 'required|integer',
+        ], [], [
+            'sendQuantity' => 'quantity',
+            'sendSalesDepartmentId' => 'sales department',
+        ]);
+
+        $product = Product::with('unitOfMeasure')->find($this->sendProductId);
+
+        if (! $product) {
+            $this->toast()->error('Product not found.')->send();
+
+            return;
+        }
+
+        $actor = current_actor();
+        $shift = $actor
+            ? Shift::where('employee_id', $actor->id)->where('status', 'active')->first()
+            : null;
+        $quantity = (float) $this->sendQuantity;
+
+        DB::transaction(function () use ($store, $product, $actor, $shift, $quantity) {
+            $dispatch = ProductDispatch::create([
+                'branch_id' => $this->getBranchId(),
+                'production_shift_id' => $shift?->id,
+                'shift_type' => $shift?->shift_type,
+                'product_id' => $product->id,
+                'sales_department_id' => $this->sendSalesDepartmentId,
+                'quantity' => $quantity,
+                'uom' => $this->sendUom ?: ($product->unitOfMeasure->symbol ?? 'units'),
+                'status' => 'pending_verification',
+                'dispatched_by_id' => $actor?->id,
+                'dispatched_by_type' => $actor ? get_class($actor) : null,
+                'dispatch_date' => now()->toDateString(),
+                'notes' => 'Sent to sales from Production Store stock',
+            ]);
+
+            app(ProductionStoreService::class)->recordDispatch(
+                $store,
+                $product,
+                $quantity,
+                'transfer',
+                $dispatch,
+                $actor,
+                'Dispatched to sales from Production Store stock (pending verification)'
+            );
+        });
+
+        $this->toast()->success("Sent {$quantity} {$this->sendUom} of {$this->sendProductName} to sales (pending confirmation).")->send();
+        $this->closeSendModal();
+    }
+
+    /**
+     * Active Production-category departments in this branch, excluding the current
+     * one — the stores a raw material may be transferred to. Computed once per
+     * render and passed to the view so the transfer modal (opened client-side)
+     * already has its destination list.
+     *
+     * @return array<int,string>
+     */
+    protected function resolveTransferDepartments(): array
+    {
+        return Department::with('category')
+            ->whereHas('category', fn ($q) => $q->whereRaw('LOWER(name) = ?', ['production']))
+            ->where(fn ($q) => $q->where('branch_id', $this->getBranchId())->orWhereNull('branch_id'))
+            ->where('is_active', true)
+            ->where('id', '!=', $this->department->id)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    /**
+     * Send a raw material to another department's production store (in-transit;
+     * the destination credits it on receipt). Called directly from the client
+     * modal with the row's values, so opening the modal needs no server round-trip.
+     */
+    public function transferStock(string $itemId, $quantity, $toDepartmentId, ?string $notes = null): void
+    {
+        $store = $this->store ?? $this->getStoreModel();
+
+        if (! $store) {
+            $this->toast()->error('No production store found.')->send();
+
+            return;
+        }
+
+        if (! ctype_digit($itemId)) {
+            $this->toast()->warning('Only raw materials can be transferred between stores.')->send();
+
+            return;
+        }
+
+        $allowedDepartmentIds = array_keys($this->resolveTransferDepartments());
+
+        $validated = validator(
+            [
+                'quantity' => $quantity,
+                'toDepartmentId' => $toDepartmentId,
+                'notes' => $notes,
+            ],
+            [
+                'quantity' => 'required|numeric|min:0.01',
+                'toDepartmentId' => ['required', 'integer', Rule::in($allowedDepartmentIds)],
+                'notes' => 'nullable|string|max:500',
+            ],
+            [
+                'toDepartmentId.in' => 'Choose a valid destination department.',
+            ],
+            [
+                'quantity' => 'quantity',
+                'toDepartmentId' => 'destination department',
+            ]
+        )->validate();
+
+        try {
+            $destStore = ProductionStore::getOrCreateForDepartment((int) $validated['toDepartmentId']);
+
+            $transfer = app(ProductionStoreService::class)->sendStoreTransfer(
+                $store,
+                $destStore,
+                $itemId,
+                (float) $validated['quantity'],
+                $notes ?: null,
+                current_actor()
+            );
+        } catch (\InvalidArgumentException $e) {
+            $this->toast()->error($e->getMessage())->send();
+
+            return;
+        }
+
+        $qty = (float) $validated['quantity'];
+        $this->toast()->success("Sent {$qty} {$transfer->uom} of {$transfer->item_name} (awaiting receipt).")->send();
+    }
+
+    /**
+     * Resolve this store model on demand (the public $store is also set in
+     * mount/render, but action calls may run before render).
+     */
+    protected function getStoreModel(): ?ProductionStore
+    {
+        return ProductionStore::forBranch($this->getBranchId())
+            ->forDepartment($this->department->id)
+            ->active()
+            ->first();
     }
 }

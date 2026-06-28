@@ -6,7 +6,6 @@
     }"
     @pos-receipt-ready.window="showReceipt = true"
     @keydown.window.prevent.f1="$wire.clearCart()"
-    @keydown.window.prevent.f2="$wire.holdSale()"
     @keydown.window.prevent.f3="alert('Sales history feature - integrate with reports')"
     @keydown.window.prevent.f9="$wire.completeSale()"
     class="p-4 space-y-4">
@@ -471,7 +470,7 @@
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-md text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30">Out of Stock</span>
                                     @elseif($line['available'] < 10)
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-md text-orange-700 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30">
-                                            Low Stock 
+                                            Low Stock
                                             @if(!empty($line['available_sales_qty']) && !empty($line['has_conversion']))
                                                 ({{ $line['available_sales_qty'] }} {{ $line['sales_uom'] ?? 'units' }})
                                             @else
@@ -582,18 +581,43 @@
                             @endif
                             @if($changeDue > 0)
                                 <div class="flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-400">
-                                    <span>Change Due</span>
+                                    <span>Overpaid by</span>
                                     <span class="font-semibold">{{ $this->formatCurrency($changeDue) }}</span>
+                                </div>
+                                <div class="mt-2 rounded-md border border-zinc-200 dark:border-zinc-700 p-2 space-y-1.5">
+                                    <p class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">What about the {{ $this->formatCurrency($changeDue) }} extra?</p>
+                                    <div class="grid grid-cols-1 gap-1.5">
+                                        <button type="button" wire:click="$set('overageDisposition', 'change')"
+                                            @class([
+                                                'flex items-center justify-between gap-2 px-2 py-1.5 rounded-md border text-xs text-left',
+                                                'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300' => $overageDisposition === 'change',
+                                                'border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300' => $overageDisposition !== 'change',
+                                            ])>
+                                            <span>Give change <span class="font-semibold">{{ $this->formatCurrency($changeDue) }}</span></span>
+                                            @if($overageDisposition === 'change')<span aria-hidden="true">✓</span>@endif
+                                        </button>
+                                        <button type="button" wire:click="$set('overageDisposition', 'overage')"
+                                            @class([
+                                                'flex items-center justify-between gap-2 px-2 py-1.5 rounded-md border text-xs text-left',
+                                                'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300' => $overageDisposition === 'overage',
+                                                'border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300' => $overageDisposition !== 'overage',
+                                            ])>
+                                            <span>Customer kept it &middot; record <span class="font-semibold">{{ $this->formatCurrency($changeDue) }}</span> overage</span>
+                                            @if($overageDisposition === 'overage')<span aria-hidden="true">✓</span>@endif
+                                        </button>
+                                    </div>
+                                    <p class="text-[11px] text-zinc-400 dark:text-zinc-500">
+                                        @if($overageDisposition === 'overage')
+                                            Booked as Cash Overage Income; full {{ $this->formatCurrency($paymentTotal) }} stays in the drawer.
+                                        @else
+                                            {{ $this->formatCurrency($changeDue) }} handed back; only {{ $this->formatCurrency($total) }} stays in the drawer.
+                                        @endif
+                                    </p>
                                 </div>
                             @endif
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 pt-2">
-                        <button type="button" wire:click="holdSale"
-                            @if(!$this->hasActiveShift()) disabled title="No active shift" @endif
-                            class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                            Hold
-                        </button>
+                    <div class="grid grid-cols-2 gap-2 pt-2">
                         <button type="button" wire:click="completeSale"
                             :disabled="{{ !$this->hasActiveShift() || count($cart) === 0 ? 'true' : 'false' }} || $wire.total <= 0 || $wire.paymentRemaining > 0.01"
                             @if(!$this->hasActiveShift()) title="No active shift" @endif
@@ -617,14 +641,10 @@
 
             <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3">
                 <div class="font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Quick Actions</div>
-                <div class="grid grid-cols-3 gap-2 mb-3">
+                <div class="grid grid-cols-2 gap-2 mb-3">
                     <button type="button" class="px-2 py-1.5 text-xs rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50">
                         <div class="font-semibold">F1</div>
                         <div class="text-[10px] opacity-70">New Sale</div>
-                    </button>
-                    <button type="button" wire:click="holdSale" class="px-2 py-1.5 text-xs rounded-md bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/50">
-                        <div class="font-semibold">F2</div>
-                        <div class="text-[10px] opacity-70">Hold</div>
                     </button>
                     <button type="button" class="px-2 py-1.5 text-xs rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50">
                         <div class="font-semibold">F3</div>
@@ -767,6 +787,12 @@
                                     <div class="flex justify-between text-sm font-semibold mt-1 text-emerald-600">
                                         <span>Change:</span>
                                         <span>{{ $this->formatCurrency($receipt->change_due) }}</span>
+                                    </div>
+                                @endif
+                                @if(!empty($receipt->meta['overage_kept']) && $receipt->meta['overage_kept'] > 0)
+                                    <div class="flex justify-between text-sm font-semibold mt-1 text-emerald-600">
+                                        <span>Overage (kept):</span>
+                                        <span>{{ $this->formatCurrency($receipt->meta['overage_kept']) }}</span>
                                     </div>
                                 @endif
                             </div>

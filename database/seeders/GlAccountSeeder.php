@@ -38,6 +38,7 @@ class GlAccountSeeder extends Seeder
             // Revenue
             ['account_number' => '4000', 'account_name' => 'Revenue', 'account_type' => 'revenue', 'is_header' => true],
             ['account_number' => '4010', 'account_name' => 'Sales Revenue', 'account_type' => 'revenue'],
+            ['account_number' => '4020', 'account_name' => 'Cash Overage Income', 'account_type' => 'revenue'],
 
             // COGS / Expenses
             ['account_number' => '5000', 'account_name' => 'Cost of Goods Sold', 'account_type' => 'cost_of_goods_sold', 'is_header' => true],

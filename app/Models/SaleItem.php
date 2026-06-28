@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use Illuminate\Support\Facades\Schema;
 
 class SaleItem extends Model
 {
@@ -195,9 +196,12 @@ class SaleItem extends Model
                 return; // skip product_stocks update — no product_stock record for items
             }
 
-            // Update product stock - deduct quantity sold
+            // Update product stock - deduct quantity sold.
+            // Only a completed sale consumes stock. Hold/tab sales merely reserve it
+            // (the POS component manages quantity_reserved itself), so deducting here
+            // would double-count against availability.
             $sale = $saleItem->sale;
-            if ($saleItem->wasRecentlyCreated && $sale) {
+            if ($saleItem->wasRecentlyCreated && $sale && $sale->status === 'completed') {
                 // Try to find the correct ProductStock record
                 // 1. Using explicit sales_shift_id (backward compatibility)
                 // 2. Using department and date (new system)
@@ -228,10 +232,14 @@ class SaleItem extends Model
                 }
 
                 if ($productStock) {
-                    // Important: We only update if this hasn't been updated manually (e.g. by POS)
-                    // Or we just update and let POS not do it manually. 
-                    // To be safe, we check if the amount has already changed recently.
-                    // But in a transaction, this is tricky.
+                    // Release any quantity previously reserved for this line (e.g. a table
+                    // tab being settled) before booking it as sold, so the same units are
+                    // not counted against availability twice.
+                    if (Schema::hasColumn('product_stocks', 'quantity_reserved')) {
+                        $reserved = (float) ($productStock->quantity_reserved ?? 0);
+                        $release = min($reserved, (float) $saleItem->quantity);
+                        $productStock->quantity_reserved = max(0, $reserved - $release);
+                    }
                     $productStock->quantity_sold = (float)$productStock->quantity_sold + $saleItem->quantity;
                     $productStock->amount = (float)$productStock->amount + $saleItem->total;
                     $productStock->updateCalculatedFields();

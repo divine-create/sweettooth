@@ -27,6 +27,11 @@ class Sale extends Model
         'status',
         'order_type',
         'notes',
+        'amount_tendered',
+        'change_given',
+        'over_short_amount',
+        'over_short_disposition',
+        'over_short_gl_status',
         'gl_entry_id',
         'gl_posting_status',
         'gl_posting_error',
@@ -39,6 +44,9 @@ class Sale extends Model
         'tax' => 'decimal:2',
         'discount' => 'decimal:2',
         'total' => 'decimal:2',
+        'amount_tendered' => 'decimal:2',
+        'change_given' => 'decimal:2',
+        'over_short_amount' => 'decimal:2',
     ];
 
     // Relationships

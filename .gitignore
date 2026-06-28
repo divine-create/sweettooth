@@ -43,3 +43,14 @@ sweettooth-vertex.json
 Recipe_Worksheet.xlsx
 inventory_stock_levels.csv
 inventory_unit_prices.csv
+
+# Local deploy runbook — contains the SSH private key, never commit
+DEPLOY.md
+.claude/settings.local.json
+
+# Local data-migration source files (large; not application code)
+/Inventory-updates/
+/data-migration/
+/closing-stock/
+/CORNERSTORE DRINKS RECIPE UPDATED.docx
+apply-ssh-permission.sh

@@ -67,6 +67,11 @@ class SaleObserver
                 'sale_number' => $sale->sale_number,
                 'amount' => $sale->total,
             ]);
+
+            // Post the cash-overage income adjustment, if the customer overpaid and
+            // kept the change (Dr Cash / Cr Overage Income). Kept separate so a failure
+            // here never blocks the main sale posting.
+            $this->postOverShortToGL($sale);
         } catch (Exception $e) {
             // Log error but don't fail the transaction
             $sale->update([
@@ -75,6 +80,37 @@ class SaleObserver
             ]);
 
             \Log::error('Failed to post sale to GL', [
+                'sale_id' => $sale->id,
+                'sale_number' => $sale->sale_number,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Post the cash-overage income adjustment when the customer overpaid and kept
+     * the change. No-op for ordinary sales (change given or exact payment).
+     */
+    private function postOverShortToGL(Sale $sale): void
+    {
+        if ($sale->over_short_disposition !== 'overage'
+            || (float) ($sale->over_short_amount ?? 0) <= 0
+            || $sale->over_short_gl_status === 'posted') {
+            return;
+        }
+
+        try {
+            $this->glPostingService->postSaleOverShortAdjustment($sale);
+
+            $sale->update([
+                'over_short_gl_status' => 'posted',
+            ]);
+        } catch (Exception $e) {
+            $sale->update([
+                'over_short_gl_status' => 'failed',
+            ]);
+
+            \Log::error('Failed to post sale overage to GL', [
                 'sale_id' => $sale->id,
                 'sale_number' => $sale->sale_number,
                 'error' => $e->getMessage(),

@@ -6,11 +6,14 @@ use App\Models\Department;
 use App\Models\Item;
 use App\Models\ItemDispatch;
 use App\Models\ItemRequest;
+use App\Models\Product;
 use App\Models\ProductDispatch;
 use App\Models\ProductionStore;
 use App\Models\ProductionStoreMovement;
 use App\Models\ProductionStoreStock;
+use App\Models\ProductionStoreTransfer;
 use App\Models\Recipe;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -69,8 +72,8 @@ class ProductionStoreService
         $actor = null,
         bool $isWip = false
     ): ProductionStoreStock {
-        $productId = $product instanceof \Illuminate\Database\Eloquent\Model ? $product->id : $product;
-        $unitCost = $product instanceof \App\Models\Product ? (float) ($product->cost ?? 0) : 0.0;
+        $productId = $product instanceof Model ? $product->id : $product;
+        $unitCost = $product instanceof Product ? (float) ($product->cost ?? 0) : 0.0;
         $actor = $actor ?? current_actor();
 
         $stock = ProductionStoreStock::firstOrNew([
@@ -99,8 +102,8 @@ class ProductionStoreService
             'moved_by_type' => $actor ? get_class($actor) : null,
             'movement_date' => now(),
             'notes' => ($isWip ? 'WIP' : 'Finished Goods')
-                . ' Production (Approved): '
-                . ($recipe?->product_name ?? ($product->name ?? '')),
+                .' Production (Approved): '
+                .($recipe?->product_name ?? ($product->name ?? '')),
         ]);
 
         return $stock;
@@ -122,8 +125,8 @@ class ProductionStoreService
         $actor = null,
         ?string $note = null
     ): ProductionStoreStock {
-        $productId = $product instanceof \Illuminate\Database\Eloquent\Model ? $product->id : $product;
-        $unitCost = $product instanceof \App\Models\Product ? (float) ($product->cost ?? 0) : 0.0;
+        $productId = $product instanceof Model ? $product->id : $product;
+        $unitCost = $product instanceof Product ? (float) ($product->cost ?? 0) : 0.0;
         $actor = $actor ?? current_actor();
         $type = in_array($type, ['out', 'transfer'], true) ? $type : 'transfer';
 
@@ -217,7 +220,7 @@ class ProductionStoreService
             ->active()
             ->first();
 
-        if (!$store) {
+        if (! $store) {
             return new ConsumptionResult(
                 consumed: [],
                 shortages: [],
@@ -281,7 +284,7 @@ class ProductionStoreService
      */
     public function getAvailableStock(ProductionStore $store, $item): float
     {
-        $itemId = $item instanceof \Illuminate\Database\Eloquent\Model ? $item->id : $item;
+        $itemId = $item instanceof Model ? $item->id : $item;
 
         $stock = $store->stocks()
             ->where('item_id', $itemId)
@@ -310,8 +313,8 @@ class ProductionStoreService
         $reference,
         $dispatch = null
     ): ProductionStoreMovement {
-        $itemId = $item instanceof \Illuminate\Database\Eloquent\Model ? $item->id : $item;
-        $unitPrice = $item instanceof \App\Models\Item ? $item->unit_price : ($item instanceof \App\Models\Product ? $item->cost : 0);
+        $itemId = $item instanceof Model ? $item->id : $item;
+        $unitPrice = $item instanceof Item ? $item->unit_price : ($item instanceof Product ? $item->cost : 0);
 
         $stock = $store->stocks()->where('item_id', $itemId)->first();
         $before = (float) ($stock?->quantity_available ?? 0);
@@ -329,7 +332,7 @@ class ProductionStoreService
             'moved_by_id' => current_actor()?->id,
             'moved_by_type' => get_class(current_actor()),
             'movement_date' => now(),
-            'notes' => $dispatch ? "Stocked from dispatch" : "Stocked in",
+            'notes' => $dispatch ? 'Stocked from dispatch' : 'Stocked in',
         ]);
 
         return $movement;
@@ -344,8 +347,8 @@ class ProductionStoreService
         float $quantity,
         $reference
     ): ProductionStoreMovement {
-        $itemId = $item instanceof \Illuminate\Database\Eloquent\Model ? $item->id : $item;
-        $unitPrice = $item instanceof \App\Models\Item ? $item->unit_price : ($item instanceof \App\Models\Product ? $item->cost : 0);
+        $itemId = $item instanceof Model ? $item->id : $item;
+        $unitPrice = $item instanceof Item ? $item->unit_price : ($item instanceof Product ? $item->cost : 0);
 
         $stock = $store->stocks()->where('item_id', $itemId)->first();
         $before = (float) ($stock?->quantity_available ?? 0);
@@ -384,7 +387,7 @@ class ProductionStoreService
             ->active()
             ->first();
 
-        if (!$store) {
+        if (! $store) {
             return new StockCheckResult(
                 canProduce: false,
                 shortages: [],
@@ -427,14 +430,14 @@ class ProductionStoreService
         $item,
         float $quantity
     ): void {
-        $itemId = $item instanceof \Illuminate\Database\Eloquent\Model ? $item->id : $item;
-        $unitPrice = $item instanceof \App\Models\Item ? $item->unit_price : ($item instanceof \App\Models\Product ? $item->cost : 0);
+        $itemId = $item instanceof Model ? $item->id : $item;
+        $unitPrice = $item instanceof Item ? $item->unit_price : ($item instanceof Product ? $item->cost : 0);
 
         $stock = $store->stocks()
             ->where('item_id', $itemId)
             ->first();
 
-        if (!$stock || $stock->quantity_available < $quantity) {
+        if (! $stock || $stock->quantity_available < $quantity) {
             $available = $stock?->quantity_available ?? 0;
             throw new \InvalidArgumentException(
                 "Insufficient stock in store. Available: {$available}"
@@ -458,6 +461,207 @@ class ProductionStoreService
                 'moved_by_type' => get_class(current_actor()),
                 'movement_date' => now(),
                 'notes' => 'Transferred to main inventory',
+            ]);
+        });
+    }
+
+    /**
+     * Send a raw material from one production store to another department's store.
+     *
+     * The source is deducted immediately (the goods are in transit) and a
+     * pending_receipt transfer record is created. The destination store is NOT
+     * credited until the receiving department confirms via confirmStoreTransfer.
+     * The source's average cost is captured on the record so it can be carried
+     * over (weighted-average) when the destination receives.
+     */
+    public function sendStoreTransfer(
+        ProductionStore $from,
+        ProductionStore $to,
+        string $itemId,
+        float $quantity,
+        ?string $notes = null,
+        $actor = null
+    ): ProductionStoreTransfer {
+        if ($from->id === $to->id) {
+            throw new \InvalidArgumentException('Source and destination stores must be different.');
+        }
+
+        if ($quantity <= 0) {
+            throw new \InvalidArgumentException('Transfer quantity must be greater than zero.');
+        }
+
+        $actor = $actor ?? current_actor();
+
+        $sourceStock = ProductionStoreStock::where('store_id', $from->id)
+            ->where('item_id', $itemId)
+            ->first();
+
+        $available = (float) ($sourceStock->quantity_available ?? 0);
+        if (! $sourceStock || $available < $quantity) {
+            throw new \InvalidArgumentException("Insufficient stock to transfer. Available: {$available}");
+        }
+
+        $item = Item::with('unitOfMeasure')->find($itemId);
+        $unitCost = (float) ($sourceStock->average_cost ?? 0);
+
+        return DB::transaction(function () use ($from, $to, $itemId, $quantity, $notes, $actor, $sourceStock, $available, $unitCost, $item) {
+            $after = $available - $quantity;
+            $sourceStock->quantity_available = $after;
+            $sourceStock->save();
+
+            $transfer = ProductionStoreTransfer::create([
+                'branch_id' => $from->branch_id,
+                'from_store_id' => $from->id,
+                'to_store_id' => $to->id,
+                'from_department_id' => $from->department_id,
+                'to_department_id' => $to->department_id,
+                'item_id' => $itemId,
+                'quantity' => $quantity,
+                'uom' => $item?->unitOfMeasure?->symbol,
+                'unit_cost' => $unitCost,
+                'status' => 'pending_receipt',
+                'notes' => $notes,
+                'sent_by_id' => $actor?->id,
+                'sent_by_type' => $actor ? get_class($actor) : null,
+                'sent_at' => now(),
+            ]);
+
+            ProductionStoreMovement::create([
+                'store_id' => $from->id,
+                'item_id' => $itemId,
+                'type' => 'transfer',
+                'quantity' => -$quantity,
+                'quantity_before' => $available,
+                'quantity_after' => $after,
+                'unit_cost' => $unitCost,
+                'reference_type' => ProductionStoreTransfer::class,
+                'reference_id' => $transfer->id,
+                'moved_by_id' => $actor?->id,
+                'moved_by_type' => $actor ? get_class($actor) : null,
+                'movement_date' => now(),
+                'notes' => 'Transfer out to '.($to->department?->name ?? $to->name),
+            ]);
+
+            return $transfer;
+        });
+    }
+
+    /**
+     * Confirm receipt of an in-transit store transfer. Credits the destination
+     * store (weighted-average cost using the transfer's captured unit_cost) and
+     * writes a transfer-in movement. Any sent-vs-received shortfall stays deducted
+     * from the source — a documented transit loss exposed via the record variance.
+     */
+    public function confirmStoreTransfer(
+        ProductionStoreTransfer $transfer,
+        float $receivedQuantity,
+        $actor = null
+    ): void {
+        if ($transfer->status !== 'pending_receipt') {
+            throw new \InvalidArgumentException('Only pending transfers can be received.');
+        }
+
+        $sent = (float) $transfer->quantity;
+        if ($receivedQuantity < 0 || $receivedQuantity > $sent) {
+            throw new \InvalidArgumentException("Received quantity must be between 0 and {$sent}.");
+        }
+
+        $actor = $actor ?? current_actor();
+        $unitCost = (float) $transfer->unit_cost;
+
+        DB::transaction(function () use ($transfer, $receivedQuantity, $actor, $unitCost) {
+            if ($receivedQuantity > 0) {
+                $destStock = ProductionStoreStock::firstOrNew([
+                    'store_id' => $transfer->to_store_id,
+                    'item_id' => $transfer->item_id,
+                ]);
+
+                $existingQty = (float) ($destStock->quantity_available ?? 0);
+                $existingCost = (float) ($destStock->average_cost ?? 0);
+
+                if ($existingQty + $receivedQuantity > 0) {
+                    $destStock->average_cost = (($existingQty * $existingCost) + ($receivedQuantity * $unitCost))
+                        / ($existingQty + $receivedQuantity);
+                } else {
+                    $destStock->average_cost = $unitCost;
+                }
+
+                $destStock->quantity_available = $existingQty + $receivedQuantity;
+                $destStock->save();
+
+                ProductionStoreMovement::create([
+                    'store_id' => $transfer->to_store_id,
+                    'item_id' => $transfer->item_id,
+                    'type' => 'transfer',
+                    'quantity' => $receivedQuantity,
+                    'quantity_before' => $existingQty,
+                    'quantity_after' => $existingQty + $receivedQuantity,
+                    'unit_cost' => $unitCost,
+                    'reference_type' => ProductionStoreTransfer::class,
+                    'reference_id' => $transfer->id,
+                    'moved_by_id' => $actor?->id,
+                    'moved_by_type' => $actor ? get_class($actor) : null,
+                    'movement_date' => now(),
+                    'notes' => 'Transfer in from '.($transfer->fromDepartment?->name ?? 'production'),
+                ]);
+            }
+
+            $transfer->update([
+                'received_quantity' => $receivedQuantity,
+                'status' => 'received',
+                'received_by_id' => $actor?->id,
+                'received_by_type' => $actor ? get_class($actor) : null,
+                'received_at' => now(),
+            ]);
+        });
+    }
+
+    /**
+     * Cancel/reject an in-transit transfer: return the held quantity to the
+     * source store (reversing transfer movement) and mark it cancelled. Nothing
+     * is lost. Used when the receiving department rejects, or the sender undoes.
+     */
+    public function cancelStoreTransfer(ProductionStoreTransfer $transfer, $actor = null): void
+    {
+        if ($transfer->status !== 'pending_receipt') {
+            throw new \InvalidArgumentException('Only pending transfers can be cancelled.');
+        }
+
+        $actor = $actor ?? current_actor();
+        $quantity = (float) $transfer->quantity;
+        $unitCost = (float) $transfer->unit_cost;
+
+        DB::transaction(function () use ($transfer, $actor, $quantity, $unitCost) {
+            $sourceStock = ProductionStoreStock::firstOrNew([
+                'store_id' => $transfer->from_store_id,
+                'item_id' => $transfer->item_id,
+            ]);
+
+            $before = (float) ($sourceStock->quantity_available ?? 0);
+            $sourceStock->quantity_available = $before + $quantity;
+            $sourceStock->save();
+
+            ProductionStoreMovement::create([
+                'store_id' => $transfer->from_store_id,
+                'item_id' => $transfer->item_id,
+                'type' => 'transfer',
+                'quantity' => $quantity,
+                'quantity_before' => $before,
+                'quantity_after' => $before + $quantity,
+                'unit_cost' => $unitCost,
+                'reference_type' => ProductionStoreTransfer::class,
+                'reference_id' => $transfer->id,
+                'moved_by_id' => $actor?->id,
+                'moved_by_type' => $actor ? get_class($actor) : null,
+                'movement_date' => now(),
+                'notes' => 'Transfer cancelled — returned to source',
+            ]);
+
+            $transfer->update([
+                'status' => 'cancelled',
+                'received_by_id' => $actor?->id,
+                'received_by_type' => $actor ? get_class($actor) : null,
+                'received_at' => now(),
             ]);
         });
     }

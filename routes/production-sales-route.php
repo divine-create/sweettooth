@@ -60,6 +60,9 @@ Route::prefix('production')->name('production.')->middleware(['department.scope'
         Route::get('/material-returns/create/{deptSlug?}', \App\Livewire\BranchDashboard\Production\MaterialReturns\Create::class)->name('material-returns.create');
         Route::get('/material-returns/list/{deptSlug?}', \App\Livewire\BranchDashboard\Production\MaterialReturns\Index::class)->name('material-returns.history');
 
+        // Store-to-Store Transfers (raw materials between production departments)
+        Route::get('store-transfers/{deptSlug?}', \App\Livewire\BranchDashboard\Production\StoreTransfers\Index::class)->name('store-transfers.index');
+
         // Sales Return Callbacks — production side approval/receipt workflow
         Route::get('/callbacks/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Callbacks\ApproveCallbacks::class)->name('callbacks.approve');
     };

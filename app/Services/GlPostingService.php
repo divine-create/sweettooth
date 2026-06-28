@@ -240,6 +240,87 @@ class GlPostingService
     }
 
     /**
+     * Post the cash-overage adjustment for a sale where the customer overpaid and
+     * kept the change as overage (over_short_disposition = 'overage').
+     *
+     * The extra cash is physically in the drawer and is recognised as income. The
+     * entry is self-balancing and independent of the sale/payment postings:
+     *   Debit:  Cash               (the surplus cash retained in the drawer)
+     *   Credit: Cash Overage Income (revenue)
+     */
+    public function postSaleOverShortAdjustment(Sale $sale): bool
+    {
+        try {
+            DB::beginTransaction();
+            $this->branchId = $sale->branch_id;
+
+            $overage = (float) ($sale->over_short_amount ?? 0);
+            if ($sale->over_short_disposition !== 'overage' || $overage <= 0) {
+                DB::commit();
+                return true;
+            }
+
+            if ($this->alreadyPosted(Sale::class, (int) $sale->id, ['sale_overage'])) {
+                DB::commit();
+                return true;
+            }
+
+            $period = $this->getCurrentPeriod();
+            if (!$period) {
+                throw new Exception('No open accounting period found');
+            }
+
+            $department = $this->getDepartmentForSale($sale);
+            // Overage is always physical cash kept in the drawer.
+            $cashAccount = $department?->cashAccount ?? $this->account('cash_on_hand');
+            $overageAccount = $this->account('cash_overage');
+
+            // Debit: Cash (surplus retained in the drawer)
+            $this->createEntry([
+                'gl_account_id' => $cashAccount->id,
+                'accounting_period_id' => $period->id,
+                'entry_type' => 'sale_overage',
+                'reference_type' => Sale::class,
+                'reference_id' => $sale->id,
+                'reference_number' => $sale->reference_number ?? "SAL-{$sale->id}",
+                'description' => "Cash overage retained - {$sale->reference_number}",
+                'debit' => $overage,
+                'credit' => 0,
+                'entry_date' => $sale->sale_time,
+                'status' => 'draft',
+                'entered_by_id' => auth()->id(),
+            ])->post(auth()->id());
+
+            // Credit: Cash Overage Income
+            $this->createEntry([
+                'gl_account_id' => $overageAccount->id,
+                'accounting_period_id' => $period->id,
+                'entry_type' => 'sale_overage',
+                'reference_type' => Sale::class,
+                'reference_id' => $sale->id,
+                'reference_number' => $sale->reference_number ?? "SAL-{$sale->id}",
+                'description' => "Cash overage income - {$sale->reference_number}",
+                'debit' => 0,
+                'credit' => $overage,
+                'entry_date' => $sale->sale_time,
+                'status' => 'draft',
+                'entered_by_id' => auth()->id(),
+            ])->post(auth()->id());
+
+            DB::commit();
+            return true;
+        } catch (Exception $e) {
+            DB::rollBack();
+            \Log::error('GL Posting Error - Sale Overage Adjustment', [
+                'sale_id' => $sale->id,
+                'error' => $e->getMessage(),
+            ]);
+            $this->dispatchGlFailureNotification('sale_overage', (string) $sale->id, $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
      * Post a purchase transaction
      * Debit: Inventory, Credit: Accounts Payable
      */

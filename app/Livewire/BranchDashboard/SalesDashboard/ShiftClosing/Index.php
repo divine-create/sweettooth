@@ -208,14 +208,7 @@ class Index extends BaseComponent
         $shift = Shift::find($this->currentShiftId);
         if (!$shift) return;
 
-        $salesQuery = $this->currentShiftId
-            ? Sale::where('shift_id', $this->currentShiftId)
-            : Sale::where('branch_id', $this->branchId)
-                ->where('department_id', $this->departmentId)
-                ->whereBetween('sale_time', [
-                    $shift->clock_in ?? $shift->shift_date->startOfDay(),
-                    now()
-                ]);
+        $salesQuery = $this->shiftSalesQuery($shift);
 
         $sales = $salesQuery
             ->where('status', '!=', 'cancelled')
@@ -286,17 +279,40 @@ class Index extends BaseComponent
             ];
         })->toArray();
 
+        // Overage kept this shift (income booked separately from product sales).
+        $overageTotal = (float) $sales->where('over_short_disposition', 'overage')->sum('over_short_amount');
+
         $this->salesSummary = [
             'total_sales' => $totalSales,
             'total_orders' => $totalOrders,
             'avg_order_value' => $totalOrders > 0 ? $totalSales / $totalOrders : 0,
             'total_discount' => $totalDiscount,
             'total_tax' => $totalTax,
+            // total_sales is the sum of bill totals (product prices); overage is tracked
+            // separately, so product_sales == total_sales and total cash in = sum of both.
+            'product_sales' => $totalSales,
+            'overage_total' => $overageTotal,
             'cancelled_orders' => $cancelledOrders,
             'payment_breakdown' => $paymentBreakdown,
             'top_products' => $topProducts,
             'order_type_breakdown' => $orderTypeBreakdown,
         ];
+    }
+
+    /**
+     * Base query for the sales belonging to the shift being closed. Returns a fresh
+     * builder on each call so callers can add their own constraints safely.
+     */
+    protected function shiftSalesQuery(Shift $shift)
+    {
+        return $this->currentShiftId
+            ? Sale::where('shift_id', $this->currentShiftId)
+            : Sale::where('branch_id', $this->branchId)
+                ->where('department_id', $this->departmentId)
+                ->whereBetween('sale_time', [
+                    $shift->clock_in ?? $shift->shift_date->startOfDay(),
+                    now(),
+                ]);
     }
 
     /**
@@ -326,6 +342,15 @@ class Index extends BaseComponent
         $expectedPos = $payments->where('payment_method', 'pos')->sum('amount');
         $expectedTransfer = $payments->where('payment_method', 'transfer')->sum('amount');
 
+        // Cash kept as overage (customer paid more and left the change). It is already
+        // part of expectedCash (cash payments record the full tender), so we split it
+        // out: product-sale cash vs overage cash, while the drawer total is unchanged.
+        $overageCash = (float) $this->shiftSalesQuery($shift)
+            ->where('status', '!=', 'cancelled')
+            ->where('over_short_disposition', 'overage')
+            ->sum('over_short_amount');
+        $productCash = max(0, $expectedCash - $overageCash);
+
         $cashVariance = (float)$this->actualCash - $expectedCash;
         $posVariance = (float)$this->actualPos - $expectedPos;
         $transferVariance = (float)$this->actualTransfer - $expectedTransfer;
@@ -337,6 +362,8 @@ class Index extends BaseComponent
 
         $this->cashReconciliation = [
             'expected_cash' => $expectedCash,
+            'product_cash' => $productCash,
+            'overage_cash' => $overageCash,
             'expected_pos' => $expectedPos,
             'expected_transfer' => $expectedTransfer,
             'actual_cash' => (float)$this->actualCash,
@@ -516,6 +543,8 @@ class Index extends BaseComponent
                 'reconciliation' => [
                     'cash' => [
                         'expected' => $this->cashReconciliation['expected_cash'],
+                        'product_cash' => $this->cashReconciliation['product_cash'] ?? $this->cashReconciliation['expected_cash'],
+                        'overage_cash' => $this->cashReconciliation['overage_cash'] ?? 0,
                         'actual' => (float)$this->actualCash,
                         'variance' => $this->cashReconciliation['cash_variance'],
                         'reason' => $this->cashVarianceReason,
@@ -569,6 +598,8 @@ class Index extends BaseComponent
                 'gross_sales' => (clone $salesScope)->where('status', 'completed')->sum('total'),
                 'total_discount' => (clone $salesScope)->where('status', 'completed')->sum('discount'),
                 'total_tax' => (clone $salesScope)->where('status', 'completed')->sum('tax'),
+                'overage_total' => (clone $salesScope)->where('status', 'completed')
+                    ->where('over_short_disposition', 'overage')->sum('over_short_amount'),
                 'finalized_pending_sales' => $finalizedPendingSales,
             ];
             $metadata['shift_closing_completed'] = true;

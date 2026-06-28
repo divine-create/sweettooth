@@ -1,4 +1,20 @@
-<div class="p-3 space-y-3">
+<div class="p-3 space-y-3"
+     x-data="{
+        transfer: { open: false, itemId: null, name: '', uom: '', available: 0, qty: null, deptId: '', notes: '', sending: false },
+        openTransfer(d) {
+            this.transfer = { open: true, itemId: d.itemId, name: d.name, uom: d.uom, available: d.available, qty: d.available, deptId: '', notes: '', sending: false };
+        },
+        closeTransfer() { this.transfer.open = false; },
+        submitTransfer() {
+            if (this.transfer.sending) return;
+            const t = this.transfer;
+            if (!t.deptId || !(parseFloat(t.qty) > 0)) return;
+            this.transfer.sending = true;
+            $wire.transferStock(t.itemId, t.qty, t.deptId, t.notes)
+                .then(() => { this.transfer.open = false; })
+                .finally(() => { this.transfer.sending = false; });
+        }
+     }">
 
     <x-breadcrumb
         title="Production Store"
@@ -60,7 +76,7 @@
             <div class="flex flex-col md:flex-row gap-4 justify-between">
                 <div class="flex-1">
                     <input type="text"
-                           wire:model.live="search"
+                           wire:model.live.debounce.400ms="search"
                            placeholder="Search items by name or SKU..."
                            class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200"/>
                 </div>
@@ -113,8 +129,8 @@
                 </p>
             </div>
         @else
-            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700 overflow-hidden">
-                <table class="w-full">
+            <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700 overflow-x-auto">
+                <table class="w-full" style="min-width: 900px;">
                     <thead class="bg-zinc-50 dark:bg-zinc-700 border-b border-zinc-200 dark:border-zinc-600">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase">Item</th>
@@ -124,12 +140,14 @@
                             <th class="px-4 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase">Avg Cost</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase">Value</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase">Last Updated</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                         @foreach($stocks as $stock)
                             @php
                                 $isWip = in_array($stock->item_id, $wipProductIds);
+                                $isFinished = !$isWip && !ctype_digit((string) $stock->item_id);
                             @endphp
                             <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
                                 <td class="px-4 py-3">
@@ -148,27 +166,15 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <span class="px-2 py-1 text-xs rounded-full
+                                    <span class="px-2 py-1 text-xs rounded-full whitespace-nowrap
                                         @if($stock->displayItem?->category?->name === 'Raw Material')
-                                            bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                        @elseif($stock->displayItem?->category?->name === 'Packaging')
-                                            bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                                        @else
-                                            bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200'
-                                        @endif">
-                                        {{ $stock->displayItem?->category?->name ?? 'Uncategorized' }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <span class="px-2 py-1 text-xs rounded-full
-                                        @if($stock->item?->category?->name === 'Raw Material')
                                             bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
-                                        @elseif($stock->item?->category?->name === 'Packaging')
+                                        @elseif($stock->displayItem?->category?->name === 'Packaging')
                                             bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
                                         @else
                                             bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200
                                         @endif">
-                                        {{ $stock->item?->category?->name ?? 'Uncategorized' }}
+                                        {{ $stock->displayItem?->category?->name ?? 'Uncategorized' }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 text-right">
@@ -196,11 +202,188 @@
                                         <span class="text-zinc-400">Never</span>
                                     @endif
                                 </td>
+                                <td class="px-4 py-3 text-right">
+                                    <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+                                        @if($isFinished && ($stock->quantity_available ?? 0) > 0)
+                                            <button wire:click="openSendModal('{{ $stock->item_id }}')"
+                                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white inline-flex items-center gap-1 whitespace-nowrap">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/>
+                                                </svg>
+                                                Send to Sales
+                                            </button>
+                                        @endif
+                                        @if($stockFilter === 'raw' && !$isWip && !$isFinished && ctype_digit((string) $stock->item_id) && ($stock->quantity_available ?? 0) > 0)
+                                            @php
+                                                $rawName = $stock->displayItem->name ?? ($stock->item->name ?? 'Item');
+                                                $rawUom = $stock->item->unitOfMeasure->symbol ?? '';
+                                            @endphp
+                                            <button type="button"
+                                                    x-on:click="openTransfer({
+                                                        itemId: '{{ $stock->item_id }}',
+                                                        name: @js($rawName),
+                                                        uom: @js($rawUom),
+                                                        available: {{ (float) ($stock->quantity_available ?? 0) }}
+                                                    })"
+                                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-600 hover:bg-teal-700 text-white inline-flex items-center gap-1 whitespace-nowrap">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m4 6H4m0 0l4 4m-4-4l4-4"/>
+                                                </svg>
+                                                Transfer
+                                            </button>
+                                        @endif
+                                    </div>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
+
+            @if($stocks->hasPages())
+                <div class="mt-3">
+                    {{ $stocks->onEachSide(1)->links() }}
+                </div>
+            @endif
         @endif
     @endif
+
+    @if($showSendModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/50" wire:click="closeSendModal"></div>
+            <div class="relative bg-white dark:bg-zinc-800 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 w-full max-w-md p-5">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Send to Sales</h3>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $sendProductName }}</p>
+                    </div>
+                    <button wire:click="closeSendModal" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="text-sm text-zinc-600 dark:text-zinc-300">
+                        Available in store:
+                        <span class="font-semibold text-zinc-900 dark:text-white">{{ rtrim(rtrim(number_format($sendAvailable,2),'0'),'.') }} {{ $sendUom }}</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Sales department</label>
+                        @if(count($sendDepartments))
+                            <select wire:model="sendSalesDepartmentId"
+                                    class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-900 text-sm">
+                                <option value="">Select a sales department…</option>
+                                @foreach($sendDepartments as $id => $name)
+                                    <option value="{{ $id }}">{{ $name }}</option>
+                                @endforeach
+                            </select>
+                        @else
+                            <p class="text-sm text-amber-600 dark:text-amber-400">
+                                This product is not assigned to any sales department. Assign it via Product Assignments first.
+                            </p>
+                        @endif
+                        @error('sendSalesDepartmentId') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Quantity to send ({{ $sendUom }})</label>
+                        <input type="number" step="0.01" min="0.01" max="{{ $sendAvailable }}" wire:model="sendQuantity"
+                               class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-900 text-sm" />
+                        @error('sendQuantity') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-6">
+                    <button wire:click="closeSendModal"
+                            class="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                        Cancel
+                    </button>
+                    <button wire:click="sendToSales" @disabled(!count($sendDepartments))
+                            wire:loading.attr="disabled" wire:target="sendToSales"
+                            class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span wire:loading.remove wire:target="sendToSales">Send to Sales</span>
+                        <span wire:loading wire:target="sendToSales">Sending…</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <div x-show="transfer.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display:none;">
+        <div class="absolute inset-0 bg-black/50" x-on:click="closeTransfer()"></div>
+        <div class="relative bg-white dark:bg-zinc-800 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 w-full max-w-md p-5">
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Transfer to Another Store</h3>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400" x-text="transfer.name"></p>
+                </div>
+                <button type="button" x-on:click="closeTransfer()" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div class="text-sm text-zinc-600 dark:text-zinc-300">
+                    Available in store:
+                    <span class="font-semibold text-zinc-900 dark:text-white">
+                        <span x-text="(Math.round(transfer.available * 100) / 100)"></span>
+                        <span x-text="transfer.uom"></span>
+                    </span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Destination department</label>
+                    @if(count($transferDepartments))
+                        <select x-model="transfer.deptId"
+                                class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-900 text-sm">
+                            <option value="">Select a department…</option>
+                            @foreach($transferDepartments as $id => $name)
+                                <option value="{{ $id }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    @else
+                        <p class="text-sm text-amber-600 dark:text-amber-400">
+                            No other production departments are available to transfer to.
+                        </p>
+                    @endif
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                        Quantity to transfer (<span x-text="transfer.uom"></span>)
+                    </label>
+                    <input type="number" step="0.01" min="0.01" x-bind:max="transfer.available" x-model="transfer.qty"
+                           class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-900 text-sm" />
+                    <p class="text-xs text-red-600" x-show="transfer.qty !== null && transfer.qty !== '' && parseFloat(transfer.qty) > transfer.available">
+                        Quantity exceeds what is available.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Notes (optional)</label>
+                    <textarea x-model="transfer.notes" rows="2" maxlength="500"
+                              class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-900 text-sm"
+                              placeholder="Reason / reference…"></textarea>
+                </div>
+
+                <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                    Stock leaves this store immediately and is credited to the destination once that department confirms receipt.
+                </p>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" x-on:click="closeTransfer()"
+                        class="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                    Cancel
+                </button>
+                <button type="button" x-on:click="submitTransfer()"
+                        x-bind:disabled="transfer.sending || !transfer.deptId || !(parseFloat(transfer.qty) > 0) || parseFloat(transfer.qty) > transfer.available {{ count($transferDepartments) ? '' : '|| true' }}"
+                        class="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span x-show="!transfer.sending">Send Transfer</span>
+                    <span x-show="transfer.sending">Sending…</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>

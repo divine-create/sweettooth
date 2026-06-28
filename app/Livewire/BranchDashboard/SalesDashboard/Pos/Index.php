@@ -5,33 +5,38 @@ namespace App\Livewire\BranchDashboard\SalesDashboard\Pos;
 use App\Helpers\Settings;
 use App\Livewire\BaseComponent;
 use App\Livewire\Concerns\SalesDepartmentContext;
+use App\Models\BankAccount;
+use App\Models\Branch;
+use App\Models\BranchPosConfiguration;
+use App\Models\Department;
 use App\Models\Item;
 use App\Models\MaterialRequestDispatch;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductDispatch;
 use App\Models\ProductStock;
 use App\Models\Quotation;
 use App\Models\QuotationItem;
+use App\Models\Receipt;
 use App\Models\Sale;
 use App\Models\SaleItem;
-use App\Models\Payment;
-use App\Models\Receipt;
 use App\Models\SalesShift;
 use App\Models\Shift;
 use App\Models\Stock;
 use App\Models\Table;
-use App\Models\BankAccount;
-use App\Models\Branch;
-use App\Models\Department;
+use App\Models\User;
+use App\Notifications\SalesReceiptNotification;
 use App\Services\CurrencyFormattingService;
 use App\Services\PosDocumentService;
 use App\Services\UomConversionService;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
-use Livewire\Attributes\{Layout, Url, Computed, On};
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 
 #[Layout('components.layouts.app.branch-dashboard')]
 class Index extends BaseComponent
@@ -42,51 +47,85 @@ class Index extends BaseComponent
     // are now provided by SalesDepartmentContext trait
 
     public string $search = '';
+
     public string $stockFilter = 'all'; // 'all' | 'in_stock' | 'out_of_stock'
+
     public array $cart = [];
+
     public float $subtotal = 0.0;
+
     public $discount = 0.0;
+
     public float $tax = 0.0;
+
     public float $total = 0.0;
+
     public ?int $activeShiftId = null;
+
     public float $cashReceived = 0.0;
+
     public float $changeDue = 0.0;
+
     public ?int $currentSaleId = null;
+
     public string $orderType = 'dine-in';
+
     public array $payments = [];
+
     public float $paymentTotal = 0.0;
+
     public float $paymentRemaining = 0.0;
+
+    // How to handle an overpayment (paymentTotal > total):
+    //   'change'  = hand the difference back as change (only the bill stays in the drawer)
+    //   'overage' = customer kept it; the difference is booked as overage income
+    public string $overageDisposition = 'change';
+
     public string $shiftType = 'morning';
+
     protected ?CursorPaginator $productsForView = null;
+
     protected ?array $productAvailabilityForView = null;
+
     protected ?array $productsPayloadForView = null;
+
     public int $productsPerPage = 50;
-    
+
     public function __set(string $name, mixed $value): void
     {
         // Ensure float properties stay as floats
         if (in_array($name, ['subtotal', 'discount', 'tax', 'total', 'cashReceived', 'changeDue', 'paymentTotal', 'paymentRemaining'])) {
-            $value = (float)$value;
+            $value = (float) $value;
         }
         parent::__set($name, $value);
     }
 
     // Quotations / draft orders
     public bool $showQuotationModal = false;
+
     public string $quotationCustomerName = '';
+
     public string $quotationCustomerPhone = '';
+
     public ?string $quotationValidUntil = null;
+
     public string $quotationNotes = '';
+
     // Set when the current cart was loaded from a quotation; on successful sale
     // completion the quotation is marked converted and linked to the new sale.
     public ?int $convertingQuotationId = null;
 
     // Table Management
     public ?int $selectedTableId = null;
+
     public bool $showTableManagement = false;
+
     public bool $showTableModal = false;
+
     public string $newTableNumber = '';
+
     public string $newTableName = '';
+
     public int $newTableCapacity = 4;
 
     protected $rules = [
@@ -104,7 +143,8 @@ class Index extends BaseComponent
      */
     protected function formatCurrency(float $amount): string
     {
-        $service = new CurrencyFormattingService();
+        $service = new CurrencyFormattingService;
+
         return $service->format($amount);
     }
 
@@ -151,18 +191,20 @@ class Index extends BaseComponent
 
     public function toggleTableManagement(): void
     {
-        if (!$this->departmentId) {
+        if (! $this->departmentId) {
             $this->toast()->error('Department not found.')->send();
+
             return;
         }
 
         $department = Department::find($this->departmentId);
-        if (!$department) {
+        if (! $department) {
             $this->toast()->error('Department not found.')->send();
+
             return;
         }
 
-        $department->enable_table_management = !$department->enable_table_management;
+        $department->enable_table_management = ! $department->enable_table_management;
         $department->save();
 
         $this->showTableManagement = $department->enable_table_management;
@@ -179,23 +221,23 @@ class Index extends BaseComponent
                     ->where('table_number', (string) $i)
                     ->exists();
 
-                if (!$tableExists) {
+                if (! $tableExists) {
                     Table::create([
                         'branch_id' => $this->branchId,
                         'department_id' => $this->departmentId,
                         'table_number' => (string) $i,
-                        'table_name' => 'Table ' . $i,
+                        'table_name' => 'Table '.$i,
                         'status' => 'available',
                         'capacity' => 4,
                         'is_active' => true,
                     ]);
                 }
             }
-            $this->toast()->success('Table management enabled! Default tables created for ' . $department->name . '.')->send();
+            $this->toast()->success('Table management enabled! Default tables created for '.$department->name.'.')->send();
         } else {
             $message = $department->enable_table_management
-                ? 'Table management enabled for ' . $department->name . '.'
-                : 'Table management disabled for ' . $department->name . '.';
+                ? 'Table management enabled for '.$department->name.'.'
+                : 'Table management disabled for '.$department->name.'.';
             $this->toast()->success($message)->send();
         }
 
@@ -289,7 +331,7 @@ class Index extends BaseComponent
         $stock = $this->getTodayStockForProduct($productId);
         $available = $this->availableQuantity($stock);
 
-        $lineKey = (string)$productId;
+        $lineKey = (string) $productId;
         $currentQty = $this->cart[$lineKey]['qty'] ?? 0;
         $newQty = $currentQty + 1;
 
@@ -300,20 +342,22 @@ class Index extends BaseComponent
 
         // Strict stock enforcement: cannot add if out of stock
         if ($available <= 0) {
-            $this->toast()->error('Out of stock for ' . $product->name . '. Cannot add to cart.')->send();
+            $this->toast()->error('Out of stock for '.$product->name.'. Cannot add to cart.')->send();
+
             return;
         }
 
         // Strict stock enforcement: cannot exceed available quantity (in base UOM)
         if ($baseQuantity > $available) {
-            $this->toast()->warning('Cannot add more than available stock (' . $available . ' ' . $product->uomSymbol . ') for ' . $product->name)->send();
+            $this->toast()->warning('Cannot add more than available stock ('.$available.' '.$product->uomSymbol.') for '.$product->name)->send();
+
             return;
         }
 
         $this->cart[$lineKey] = [
             'product_id' => $productId,
             'name' => $product->name,
-            'price' => (float)($product->price ?? 0),
+            'price' => (float) ($product->price ?? 0),
             'qty' => $newQty,
             'sales_uom' => $product->effectiveSalesUomSymbol,
             'base_uom' => $product->uomSymbol,
@@ -331,7 +375,9 @@ class Index extends BaseComponent
 
     public function increment(string $lineKey): void
     {
-        if (!isset($this->cart[$lineKey])) return;
+        if (! isset($this->cart[$lineKey])) {
+            return;
+        }
 
         $line = $this->cart[$lineKey];
         $newQty = $line['qty'] + 1;
@@ -345,7 +391,8 @@ class Index extends BaseComponent
         }
 
         if ($newQty > $available) {
-            $this->toast()->warning('Cannot exceed available stock (' . $available . ') for ' . $line['name'])->send();
+            $this->toast()->warning('Cannot exceed available stock ('.$available.') for '.$line['name'])->send();
+
             return;
         }
 
@@ -355,7 +402,9 @@ class Index extends BaseComponent
 
     public function decrement(string $lineKey): void
     {
-        if (!isset($this->cart[$lineKey])) return;
+        if (! isset($this->cart[$lineKey])) {
+            return;
+        }
         $newQty = max(1, $this->cart[$lineKey]['qty'] - 1);
         $this->cart[$lineKey]['qty'] = $newQty;
         $this->recalculateTotals();
@@ -363,7 +412,9 @@ class Index extends BaseComponent
 
     public function updateQuantity(string $lineKey, $quantity): void
     {
-        if (!isset($this->cart[$lineKey])) return;
+        if (! isset($this->cart[$lineKey])) {
+            return;
+        }
 
         $line = $this->cart[$lineKey];
         $qty = max(1, (float) $quantity);
@@ -377,7 +428,7 @@ class Index extends BaseComponent
         }
 
         if ($qty > $available) {
-            $this->toast()->warning('Cannot exceed available stock (' . $available . ') for ' . $line['name'])->send();
+            $this->toast()->warning('Cannot exceed available stock ('.$available.') for '.$line['name'])->send();
             $qty = $available;
         }
 
@@ -431,7 +482,7 @@ class Index extends BaseComponent
         foreach ($this->cart as $line) {
             $gross += $line['price'] * $line['qty'];
         }
-        $grossAfterDiscount = max(0, $gross - (float)($this->discount ?: 0));
+        $grossAfterDiscount = max(0, $gross - (float) ($this->discount ?: 0));
         $rate = $this->vatRate();
         // VAT is INCLUSIVE: the cart prices already contain VAT, so extract the
         // VAT portion from the (post-discount) gross and leave the customer total unchanged.
@@ -447,7 +498,7 @@ class Index extends BaseComponent
      */
     protected function vatRate(): float
     {
-        return (float) (\App\Models\BranchPosConfiguration::query()
+        return (float) (BranchPosConfiguration::query()
             ->where('branch_id', $this->branchId)
             ->value('vat_rate') ?? 7.5);
     }
@@ -482,12 +533,17 @@ class Index extends BaseComponent
             if (($p['method'] ?? '') === 'transfer' && empty($p['bank_account_id']) && $defaultBankId) {
                 $this->payments[$index]['bank_account_id'] = $defaultBankId;
             }
-            $total += (float)($p['amount'] ?? 0);
+            $total += (float) ($p['amount'] ?? 0);
         }
         $this->payments = array_values($this->payments);
         $this->paymentTotal = $total;
         $this->paymentRemaining = max(0, $this->total - $this->paymentTotal);
         $this->changeDue = max(0, $this->paymentTotal - $this->total);
+
+        // No surplus means no disposition choice to make.
+        if ($this->changeDue <= 0.0001) {
+            $this->overageDisposition = 'change';
+        }
     }
 
     protected function getDefaultDepartmentBankAccountId(): ?int
@@ -497,6 +553,7 @@ class Index extends BaseComponent
         }
 
         $department = Department::find($this->departmentId);
+
         return $department?->bank_account_id;
     }
 
@@ -520,7 +577,7 @@ class Index extends BaseComponent
 
         if ($accountNumber !== '') {
             return $bankName !== ''
-                ? ($bankName . ' · ' . $accountNumber)
+                ? ($bankName.' · '.$accountNumber)
                 : $accountNumber;
         }
 
@@ -531,19 +588,22 @@ class Index extends BaseComponent
     {
         try {
             // Check for active shift first
-            if (!$this->hasActiveShift()) {
+            if (! $this->hasActiveShift()) {
                 $this->toast()->error('No active shift. Please start a shift before making sales.')->send();
+
                 return;
             }
 
             if (empty($this->cart)) {
                 $this->toast()->warning('Cart is empty.')->send();
+
                 return;
             }
 
             foreach ($this->payments as $paymentData) {
                 if (($paymentData['method'] ?? '') === 'transfer' && empty($paymentData['bank_account_id'])) {
                     $this->toast()->error('Transfer requires a department-linked bank account.')->send();
+
                     return;
                 }
             }
@@ -551,6 +611,7 @@ class Index extends BaseComponent
             $this->recalcPayments();
             if ($this->paymentTotal + 0.0001 < $this->total) {
                 $this->toast()->warning('Payments do not cover the total.')->send();
+
                 return;
             }
 
@@ -560,192 +621,230 @@ class Index extends BaseComponent
                 'payments.*.amount' => 'required|numeric|min:0',
             ]);
 
-        DB::transaction(function () {
-            $productIds = array_values(array_unique(array_map(
-                static fn ($line): string => (string) ($line['product_id'] ?? ''),
-                $this->cart
-            )));
+            DB::transaction(function () {
+                $productIds = array_values(array_unique(array_map(
+                    static fn ($line): string => (string) ($line['product_id'] ?? ''),
+                    $this->cart
+                )));
 
-            $productsById = Product::query()
-                ->with(['unitOfMeasure', 'salesUom'])
-                ->whereIn('id', $productIds)
-                ->get()
-                ->keyBy('id');
+                $productsById = Product::query()
+                    ->with(['unitOfMeasure', 'salesUom'])
+                    ->whereIn('id', $productIds)
+                    ->get()
+                    ->keyBy('id');
 
-            $stocksByProduct = [];
-            $stockQuery = ProductStock::query()
-                ->whereDate('stock_date', Carbon::today())
-                ->whereIn('product_id', $productIds);
+                $stocksByProduct = [];
+                $stockQuery = ProductStock::query()
+                    ->whereDate('stock_date', Carbon::today())
+                    ->whereIn('product_id', $productIds);
 
-            if (Schema::hasColumn('product_stocks', 'department_id') && $this->departmentId) {
-                $departmentIds = $this->resolveEquivalentSalesDepartmentIds();
-                if (empty($departmentIds)) {
-                    $departmentIds = [(int) $this->departmentId];
+                if (Schema::hasColumn('product_stocks', 'department_id') && $this->departmentId) {
+                    $departmentIds = $this->resolveEquivalentSalesDepartmentIds();
+                    if (empty($departmentIds)) {
+                        $departmentIds = [(int) $this->departmentId];
+                    }
+                    $stockQuery->whereIn('department_id', $departmentIds)
+                        ->orderByRaw('department_id = ? DESC', [(int) $this->departmentId]);
                 }
-                $stockQuery->whereIn('department_id', $departmentIds)
-                    ->orderByRaw('department_id = ? DESC', [(int) $this->departmentId]);
-            }
 
-            $stockQuery->orderByDesc('id')->lockForUpdate();
+                $stockQuery->orderByDesc('id')->lockForUpdate();
 
-            foreach ($stockQuery->get() as $stock) {
-                $productId = (string) $stock->product_id;
-                if (! isset($stocksByProduct[$productId])) {
-                    $stocksByProduct[$productId] = $stock;
+                foreach ($stockQuery->get() as $stock) {
+                    $productId = (string) $stock->product_id;
+                    if (! isset($stocksByProduct[$productId])) {
+                        $stocksByProduct[$productId] = $stock;
+                    }
                 }
-            }
 
-            $sale = Sale::create([
-                'sales_shift_id' => null, // Nullable - using general shifts table instead
-                'shift_id' => $this->activeShiftId,
-                'branch_id' => $this->branchId,
-                'department_id' => $this->departmentId,
-                'table_id' => $this->selectedTableId,
-                'sold_by_id' => auth()->id(),
-                'sold_by_type' => \App\Models\User::class,
-                'sale_number' => 'POS-' . Carbon::now()->format('Ymd-His'),
-                'sale_time' => Carbon::now(),
-                'subtotal' => $this->subtotal,
-                'tax' => $this->tax,
-                'discount' => (float) ($this->discount ?: 0),
-                'total' => $this->total,
-                'status' => 'completed',
-                'order_type' => $this->orderType,
-                'notes' => null,
-            ]);
+                // Resolve how any overpayment is handled. The change is always given
+                // from cash, so a "give change" disposition trims the recorded cash
+                // down to the bill total; "overage" keeps the full tender in the drawer
+                // and books the surplus as income (see SaleObserver / GlPostingService).
+                $amountTendered = round($this->paymentTotal, 2);
+                $overage = round(max(0, $amountTendered - $this->total), 2);
+                $changeGiven = 0.0;
+                $overShortAmount = 0.0;
+                $overShortDisposition = null;
+                $overShortGlStatus = null;
+                $paymentRows = $this->payments;
 
-            $lowStockWarnings = [];
+                if ($overage > 0.0001) {
+                    if ($this->overageDisposition === 'overage') {
+                        $overShortAmount = $overage;
+                        $overShortDisposition = 'overage';
+                        $overShortGlStatus = 'pending';
+                    } else {
+                        $changeGiven = $overage;
+                        $overShortDisposition = 'change';
+                        // Reduce recorded cash so the persisted payments net to the bill.
+                        $remainingToTrim = $overage;
+                        foreach ($paymentRows as $i => $row) {
+                            if ($remainingToTrim <= 0.0001) {
+                                break;
+                            }
+                            if (($row['method'] ?? '') !== 'cash') {
+                                continue;
+                            }
+                            $amt = (float) ($row['amount'] ?? 0);
+                            $trim = min($amt, $remainingToTrim);
+                            $paymentRows[$i]['amount'] = round($amt - $trim, 2);
+                            $remainingToTrim = round($remainingToTrim - $trim, 2);
+                        }
+                    }
+                }
 
-            foreach ($this->cart as $line) {
-                // ── Inventory item sale ──────────────────────────────────
-                if (isset($line['item_id'])) {
-                    $itemQty = (float) $line['qty'];
-                    if ($itemQty > 0) {
-                        $invStock = \App\Models\Stock::where('item_id', $line['item_id'])
-                            ->where('branch_id', $this->branchId)
-                            ->value('average_cost');
+                $sale = Sale::create([
+                    'sales_shift_id' => null, // Nullable - using general shifts table instead
+                    'shift_id' => $this->activeShiftId,
+                    'branch_id' => $this->branchId,
+                    'department_id' => $this->departmentId,
+                    'table_id' => $this->selectedTableId,
+                    'sold_by_id' => auth()->id(),
+                    'sold_by_type' => User::class,
+                    'sale_number' => 'POS-'.Carbon::now()->format('Ymd-His'),
+                    'sale_time' => Carbon::now(),
+                    'subtotal' => $this->subtotal,
+                    'tax' => $this->tax,
+                    'discount' => (float) ($this->discount ?: 0),
+                    'total' => $this->total,
+                    'status' => 'completed',
+                    'order_type' => $this->orderType,
+                    'notes' => null,
+                    'amount_tendered' => $amountTendered,
+                    'change_given' => $changeGiven,
+                    'over_short_amount' => $overShortAmount,
+                    'over_short_disposition' => $overShortDisposition,
+                    'over_short_gl_status' => $overShortGlStatus,
+                ]);
+
+                $lowStockWarnings = [];
+
+                foreach ($this->cart as $line) {
+                    // ── Inventory item sale ──────────────────────────────────
+                    if (isset($line['item_id'])) {
+                        $itemQty = (float) $line['qty'];
+                        if ($itemQty > 0) {
+                            $invStock = Stock::where('item_id', $line['item_id'])
+                                ->where('branch_id', $this->branchId)
+                                ->value('average_cost');
+
+                            SaleItem::create([
+                                'sale_id' => $sale->id,
+                                'department_id' => $this->departmentId,
+                                'product_id' => null,
+                                'item_id' => $line['item_id'],
+                                'quantity' => $itemQty,
+                                'sales_quantity' => $itemQty,
+                                'unit_price' => $line['price'],
+                                'unit_cost' => (float) ($invStock ?? 0),
+                                'subtotal' => $itemQty * $line['price'],
+                                'discount' => 0,
+                                'total' => $itemQty * $line['price'],
+                            ]);
+                            // Stock decrement is handled by SaleItem::saved() observer
+                        }
+
+                        continue;
+                    }
+
+                    // ── Production product sale (existing logic) ─────────────
+                    $productId = (string) $line['product_id'];
+                    $qty = (float) $line['qty'];
+
+                    $stock = $stocksByProduct[$productId] ?? null;
+                    $available = $this->availableQuantity($stock);
+
+                    // Process sale with available quantity or full quantity
+                    $actualQty = ($available > 0 && $qty > $available) ? $available : $qty;
+
+                    if ($actualQty < $qty) {
+                        $lowStockWarnings[] = $line['name'].' (sold '.$actualQty.' of '.$qty.' requested)';
+                    }
+
+                    if ($actualQty > 0) {
+                        // Get the product for UOM conversion
+                        $product = $productsById->get($productId);
+
+                        // Calculate base quantity for stock deduction
+                        $baseQty = $actualQty;
+                        $salesQty = $actualQty;
+                        $salesUomId = null;
+                        $conversionFactor = null;
+
+                        if ($product && $product->hasSalesUomConversion()) {
+                            $baseQty = $product->convertSalesToBaseQuantity($actualQty);
+                            $salesUomId = $product->sales_uom_id;
+                            $conversionFactor = $product->sales_unit_weight ?? $product->convertSalesToBaseQuantity(1);
+                        }
 
                         SaleItem::create([
-                            'sale_id'       => $sale->id,
+                            'sale_id' => $sale->id,
                             'department_id' => $this->departmentId,
-                            'product_id'    => null,
-                            'item_id'       => $line['item_id'],
-                            'quantity'      => $itemQty,
-                            'sales_quantity'=> $itemQty,
-                            'unit_price'    => $line['price'],
-                            'unit_cost'     => (float) ($invStock ?? 0),
-                            'subtotal'      => $itemQty * $line['price'],
-                            'discount'      => 0,
-                            'total'         => $itemQty * $line['price'],
+                            'product_id' => $productId,
+                            'quantity' => $baseQty, // Base quantity in base UOM (e.g., grams)
+                            'sales_quantity' => $salesQty, // Sales quantity (e.g., scoops)
+                            'sales_uom_id' => $salesUomId,
+                            'conversion_factor' => $conversionFactor,
+                            'unit_price' => $line['price'],
+                            'subtotal' => $salesQty * $line['price'],
+                            'discount' => 0,
+                            'total' => $salesQty * $line['price'],
+                            'notes' => $actualQty < $qty ? 'Partial fulfillment: '.$actualQty.'/'.$qty : null,
                         ]);
-                        // Stock decrement is handled by SaleItem::saved() observer
-                    }
-                    continue;
-                }
-
-                // ── Production product sale (existing logic) ─────────────
-                $productId = (string)$line['product_id'];
-                $qty = (float)$line['qty'];
-
-                $stock = $stocksByProduct[$productId] ?? null;
-                $available = $this->availableQuantity($stock);
-
-                // Process sale with available quantity or full quantity
-                $actualQty = ($available > 0 && $qty > $available) ? $available : $qty;
-
-                if ($actualQty < $qty) {
-                    $lowStockWarnings[] = $line['name'] . ' (sold ' . $actualQty . ' of ' . $qty . ' requested)';
-                }
-
-                if ($actualQty > 0) {
-                    // Get the product for UOM conversion
-                    $product = $productsById->get($productId);
-                    
-                    // Calculate base quantity for stock deduction
-                    $baseQty = $actualQty;
-                    $salesQty = $actualQty;
-                    $salesUomId = null;
-                    $conversionFactor = null;
-                    
-                    if ($product && $product->hasSalesUomConversion()) {
-                        $baseQty = $product->convertSalesToBaseQuantity($actualQty);
-                        $salesUomId = $product->sales_uom_id;
-                        $conversionFactor = $product->sales_unit_weight ?? $product->convertSalesToBaseQuantity(1);
-                    }
-                    
-                    SaleItem::create([
-                        'sale_id' => $sale->id,
-                        'department_id' => $this->departmentId,
-                        'product_id' => $productId,
-                        'quantity' => $baseQty, // Base quantity in base UOM (e.g., grams)
-                        'sales_quantity' => $salesQty, // Sales quantity (e.g., scoops)
-                        'sales_uom_id' => $salesUomId,
-                        'conversion_factor' => $conversionFactor,
-                        'unit_price' => $line['price'],
-                        'subtotal' => $salesQty * $line['price'],
-                        'discount' => 0,
-                        'total' => $salesQty * $line['price'],
-                        'notes' => $actualQty < $qty ? 'Partial fulfillment: ' . $actualQty . '/' . $qty : null,
-                    ]);
-
-                    if ($stock) {
-                        // Release reserved quantity first (table holds)
-                        if (Schema::hasColumn('product_stocks', 'quantity_reserved')) {
-                            $reserved = (float) ($stock->quantity_reserved ?? 0);
-                            $release = min($reserved, $baseQty);
-                            $stock->quantity_reserved = max(0, $reserved - $release);
-                        }
-                        // Deduct base quantity from stock
-                        $stock->quantity_sold = (float)$stock->quantity_sold + $baseQty;
-                        $stock->amount = (float)$stock->amount + ($salesQty * $line['price']);
-                        $stock->updateCalculatedFields();
-                        $stock->save();
+                        // Product stock (quantity_sold / amount) and reservation release are
+                        // handled once by the SaleItem::saved() observer for completed sales.
+                        // The locked $stock above is only read to cap quantities to availability.
                     }
                 }
-            }
 
-            // Create payment records for each payment method
-            foreach ($this->payments as $paymentData) {
-                $amount = (float)($paymentData['amount'] ?? 0);
-                if ($amount > 0) {
-                    Payment::create([
-                        'sale_id' => $sale->id,
-                        'branch_id' => $this->branchId,
-                        'payment_method' => $paymentData['method'] ?? 'cash',
-                        'bank_account_id' => $paymentData['bank_account_id'] ?? null,
-                        'payer_bank' => $paymentData['payer_bank'] ?? null,
-                        'amount' => $amount,
-                        'payment_time' => Carbon::now(),
-                        'status' => 'completed',
-                        'reference_number' => null,
-                        'notes' => null,
-                    ]);
+                // Create payment records for each payment method. Amounts reflect cash
+                // actually retained (change already trimmed when handed back).
+                foreach ($paymentRows as $paymentData) {
+                    $amount = (float) ($paymentData['amount'] ?? 0);
+                    if ($amount > 0) {
+                        Payment::create([
+                            'sale_id' => $sale->id,
+                            'branch_id' => $this->branchId,
+                            'payment_method' => $paymentData['method'] ?? 'cash',
+                            'bank_account_id' => $paymentData['bank_account_id'] ?? null,
+                            'payer_bank' => $paymentData['payer_bank'] ?? null,
+                            'amount' => $amount,
+                            'payment_time' => Carbon::now(),
+                            'status' => 'completed',
+                            'reference_number' => null,
+                            'notes' => null,
+                        ]);
+                    }
                 }
-            }
 
-            // Create receipt stored per sale
-            $receiptHtml = $this->buildReceiptHtml($sale);
-            $receipt = Receipt::create([
-                'sale_id' => $sale->id,
-                'content' => $receiptHtml,
-                'subtotal' => $this->subtotal,
-                'tax' => $this->tax,
-                'discount' => $this->discount,
-                'total' => $this->total,
-                'payments' => $this->payments,
-                'change_due' => max(0, $this->paymentTotal - $this->total),
-                'meta' => ['order_type' => $this->orderType, 'warnings' => $lowStockWarnings],
-            ]);
+                // Create receipt stored per sale
+                $receiptHtml = $this->buildReceiptHtml($sale);
+                $receipt = Receipt::create([
+                    'sale_id' => $sale->id,
+                    'content' => $receiptHtml,
+                    'subtotal' => $this->subtotal,
+                    'tax' => $this->tax,
+                    'discount' => $this->discount,
+                    'total' => $this->total,
+                    'payments' => $paymentRows,
+                    'change_due' => $changeGiven,
+                    'meta' => [
+                        'order_type' => $this->orderType,
+                        'warnings' => $lowStockWarnings,
+                        'amount_tendered' => $amountTendered,
+                        'overage_kept' => $overShortAmount,
+                    ],
+                ]);
 
-            $this->currentSaleId = $sale->id;
-            $this->dispatch('pos-receipt-ready', receipt_id: $receipt->id);
+                $this->currentSaleId = $sale->id;
+                $this->dispatch('pos-receipt-ready', receipt_id: $receipt->id);
 
-            if (!empty($lowStockWarnings)) {
-                $this->toast()->warning('Sale completed with stock adjustments: ' . implode(', ', $lowStockWarnings))->send();
-            } else {
-                $this->toast()->success('Sale completed successfully!')->send();
-            }
-        });
+                if (! empty($lowStockWarnings)) {
+                    $this->toast()->warning('Sale completed with stock adjustments: '.implode(', ', $lowStockWarnings))->send();
+                } else {
+                    $this->toast()->success('Sale completed successfully!')->send();
+                }
+            });
 
             // If this sale was converted from a quotation, close the quotation out
             // and link it to the new sale.
@@ -761,16 +860,17 @@ class Index extends BaseComponent
             $this->clearCart();
             $this->discount = 0;
             $this->orderType = 'dine-in';
+            $this->overageDisposition = 'change';
             $this->payments = [['method' => 'cash', 'amount' => 0.0, 'bank_account_id' => null, 'payer_bank' => null]];
             $this->recalcPayments();
         } catch (\Exception $e) {
-            \Log::error('POS Sale Error: ' . $e->getMessage(), [
+            \Log::error('POS Sale Error: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'branch_id' => $this->branchId,
                 'department_id' => $this->departmentId,
                 'cart' => $this->cart,
             ]);
-            $this->toast()->error('Payment failed: ' . $e->getMessage())->send();
+            $this->toast()->error('Payment failed: '.$e->getMessage())->send();
         }
     }
 
@@ -783,91 +883,6 @@ class Index extends BaseComponent
             ->get();
     }
 
-    public function holdSale(): void
-    {
-        // Check for active shift first
-        if (!$this->hasActiveShift()) {
-            $this->toast()->error('No active shift. Please start a shift before holding sales.')->send();
-            return;
-        }
-
-        // Persist as draft without affecting stock
-        $sale = Sale::create([
-            'sales_shift_id' => null, // Nullable - using general shifts table instead
-            'shift_id' => $this->activeShiftId,
-            'branch_id' => $this->branchId,
-            'department_id' => $this->departmentId,
-            'table_id' => $this->selectedTableId,
-            'sold_by_id' => auth()->id(),
-            'sold_by_type' => \App\Models\User::class,
-            'sale_number' => 'HOLD-' . Carbon::now()->format('Ymd-His'),
-            'sale_time' => Carbon::now(),
-            'subtotal' => $this->subtotal,
-            'tax' => $this->tax,
-            'discount' => (float) ($this->discount ?: 0),
-            'total' => $this->total,
-            'status' => 'hold',
-            'order_type' => $this->orderType,
-        ]);
-
-        foreach ($this->cart as $line) {
-            SaleItem::create([
-                'sale_id'       => $sale->id,
-                'department_id' => $this->departmentId,
-                'product_id'    => isset($line['item_id']) ? null : ($line['product_id'] ?? null),
-                'item_id'       => $line['item_id'] ?? null,
-                'quantity'      => (float) $line['qty'],
-                'unit_price'    => $line['price'],
-                'subtotal'      => $line['qty'] * $line['price'],
-                'discount'      => 0,
-                'total'         => $line['qty'] * $line['price'],
-            ]);
-        }
-
-        $this->currentSaleId = $sale->id;
-        $this->toast()->info('Sale put on hold.')->send();
-        $this->clearCart();
-    }
-
-    public function resumeSale(int $saleId): void
-    {
-        $sale = Sale::with(['saleItems.product', 'saleItems.item'])->find($saleId);
-        if (!$sale || $sale->status !== 'hold') {
-            $this->toast()->warning('Hold ticket not found.')->send();
-            return;
-        }
-        $this->cart = [];
-        foreach ($sale->saleItems as $saleItem) {
-            if ($saleItem->item_id) {
-                $key = 'item_' . $saleItem->item_id;
-                $available = (float) (\App\Models\Stock::where('item_id', $saleItem->item_id)
-                    ->where('branch_id', $this->branchId)
-                    ->value('quantity_available') ?? 0);
-                $this->cart[$key] = [
-                    'item_id'   => $saleItem->item_id,
-                    'name'      => $saleItem->item->name ?? 'Item',
-                    'price'     => (float) $saleItem->unit_price,
-                    'qty'       => (float) $saleItem->quantity,
-                    'uom'       => $saleItem->item->unitOfMeasure?->symbol ?? '',
-                    'available' => $available,
-                    'type'      => 'inventory_item',
-                ];
-            } else {
-                $this->cart[(string) $saleItem->product_id] = [
-                    'product_id' => $saleItem->product_id,
-                    'name'       => $saleItem->product->name ?? 'Product',
-                    'price'      => (float) $saleItem->unit_price,
-                    'qty'        => (float) $saleItem->quantity,
-                    'low_stock'  => false,
-                    'available'  => $this->availableQuantity($this->getTodayStockForProduct($saleItem->product_id)),
-                ];
-            }
-        }
-        $this->discount = (float) $sale->discount;
-        $this->orderType = $sale->order_type ?? 'dine-in';
-        $this->recalculateTotals();
-    }
-
     /**
      * Open the "Save as Quotation" modal. A quotation is a non-binding priced
      * offer — it never touches stock or the GL, so (unlike completing a sale)
@@ -877,6 +892,7 @@ class Index extends BaseComponent
     {
         if (empty($this->cart)) {
             $this->toast()->error('Add items to the cart before saving a quotation.')->send();
+
             return;
         }
 
@@ -897,6 +913,7 @@ class Index extends BaseComponent
     {
         if (empty($this->cart)) {
             $this->toast()->error('Cart is empty.')->send();
+
             return;
         }
 
@@ -913,7 +930,7 @@ class Index extends BaseComponent
                 'branch_id' => $this->branchId,
                 'department_id' => $this->departmentId,
                 'created_by_id' => auth()->id(),
-                'created_by_type' => \App\Models\User::class,
+                'created_by_type' => User::class,
                 'customer_name' => $this->quotationCustomerName ?: null,
                 'customer_phone' => $this->quotationCustomerPhone ?: null,
                 'status' => 'draft',
@@ -967,17 +984,19 @@ class Index extends BaseComponent
         $quotation = Quotation::with(['items.product', 'items.item'])->find($quotationId);
         if (! $quotation) {
             $this->toast()->warning('Quotation not found.')->send();
+
             return;
         }
         if ($quotation->status === 'converted') {
             $this->toast()->warning('This quotation has already been converted to a sale.')->send();
+
             return;
         }
 
         $this->cart = [];
         foreach ($quotation->items as $line) {
             if ($line->item_id) {
-                $key = 'item_' . $line->item_id;
+                $key = 'item_'.$line->item_id;
                 $available = (float) (Stock::where('item_id', $line->item_id)
                     ->where('branch_id', $this->branchId)
                     ->value('quantity_available') ?? 0);
@@ -1033,7 +1052,7 @@ class Index extends BaseComponent
     protected function getTodayStockForProduct(string $productId, bool $forUpdate = false): ?ProductStock
     {
         $hasDepartmentColumn = Schema::hasColumn('product_stocks', 'department_id');
-        if ($hasDepartmentColumn && !$this->departmentId) {
+        if ($hasDepartmentColumn && ! $this->departmentId) {
             return null;
         }
 
@@ -1059,6 +1078,7 @@ class Index extends BaseComponent
         if ($forUpdate) {
             $q->lockForUpdate();
         }
+
         return $q->first();
     }
 
@@ -1071,10 +1091,13 @@ class Index extends BaseComponent
 
     protected function availableQuantity(?ProductStock $stock): float
     {
-        if (!$stock) return 0.0;
+        if (! $stock) {
+            return 0.0;
+        }
         // available is closing quantity; if not up to date, compute
         $stock->updateCalculatedFields();
-        return max(0, (float)$stock->closing_quantity);
+
+        return max(0, (float) $stock->closing_quantity);
     }
 
     /**
@@ -1090,8 +1113,8 @@ class Index extends BaseComponent
         $dispatched = MaterialRequestDispatch::query()
             ->whereHas('request', function ($q) {
                 $q->where('department_id', $this->departmentId)
-                  ->where('branch_id', $this->branchId)
-                  ->whereNotIn('status', ['cancelled']);
+                    ->where('branch_id', $this->branchId)
+                    ->whereNotIn('status', ['cancelled']);
             })
             ->whereHas('item', fn ($q) => $q->whereNotNull('sell_price')->where('status', 'active'))
             ->with(['item.unitOfMeasure:id,symbol'])
@@ -1128,17 +1151,17 @@ class Index extends BaseComponent
             $totalSold = (float) ($soldToday[$itemId] ?? 0);
             $available = max(0, $totalDispatched - $totalSold);
 
-            $cartKey = 'item_' . $itemId;
+            $cartKey = 'item_'.$itemId;
             $inCart = (float) ($this->cart[$cartKey]['qty'] ?? 0);
 
             $result[] = [
-                'item_id'   => $itemId,
-                'name'      => $item->name,
-                'sku'       => $item->sku,
-                'price'     => (float) $item->sell_price,
-                'uom'       => $item->unitOfMeasure?->symbol ?? 'unit',
+                'item_id' => $itemId,
+                'name' => $item->name,
+                'sku' => $item->sku,
+                'price' => (float) $item->sell_price,
+                'uom' => $item->unitOfMeasure?->symbol ?? 'unit',
                 'available' => $available,
-                'in_cart'   => $inCart,
+                'in_cart' => $inCart,
             ];
         }
 
@@ -1151,10 +1174,11 @@ class Index extends BaseComponent
 
         if (! $item) {
             $this->toast()->error('Item not available for sale.')->send();
+
             return;
         }
 
-        $cartKey = 'item_' . $itemId;
+        $cartKey = 'item_'.$itemId;
         $currentQty = (float) ($this->cart[$cartKey]['qty'] ?? 0);
         $newQty = $currentQty + 1;
 
@@ -1163,23 +1187,25 @@ class Index extends BaseComponent
         $itemData = collect($dispatchedItems)->firstWhere('item_id', $itemId);
 
         if (! $itemData || $itemData['available'] <= 0) {
-            $this->toast()->error('No dispatched stock available for ' . $item->name . '.')->send();
+            $this->toast()->error('No dispatched stock available for '.$item->name.'.')->send();
+
             return;
         }
 
         if ($newQty > $itemData['available']) {
-            $this->toast()->warning('Cannot exceed dispatched stock (' . $itemData['available'] . ' ' . $item->unitOfMeasure?->symbol . ') for ' . $item->name)->send();
+            $this->toast()->warning('Cannot exceed dispatched stock ('.$itemData['available'].' '.$item->unitOfMeasure?->symbol.') for '.$item->name)->send();
+
             return;
         }
 
         $this->cart[$cartKey] = [
-            'item_id'   => $itemId,
-            'name'      => $item->name,
-            'price'     => (float) $item->sell_price,
-            'qty'       => $newQty,
-            'uom'       => $item->unitOfMeasure?->symbol ?? 'unit',
+            'item_id' => $itemId,
+            'name' => $item->name,
+            'price' => (float) $item->sell_price,
+            'qty' => $newQty,
+            'uom' => $item->unitOfMeasure?->symbol ?? 'unit',
             'available' => $itemData['available'],
-            'type'      => 'inventory_item',
+            'type' => 'inventory_item',
         ];
 
         $this->recalculateTotals();
@@ -1225,11 +1251,11 @@ class Index extends BaseComponent
             ->active()
             ->available()
             ->whereNotIn('product_type_id', $wipTypeIds)
-            ->where(function($q) use ($departmentIds) {
+            ->where(function ($q) use ($departmentIds) {
                 $q->whereIn('sales_department_id', $departmentIds)
-                  ->orWhereHas('departments', function($dq) use ($departmentIds) {
-                      $dq->whereIn('department_id', $departmentIds);
-                  });
+                    ->orWhereHas('departments', function ($dq) use ($departmentIds) {
+                        $dq->whereIn('department_id', $departmentIds);
+                    });
             })
             ->select(['products.id', 'products.name', 'products.price', 'products.sku', 'products.uom_id', 'products.sales_uom_id'])
             ->with(['unitOfMeasure:id,symbol', 'salesUom:id,symbol'])
@@ -1266,32 +1292,32 @@ class Index extends BaseComponent
         $q->joinSub($latestStockIds, 'latest_stock', function ($join) {
             $join->on('products.id', '=', 'latest_stock.product_id');
         })
-        ->join('product_stocks as ps', 'ps.id', '=', 'latest_stock.id')
-        ->when($hasBranchColumn && $this->branchId, function ($query) {
-            $query->where('ps.branch_id', $this->branchId);
-        })
-        ->where(function ($query) use ($hasReservedColumn) {
-            $closingExpr = $hasReservedColumn
-                ? 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold - ps.quantity_reserved))'
-                : 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold))';
+            ->join('product_stocks as ps', 'ps.id', '=', 'latest_stock.id')
+            ->when($hasBranchColumn && $this->branchId, function ($query) {
+                $query->where('ps.branch_id', $this->branchId);
+            })
+            ->where(function ($query) use ($hasReservedColumn) {
+                $closingExpr = $hasReservedColumn
+                    ? 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold - ps.quantity_reserved))'
+                    : 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold))';
 
-            if ($this->stockFilter === 'in_stock') {
-                $query->whereRaw("$closingExpr > 0");
-            } elseif ($this->stockFilter === 'out_of_stock') {
-                $query->whereRaw("$closingExpr <= 0");
-            } else {
-                // 'all': show everything with a stock record today (including zero stock)
-                $query->whereRaw("$closingExpr > 0");
-                if (Schema::hasColumn('product_stocks', 'stock_date')) {
-                    $query->orWhereDate('ps.stock_date', Carbon::today());
+                if ($this->stockFilter === 'in_stock') {
+                    $query->whereRaw("$closingExpr > 0");
+                } elseif ($this->stockFilter === 'out_of_stock') {
+                    $query->whereRaw("$closingExpr <= 0");
+                } else {
+                    // 'all': show everything with a stock record today (including zero stock)
+                    $query->whereRaw("$closingExpr > 0");
+                    if (Schema::hasColumn('product_stocks', 'stock_date')) {
+                        $query->orWhereDate('ps.stock_date', Carbon::today());
+                    }
                 }
-            }
-        });
+            });
 
         if (strlen($this->search)) {
             $q->where(function ($query) {
-                $query->where('name', 'like', '%' . $this->search . '%')
-                    ->orWhere('sku', 'like', '%' . $this->search . '%');
+                $query->where('name', 'like', '%'.$this->search.'%')
+                    ->orWhere('sku', 'like', '%'.$this->search.'%');
             });
         }
 
@@ -1334,7 +1360,6 @@ class Index extends BaseComponent
     }
 
     /**
-     * @param  CursorPaginator  $products
      * @return array<string, float>
      */
     protected function getProductAvailabilityForView(CursorPaginator $products): array
@@ -1488,7 +1513,8 @@ class Index extends BaseComponent
 
     protected function buildReceiptHtml(Sale $sale): string
     {
-        $documentService = new PosDocumentService();
+        $documentService = new PosDocumentService;
+
         return $documentService->generateBrandedReceiptHtml($sale);
     }
 
@@ -1496,13 +1522,14 @@ class Index extends BaseComponent
     public function selectTable(int $tableId): void
     {
         $table = Table::find($tableId);
-        if (!$table) {
+        if (! $table) {
             $this->toast()->error('Table not found.')->send();
+
             return;
         }
 
         // Save current cart if there's anything in it and a table is selected
-        if (!empty($this->cart) && $this->selectedTableId && $this->selectedTableId !== $tableId) {
+        if (! empty($this->cart) && $this->selectedTableId && $this->selectedTableId !== $tableId) {
             $this->saveTableTab();
         }
 
@@ -1523,27 +1550,27 @@ class Index extends BaseComponent
         $this->cart = [];
         foreach ($sale->saleItems as $saleItem) {
             if ($saleItem->item_id) {
-                $key = 'item_' . $saleItem->item_id;
-                $available = (float) (\App\Models\Stock::where('item_id', $saleItem->item_id)
+                $key = 'item_'.$saleItem->item_id;
+                $available = (float) (Stock::where('item_id', $saleItem->item_id)
                     ->where('branch_id', $this->branchId)
                     ->value('quantity_available') ?? 0);
                 $this->cart[$key] = [
-                    'item_id'   => $saleItem->item_id,
-                    'name'      => $saleItem->item->name ?? 'Item',
-                    'price'     => (float) $saleItem->unit_price,
-                    'qty'       => (float) $saleItem->quantity,
-                    'uom'       => $saleItem->item->unitOfMeasure?->symbol ?? '',
+                    'item_id' => $saleItem->item_id,
+                    'name' => $saleItem->item->name ?? 'Item',
+                    'price' => (float) $saleItem->unit_price,
+                    'qty' => (float) $saleItem->quantity,
+                    'uom' => $saleItem->item->unitOfMeasure?->symbol ?? '',
                     'available' => $available,
-                    'type'      => 'inventory_item',
+                    'type' => 'inventory_item',
                 ];
             } else {
                 $this->cart[(string) $saleItem->product_id] = [
                     'product_id' => $saleItem->product_id,
-                    'name'       => $saleItem->product->name ?? 'Product',
-                    'price'      => (float) $saleItem->unit_price,
-                    'qty'        => (float) $saleItem->quantity,
-                    'low_stock'  => false,
-                    'available'  => $this->availableQuantity($this->getTodayStockForProduct($saleItem->product_id)),
+                    'name' => $saleItem->product->name ?? 'Product',
+                    'price' => (float) $saleItem->unit_price,
+                    'qty' => (float) $saleItem->quantity,
+                    'low_stock' => false,
+                    'available' => $this->availableQuantity($this->getTodayStockForProduct($saleItem->product_id)),
                 ];
             }
         }
@@ -1555,24 +1582,28 @@ class Index extends BaseComponent
 
     public function saveTableTab(): void
     {
-        if (!$this->selectedTableId) {
+        if (! $this->selectedTableId) {
             $this->toast()->warning('No table selected.')->send();
+
             return;
         }
 
         if (empty($this->cart)) {
             $this->toast()->warning('Cart is empty.')->send();
+
             return;
         }
 
-        if (!$this->hasActiveShift()) {
+        if (! $this->hasActiveShift()) {
             $this->toast()->error('No active shift.')->send();
+
             return;
         }
 
         $table = Table::find($this->selectedTableId);
-        if (!$table) {
+        if (! $table) {
             $this->toast()->error('Table not found.')->send();
+
             return;
         }
 
@@ -1606,8 +1637,8 @@ class Index extends BaseComponent
                     'department_id' => $this->departmentId,
                     'table_id' => $table->id,
                     'sold_by_id' => auth()->id(),
-                    'sold_by_type' => \App\Models\User::class,
-                    'sale_number' => 'TAB-' . $table->table_number . '-' . Carbon::now()->format('Ymd-His'),
+                    'sold_by_type' => User::class,
+                    'sale_number' => 'TAB-'.$table->table_number.'-'.Carbon::now()->format('Ymd-His'),
                     'sale_time' => Carbon::now(),
                     'subtotal' => $this->subtotal,
                     'tax' => $this->tax,
@@ -1615,7 +1646,7 @@ class Index extends BaseComponent
                     'total' => $this->total,
                     'status' => 'hold',
                     'order_type' => $this->orderType,
-                    'notes' => 'Table: ' . $table->table_number,
+                    'notes' => 'Table: '.$table->table_number,
                 ]);
             }
 
@@ -1641,10 +1672,12 @@ class Index extends BaseComponent
 
             $newReserved = [];
             foreach ($this->cart as $line) {
-                if (isset($line['item_id'])) continue; // inventory items don't use product_stocks
+                if (isset($line['item_id'])) {
+                    continue;
+                } // inventory items don't use product_stocks
                 $productId = (string) $line['product_id'];
                 $product = $productsById->get($productId);
-                if (!$product) {
+                if (! $product) {
                     continue;
                 }
                 $newReserved[$productId] = ($newReserved[$productId] ?? 0)
@@ -1659,8 +1692,8 @@ class Index extends BaseComponent
                 }
 
                 $stock = $this->getTodayStockForProduct($productId, true);
-                if (!$stock) {
-                    throw new \RuntimeException('Stock record not found for product ' . $productId);
+                if (! $stock) {
+                    throw new \RuntimeException('Stock record not found for product '.$productId);
                 }
                 $stock->updateCalculatedFields();
                 $available = $this->availableQuantity($stock);
@@ -1678,15 +1711,15 @@ class Index extends BaseComponent
             // Add items to sale
             foreach ($this->cart as $line) {
                 SaleItem::create([
-                    'sale_id'       => $sale->id,
+                    'sale_id' => $sale->id,
                     'department_id' => $this->departmentId,
-                    'product_id'    => isset($line['item_id']) ? null : ($line['product_id'] ?? null),
-                    'item_id'       => $line['item_id'] ?? null,
-                    'quantity'      => (float) $line['qty'],
-                    'unit_price'    => $line['price'],
-                    'subtotal'      => $line['qty'] * $line['price'],
-                    'discount'      => 0,
-                    'total'         => $line['qty'] * $line['price'],
+                    'product_id' => isset($line['item_id']) ? null : ($line['product_id'] ?? null),
+                    'item_id' => $line['item_id'] ?? null,
+                    'quantity' => (float) $line['qty'],
+                    'unit_price' => $line['price'],
+                    'subtotal' => $line['qty'] * $line['price'],
+                    'discount' => 0,
+                    'total' => $line['qty'] * $line['price'],
                 ]);
             }
 
@@ -1694,19 +1727,21 @@ class Index extends BaseComponent
             $this->currentSaleId = $sale->id;
         });
 
-        $this->toast()->success('Tab saved for Table ' . $table->table_number)->send();
+        $this->toast()->success('Tab saved for Table '.$table->table_number)->send();
     }
 
     public function completeTableSale(): void
     {
-        if (!$this->selectedTableId) {
+        if (! $this->selectedTableId) {
             $this->toast()->warning('No table selected.')->send();
+
             return;
         }
 
         $table = Table::find($this->selectedTableId);
-        if (!$table) {
+        if (! $table) {
             $this->toast()->error('Table not found.')->send();
+
             return;
         }
 
@@ -1721,7 +1756,7 @@ class Index extends BaseComponent
 
     public function clearTable(): void
     {
-        if (!$this->selectedTableId) {
+        if (! $this->selectedTableId) {
             return;
         }
 
@@ -1758,7 +1793,7 @@ class Index extends BaseComponent
     #[Computed]
     public function tables()
     {
-        if (!$this->departmentId || !$this->showTableManagement) {
+        if (! $this->departmentId || ! $this->showTableManagement) {
             return collect([]);
         }
 
@@ -1777,8 +1812,9 @@ class Index extends BaseComponent
             'newTableCapacity' => 'required|integer|min:1|max:20',
         ]);
 
-        if (!$this->branchId || !$this->departmentId) {
+        if (! $this->branchId || ! $this->departmentId) {
             $this->toast()->error('Branch or department not found.')->send();
+
             return;
         }
 
@@ -1790,6 +1826,7 @@ class Index extends BaseComponent
 
         if ($exists) {
             $this->toast()->error('Table number already exists in this department.')->send();
+
             return;
         }
 
@@ -1797,7 +1834,7 @@ class Index extends BaseComponent
             'branch_id' => $this->branchId,
             'department_id' => $this->departmentId,
             'table_number' => $this->newTableNumber,
-            'table_name' => $this->newTableName ?: 'Table ' . $this->newTableNumber,
+            'table_name' => $this->newTableName ?: 'Table '.$this->newTableNumber,
             'capacity' => $this->newTableCapacity,
             'status' => 'available',
             'is_active' => true,
@@ -1815,13 +1852,15 @@ class Index extends BaseComponent
     public function deleteTable(int $tableId): void
     {
         $table = Table::find($tableId);
-        if (!$table) {
+        if (! $table) {
             $this->toast()->error('Table not found.')->send();
+
             return;
         }
 
         if ($table->hasActiveSale()) {
             $this->toast()->error('Cannot delete table with active orders.')->send();
+
             return;
         }
 
@@ -1833,12 +1872,13 @@ class Index extends BaseComponent
     public function toggleTableStatus(int $tableId): void
     {
         $table = Table::find($tableId);
-        if (!$table) {
+        if (! $table) {
             $this->toast()->error('Table not found.')->send();
+
             return;
         }
 
-        $table->update(['is_active' => !$table->is_active]);
+        $table->update(['is_active' => ! $table->is_active]);
         unset($this->tables);
         $this->toast()->success('Table status updated.')->send();
     }
@@ -1848,13 +1888,15 @@ class Index extends BaseComponent
      */
     public function sendReceiptEmail(?string $customerEmail = null): void
     {
-        if (!$this->currentSaleId) {
+        if (! $this->currentSaleId) {
             $this->toast()->warning('No sale found.')->send();
+
             return;
         }
 
-        if (!$customerEmail) {
+        if (! $customerEmail) {
             $this->toast()->warning('Customer email is required.')->send();
+
             return;
         }
 
@@ -1862,20 +1904,21 @@ class Index extends BaseComponent
             $sale = Sale::find($this->currentSaleId);
             $receipt = $sale->receipts()->latest()->first();
 
-            if (!$receipt) {
+            if (! $receipt) {
                 $this->toast()->error('No receipt found for this sale.')->send();
+
                 return;
             }
 
             // Send notification
-            $notification = new \App\Notifications\SalesReceiptNotification($receipt);
-            \Illuminate\Support\Facades\Notification::route('mail', $customerEmail)
+            $notification = new SalesReceiptNotification($receipt);
+            Notification::route('mail', $customerEmail)
                 ->notify($notification);
 
-            $this->toast()->success('Receipt sent to ' . $customerEmail)->send();
+            $this->toast()->success('Receipt sent to '.$customerEmail)->send();
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to send receipt email: ' . $e->getMessage());
-            $this->toast()->error('Failed to send receipt: ' . $e->getMessage())->send();
+            \Illuminate\Support\Facades\Log::error('Failed to send receipt email: '.$e->getMessage());
+            $this->toast()->error('Failed to send receipt: '.$e->getMessage())->send();
         }
     }
 
@@ -2009,8 +2052,8 @@ class Index extends BaseComponent
             return true;
         }
 
-        $targetTokens = $this->departmentIdentityTokens($targetNameKey . ' ' . $targetSlugKey);
-        $candidateTokens = $this->departmentIdentityTokens($candidateNameKey . ' ' . $candidateSlugKey);
+        $targetTokens = $this->departmentIdentityTokens($targetNameKey.' '.$targetSlugKey);
+        $candidateTokens = $this->departmentIdentityTokens($candidateNameKey.' '.$candidateSlugKey);
         if (empty($targetTokens) || empty($candidateTokens)) {
             return false;
         }

@@ -800,6 +800,12 @@
                                 {{ __('Return History') }}
                             </flux:navlist.item>
                         </flux:navlist.group>
+
+                        <flux:navlist.item icon="arrows-right-left"
+                            :href="branch_route('branch-dashboard.production.store-transfers.index', ['deptSlug' => $dept->slug])"
+                            :current="request()->routeIs('branch-dashboard.production.store-transfers.*') && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)" wire:navigate>
+                            {{ __('Store Transfers') }}
+                        </flux:navlist.item>
                     </flux:navlist.group>
                 @empty
                     <div class="pl-10 pr-4 py-1.5 text-xs text-gray-500 italic">

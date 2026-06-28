@@ -6,11 +6,13 @@ use App\Livewire\BaseComponent;
 use App\Models\ApprovalAuditRequest;
 use App\Models\Department;
 use App\Models\Employee;
+use App\Models\Item;
 use App\Models\Product;
 use App\Models\ProductType;
+use App\Models\UnitOfMeasure;
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\Cache;
-use function is_super_admin;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
@@ -269,7 +271,7 @@ class Products extends BaseComponent
 
     public function render()
     {
-        if (!$this->department) {
+        if (! $this->department) {
             return view('livewire.branch-dashboard.production.products', [
                 'headers' => [
                     ['index' => 'id', 'label' => '#'],
@@ -290,9 +292,9 @@ class Products extends BaseComponent
                 'departments' => Department::whereHas('category', function ($q) {
                     $q->where('name', 'Production');
                 })
-                ->orderBy('name')
-                ->select('id', 'name', 'slug')
-                ->get(),
+                    ->orderBy('name')
+                    ->select('id', 'name', 'slug')
+                    ->get(),
                 'unitOfMeasures' => [],
                 'salesDepartments' => [],
                 'employees_department' => null,
@@ -302,8 +304,8 @@ class Products extends BaseComponent
 
         $rows = $this->getFilteredQuery()->paginate((int) ($this->quantity ?? 10));
 
-        $dropdownCacheKey = 'products_dropdowns_' . ($this->dept_slug ?? 'all');
-        
+        $dropdownCacheKey = 'products_dropdowns_'.($this->dept_slug ?? 'all');
+
         $productTypes = ProductType::with('department:id,name')
             ->where('department_id', $this->department->id)
             ->whereIn('code', ['WIP', 'FG'])
@@ -315,9 +317,9 @@ class Products extends BaseComponent
         $departments = Department::whereHas('category', function ($q) {
             $q->where('name', 'Production');
         })
-        ->orderBy('name')
-        ->select('id', 'name', 'slug')
-        ->get();
+            ->orderBy('name')
+            ->select('id', 'name', 'slug')
+            ->get();
 
         $salesDepartments = $this->salesDepartmentsQuery()
             ->orderBy('name')
@@ -325,7 +327,7 @@ class Products extends BaseComponent
             ->get();
 
         $unitOfMeasures = Cache::remember('unit_of_measures_all', now()->addDay(), function () {
-            return \App\Models\UnitOfMeasure::orderBy('name')
+            return UnitOfMeasure::orderBy('name')
                 ->select('id', 'name', 'symbol')
                 ->get();
         });
@@ -333,7 +335,7 @@ class Products extends BaseComponent
         $employees_department = $this->department;
 
         $branchIdForItems = $this->getBranchId();
-        $inventoryItems = \App\Models\Item::when($branchIdForItems, fn ($q) => $q->where('branch_id', $branchIdForItems))
+        $inventoryItems = Item::when($branchIdForItems, fn ($q) => $q->where('branch_id', $branchIdForItems))
             ->where('status', 'active')
             ->orderBy('name')
             ->select('id', 'name', 'sku')
@@ -405,12 +407,13 @@ class Products extends BaseComponent
     public function save()
     {
         // Ensure department_id is ALWAYS set - derive from product_type_id, then fallback to current dept
-        $deptId = $this->selectedDepartmentId 
-            ?? $this->department?->id 
-            ?? \App\Models\ProductType::find($this->product_type_id)?->department_id;
+        $deptId = $this->selectedDepartmentId
+            ?? $this->department?->id
+            ?? ProductType::find($this->product_type_id)?->department_id;
 
-        if (!$deptId) {
+        if (! $deptId) {
             $this->addError('selectedDepartmentId', 'Please select a production department.');
+
             return;
         }
 
@@ -442,9 +445,10 @@ class Products extends BaseComponent
 
         $this->validate($rules);
 
-        $selectedType = \App\Models\ProductType::find($this->product_type_id);
+        $selectedType = ProductType::find($this->product_type_id);
         if ($selectedType && ! in_array($selectedType->code, ['WIP', 'FG'])) {
             $this->addError('product_type_id', 'Product type must be Finished Good or Work in Progress.');
+
             return;
         }
 
@@ -538,7 +542,7 @@ class Products extends BaseComponent
                 if ($product) {
                     $product->delete();
                     // Log the delete action
-                    \App\Services\AuditService::log(
+                    AuditService::log(
                         auth()->user(),
                         'delete',
                         $product,
@@ -603,7 +607,7 @@ class Products extends BaseComponent
 
         // Log the bulk delete
         foreach ($products as $product) {
-            \App\Services\AuditService::log(
+            AuditService::log(
                 auth()->user(),
                 'delete',
                 $product,
@@ -703,7 +707,7 @@ class Products extends BaseComponent
 
     private function cacheVersionKey(): string
     {
-        return 'products_cache_version_' . auth()->id();
+        return 'products_cache_version_'.auth()->id();
     }
 
     private function getCacheVersion(): int
@@ -738,7 +742,7 @@ class Products extends BaseComponent
     private function clearCache(): void
     {
         $this->incrementCacheVersion();
-        Cache::forget('products_dropdowns_' . ($this->dept_slug ?? 'all'));
+        Cache::forget('products_dropdowns_'.($this->dept_slug ?? 'all'));
     }
 
     private function currentPage(): int

@@ -1,4 +1,4 @@
-<div wire:poll.30s>
+<div wire:poll.30s="poll">
     <flux:dropdown position="bottom" align="end">
         <button type="button" class="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-zinc-600 dark:text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -14,11 +14,21 @@
         <flux:menu class="w-80 max-h-[440px] overflow-y-auto">
             <div class="flex items-center justify-between px-3 py-2 border-b border-zinc-100 dark:border-zinc-700">
                 <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Notifications</span>
-                @if($unreadCount > 0)
-                    <button wire:click="markAllRead" type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                        Mark all read
+                <div class="flex items-center gap-3">
+                    <button type="button"
+                            x-data="{ muted: JSON.parse(localStorage.getItem('notif_sound_muted') || 'false') }"
+                            x-on:click="muted = !muted; localStorage.setItem('notif_sound_muted', JSON.stringify(muted))"
+                            class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                            x-bind:title="muted ? 'Sound off — click to enable' : 'Sound on — click to mute'">
+                        <svg x-show="!muted" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M17.95 6.05a8 8 0 010 11.9M5 9v6h4l5 4V5L9 9H5z"/></svg>
+                        <svg x-show="muted" x-cloak class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 9v6h4l5 4V5L9 9H5z M17 9l4 4m0-4l-4 4"/></svg>
                     </button>
-                @endif
+                    @if($unreadCount > 0)
+                        <button wire:click="markAllRead" type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                            Mark all read
+                        </button>
+                    @endif
+                </div>
             </div>
 
             @forelse($notifications as $notification)
@@ -75,4 +85,31 @@
             @endforelse
         </flux:menu>
     </flux:dropdown>
+
+    @script
+    <script>
+        // Play a short chime whenever the server signals a newly-arrived notification.
+        $wire.on('notification-received', () => {
+            if (JSON.parse(localStorage.getItem('notif_sound_muted') || 'false')) return;
+            try {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) return;
+                const ctx = new Ctx();
+                if (ctx.state === 'suspended') { ctx.resume(); }
+                const note = (freq, start, dur) => {
+                    const o = ctx.createOscillator(), g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = 'sine'; o.frequency.value = freq;
+                    const t = ctx.currentTime + start;
+                    g.gain.setValueAtTime(0.0001, t);
+                    g.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
+                    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+                    o.start(t); o.stop(t + dur + 0.02);
+                };
+                note(880, 0, 0.18);
+                note(1175, 0.15, 0.25);
+            } catch (e) {}
+        });
+    </script>
+    @endscript
 </div>
