@@ -789,12 +789,6 @@
                                         <span>{{ $this->formatCurrency($receipt->change_due) }}</span>
                                     </div>
                                 @endif
-                                @if(!empty($receipt->meta['overage_kept']) && $receipt->meta['overage_kept'] > 0)
-                                    <div class="flex justify-between text-sm font-semibold mt-1 text-emerald-600">
-                                        <span>Overage (kept):</span>
-                                        <span>{{ $this->formatCurrency($receipt->meta['overage_kept']) }}</span>
-                                    </div>
-                                @endif
                             </div>
                         @endif
 
