@@ -150,6 +150,10 @@ class BankAccounts extends Component
         $this->opening_balance = (string) $account->opening_balance;
         $this->interest_rate = (string) $account->interest_rate;
         $this->is_active = (bool) $account->is_active;
+
+        // The form sits at the top of the page; bring it into view so the
+        // cashier sees it populate instead of thinking the button did nothing.
+        $this->dispatch('bank-account-editing');
     }
 
     public function save(): void

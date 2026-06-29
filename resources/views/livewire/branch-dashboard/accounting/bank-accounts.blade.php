@@ -23,7 +23,12 @@
     @endif
 
     <!-- Form -->
-    <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-md p-6">
+    <div
+        id="bank-account-form"
+        x-data
+        @bank-account-editing.window="$el.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+        class="bg-white dark:bg-zinc-800 rounded-lg shadow-md p-6"
+    >
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
                 {{ $editingId ? 'Edit Bank Account' : 'New Bank Account' }}
@@ -207,7 +212,7 @@
                 </thead>
                 <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                     @forelse ($this->bankAccounts as $account)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700/30 transition">
+                        <tr wire:key="bank-account-{{ $account->id }}" class="hover:bg-zinc-50 dark:hover:bg-zinc-700/30 transition">
                             <td class="px-6 py-4 text-zinc-900 dark:text-white font-semibold">
                                 {{ $account->bank_name }}
                                 @if ($account->bank_code)
