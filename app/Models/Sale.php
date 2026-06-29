@@ -19,6 +19,7 @@ class Sale extends Model
         'sold_by_id',
         'sold_by_type',
         'sale_number',
+        'order_ref',
         'sale_time',
         'subtotal',
         'tax',
@@ -108,19 +109,25 @@ class Sale extends Model
     // Helper Methods
     public function calculateTotals(): void
     {
-        // Calculate subtotal from sale items
-        $this->subtotal = $this->saleItems->sum('subtotal');
+        // Calculate gross from sale items (prices are tax-inclusive)
+        $gross = (float) $this->saleItems->sum('subtotal');
 
         // Apply discount
-        $subtotalAfterDiscount = $this->subtotal - $this->discount;
+        $grossAfterDiscount = max(0, $gross - (float) ($this->discount ?: 0));
 
-        // Calculate tax (if applicable)
-        // Assuming tax is a percentage stored elsewhere or 0 for now
-        // You can modify this based on your tax logic
-        $this->tax = 0;
+        // Fetch VAT rate for the branch
+        $rate = (float) (\App\Models\BranchPosConfiguration::query()
+            ->where('branch_id', $this->branch_id)
+            ->value('vat_rate') ?? 7.5);
 
-        // Calculate total
-        $this->total = $subtotalAfterDiscount + $this->tax;
+        // VAT is INCLUSIVE
+        $this->tax = $rate > 0 ? round($grossAfterDiscount * $rate / (100 + $rate), 2) : 0.0;
+        
+        // Total is what the customer pays (VAT included)
+        $this->total = $grossAfterDiscount;
+        
+        // Subtotal is net of VAT (recorded as revenue)
+        $this->subtotal = round($grossAfterDiscount - $this->tax, 2);
     }
 
     public function hasMultiplePaymentMethods(): bool
