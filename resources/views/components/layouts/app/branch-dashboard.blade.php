@@ -90,6 +90,16 @@
 
             @endphp
 
+            {{-- ==================== GO-LIVE: OPENING STOCK (temporary) ==================== --}}
+            @if (function_exists('opening_stock_entry_enabled') && opening_stock_entry_enabled()
+                && ($isSuperAdmin || ($currentUser && ($currentUser->can('manage-opening-stock') || $currentUser->can('manage-system')))))
+                <flux:navlist.item icon="rocket-launch" :href="branch_route('branch-dashboard.go-live.opening-stock')"
+                    :current="request()->routeIs('branch-dashboard.go-live.*')" wire:navigate
+                    class="text-teal-700 dark:text-teal-400 font-semibold">
+                    {{ __('Go-Live: Opening Stock') }}
+                </flux:navlist.item>
+            @endif
+
             {{-- ==================== ADMINISTRATION (SUPER ADMIN ONLY) ==================== --}}
             @if (($sidebarService::canSeeAdministration($currentUser) || $sidebarService::isSuperAdmin()) && !$isHrOnly)
             <flux:navlist.group :heading="__('Administration')" icon="cog-6-tooth">

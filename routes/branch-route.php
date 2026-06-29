@@ -39,6 +39,13 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
         return redirect()->route('branch-dashboard.dashboards.router');
     })->name('index');
 
+    // ====== GO-LIVE: temporary opening-stock entry (disabled after go-live) ======
+    // Top-level (no active-shift requirement) since opening stock is entered before trading.
+    Route::middleware('role_or_permission:manage-opening-stock,manage-system')
+        ->prefix('go-live')->name('go-live.')->group(function () {
+            Route::get('opening-stock', \App\Livewire\BranchDashboard\GoLive\OpeningStock\Index::class)->name('opening-stock');
+        });
+
     // ====== ORGANIZATION SECTION (HR Manager, HR Officer, Admin) ======
     Route::middleware('role_or_permission:manage-organization')->group(function () {
         // Employee Management

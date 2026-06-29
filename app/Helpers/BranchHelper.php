@@ -1,9 +1,12 @@
 <?php
 
 use App\Models\Branch;
-use App\Models\AuditLog;
-use App\Models\Employee;
+use App\Models\Department;
+use App\Models\GlobalBusinessConfiguration;
 use App\Models\User;
+use App\Services\AuditService;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Branch Helper Functions
@@ -17,9 +20,9 @@ use App\Models\User;
  * Provides a convenient function-based API for audit logging.
  * For more advanced features, use AuditService directly.
  *
- * @see App\Services\AuditService
+ * @see AuditService
  */
-if (!function_exists('audit')) {
+if (! function_exists('audit')) {
     function audit(
         $causer,
         $action,
@@ -29,7 +32,7 @@ if (!function_exists('audit')) {
         $approvalRequest = null,
         array $metadata = []
     ) {
-        return \App\Services\AuditService::log(
+        return AuditService::log(
             $causer,
             $action,
             $auditable,
@@ -41,7 +44,34 @@ if (!function_exists('audit')) {
     }
 }
 
-if (!function_exists('current_branch_id')) {
+if (! function_exists('opening_stock_entry_enabled')) {
+    /**
+     * Whether the temporary go-live opening-stock entry tool is enabled.
+     *
+     * Backed by the single global_business_configurations row. Defaults to true
+     * if the row/column is missing so a fresh install can run go-live entry.
+     * Cached per request (the lock action triggers a fresh request afterwards).
+     */
+    function opening_stock_entry_enabled(): bool
+    {
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        try {
+            $config = GlobalBusinessConfiguration::first();
+            $cached = $config ? (bool) $config->opening_stock_entry_enabled : true;
+        } catch (Throwable $e) {
+            $cached = true;
+        }
+
+        return $cached;
+    }
+}
+
+if (! function_exists('current_branch_id')) {
     /**
      * Get the current branch ID based on user context.
      *
@@ -51,8 +81,6 @@ if (!function_exists('current_branch_id')) {
      * 3. Authenticated user's branch_id
      * 4. Authenticated user's department's branch_id
      * 5. First active branch (always fallback)
-     *
-     * @return string|null
      */
     function current_branch_id(): ?string
     {
@@ -61,6 +89,7 @@ if (!function_exists('current_branch_id')) {
             $b_id = request()->query('b_id');
             if ($b_id && trim($b_id) !== '') {
                 session(['selected_branch_id' => $b_id]);
+
                 return $b_id;
             }
         }
@@ -73,33 +102,37 @@ if (!function_exists('current_branch_id')) {
         // Check authenticated user's context
         if (auth()->check()) {
             $user = auth()->user();
-            
+
             // Try direct branch_id first
             if (isset($user->branch_id) && $user->branch_id) {
                 session(['selected_branch_id' => $user->branch_id]);
+
                 return $user->branch_id;
             }
-            
+
             // Try to get branch from user's department
             if (isset($user->department_id) && $user->department_id) {
-                $department = \App\Models\Department::find($user->department_id);
+                $department = Department::find($user->department_id);
                 if ($department && $department->branch_id) {
                     session(['selected_branch_id' => $department->branch_id]);
+
                     return $department->branch_id;
                 }
             }
-            
+
             // Try loaded relationship
             if (method_exists($user, 'department') && $user->department && $user->department->branch_id) {
                 session(['selected_branch_id' => $user->department->branch_id]);
+
                 return $user->department->branch_id;
             }
         }
 
         // Final fallback - get and cache first active branch
-        $defaultBranch = \App\Models\Branch::where('is_active', 1)->first();
+        $defaultBranch = Branch::where('is_active', 1)->first();
         if ($defaultBranch) {
             session(['selected_branch_id' => $defaultBranch->id]);
+
             return $defaultBranch->id;
         }
 
@@ -107,73 +140,76 @@ if (!function_exists('current_branch_id')) {
     }
 }
 
-if (!function_exists('get_user_auth')) {
+if (! function_exists('get_user_auth')) {
     /**
      * Get current authenticated user (unified system)
+     *
      * @deprecated Use get_current_user() from AuthorizationHelper instead
      */
     function get_user_auth()
     {
         // Use Auth::id() which works even with corrupted user objects
-        $userId = \Illuminate\Support\Facades\Auth::id();
-        
-        if (!$userId) {
+        $userId = Auth::id();
+
+        if (! $userId) {
             return null;
         }
-        
+
         // Load user directly from database to avoid serialization issues
-        $user = \App\Models\User::find($userId);
-        
+        $user = User::find($userId);
+
         if ($user && is_object($user)) {
             return $user;
         }
-        
+
         return null;
     }
 }
 
-if (!function_exists('current_actor')) {
+if (! function_exists('current_actor')) {
     /**
      * Get the current authenticated actor (user) in the unified system
-     *
-     * @return \App\Models\User|null
      */
-    function current_actor(): ?\App\Models\User
+    function current_actor(): ?User
     {
         // Unified system - all users authenticated via web guard
-        $user = \Illuminate\Support\Facades\Auth::user();
+        $user = Auth::user();
 
         // If no user, return null
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
         // Ensure we're returning a User object, not a serialized string
         if (is_string($user)) {
             // Try to reload user by ID
-            $userId = \Illuminate\Support\Facades\Auth::id();
+            $userId = Auth::id();
             if ($userId) {
-                $user = \App\Models\User::find($userId);
+                $user = User::find($userId);
                 if ($user && is_object($user)) {
-                    \Illuminate\Support\Facades\Auth::setUser($user);
+                    Auth::setUser($user);
+
                     return $user;
                 }
             }
-            \Illuminate\Support\Facades\Auth::logout();
+            Auth::logout();
+
             return null;
         }
 
         // If not a User instance, reload by ID
-        if (!$user instanceof \App\Models\User) {
-            $userId = \Illuminate\Support\Facades\Auth::id();
+        if (! $user instanceof User) {
+            $userId = Auth::id();
             if ($userId) {
-                $user = \App\Models\User::find($userId);
+                $user = User::find($userId);
                 if ($user && is_object($user)) {
-                    \Illuminate\Support\Facades\Auth::setUser($user);
+                    Auth::setUser($user);
+
                     return $user;
                 }
             }
-            \Illuminate\Support\Facades\Auth::logout();
+            Auth::logout();
+
             return null;
         }
 
@@ -181,17 +217,14 @@ if (!function_exists('current_actor')) {
     }
 }
 
-
 // is_super_admin function moved to AuthorizationHelper.php for unified system
 
-if (!function_exists('can_access_all_branches')) {
+if (! function_exists('can_access_all_branches')) {
     /**
      * Check if the current user can access all branches.
      *
      * Returns true for super admins who can access all branches.
      * Returns false for branch-specific users and unauthenticated users.
-     *
-     * @return bool
      */
     function can_access_all_branches(): bool
     {
@@ -200,42 +233,39 @@ if (!function_exists('can_access_all_branches')) {
     }
 }
 
-if (!function_exists('get_accessible_branches')) {
+if (! function_exists('get_accessible_branches')) {
     /**
      * Get all branches accessible to the current user.
      *
      * Returns all active branches for super admins, or just the assigned
      * branch for regular employees.
-     *
-     * @return \Illuminate\Support\Collection
      */
-    function get_accessible_branches(): \Illuminate\Support\Collection
+    function get_accessible_branches(): Collection
     {
         if (can_access_all_branches()) {
-            return \App\Models\Branch::where('is_active', 1)
+            return Branch::where('is_active', 1)
                 ->orderBy('name')
                 ->get();
         }
 
         if (auth()->check()) {
             $branchId = auth()->user()->branch_id;
-            return \App\Models\Branch::where('id', $branchId)->get();
+
+            return Branch::where('id', $branchId)->get();
         }
 
         return collect([]);
     }
 }
 
-if (!function_exists('set_current_branch')) {
+if (! function_exists('set_current_branch')) {
     /**
      * Set the current branch context.
      *
      * This updates the session with the selected branch ID and
      * optionally updates the user's last accessed branch.
      *
-     * @param int $branchId
-     * @param bool $updateUserPreference
-     * @return void
+     * @param  int  $branchId
      */
     function set_current_branch(string $branchId, bool $updateUserPreference = true): void
     {
@@ -247,30 +277,27 @@ if (!function_exists('set_current_branch')) {
     }
 }
 
-if (!function_exists('current_branch')) {
+if (! function_exists('current_branch')) {
     /**
      * Get the current branch model instance.
-     *
-     * @return \App\Models\Branch|null
      */
-    function current_branch(): ?\App\Models\Branch
+    function current_branch(): ?Branch
     {
         $branchId = current_branch_id();
 
-        if (!$branchId) {
+        if (! $branchId) {
             return null;
         }
 
-        return \App\Models\Branch::find($branchId);
+        return Branch::find($branchId);
     }
 }
 
-if (!function_exists('validate_branch_access')) {
+if (! function_exists('validate_branch_access')) {
     /**
      * Validate that the current user can access the specified branch.
      *
-     * @param int $branchId
-     * @return bool
+     * @param  int  $branchId
      */
     function validate_branch_access(string $branchId): bool
     {
