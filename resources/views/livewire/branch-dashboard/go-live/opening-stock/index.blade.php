@@ -44,15 +44,21 @@
             @if($productionDepartments->isEmpty())
                 <p class="text-sm text-amber-600">No production department available for your account.</p>
             @else
-                <div class="flex gap-3 flex-wrap">
+                <div class="flex gap-3 flex-wrap items-center">
                     <select wire:model.live="prodDeptId" class="rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 text-sm">
                         @foreach($productionDepartments as $id => $name)
                             <option value="{{ $id }}">{{ $name }}</option>
                         @endforeach
                     </select>
+                    <div class="inline-flex rounded-lg border border-zinc-300 dark:border-zinc-600 overflow-hidden text-sm">
+                        <button type="button" wire:click="$set('prodType', 'raw')"
+                                class="px-3 py-2 {{ $prodType === 'raw' ? 'bg-teal-600 text-white' : 'bg-white dark:bg-zinc-800 text-zinc-600' }}">Raw materials</button>
+                        <button type="button" wire:click="$set('prodType', 'product')"
+                                class="px-3 py-2 border-l border-zinc-300 dark:border-zinc-600 {{ $prodType === 'product' ? 'bg-teal-600 text-white' : 'bg-white dark:bg-zinc-800 text-zinc-600' }}">Products</button>
+                    </div>
                     <input type="text" wire:model.live.debounce.400ms="prodSearch"
-                           placeholder="Search raw materials or products (min 2 chars)…"
-                           class="flex-1 min-w-[220px] rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 text-sm">
+                           placeholder="Filter list…"
+                           class="flex-1 min-w-[200px] rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 text-sm">
                 </div>
 
                 <div class="overflow-x-auto border border-zinc-200 dark:border-zinc-700 rounded-lg">
@@ -84,11 +90,14 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="7" class="px-3 py-6 text-center text-zinc-400 text-sm">Type at least 2 characters to search.</td></tr>
+                                <tr><td colspan="7" class="px-3 py-6 text-center text-zinc-400 text-sm">No items found.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
+                @if($prodResults->hasPages())
+                    <div>{{ $prodResults->onEachSide(1)->links() }}</div>
+                @endif
             @endif
         </div>
     @endif
@@ -106,8 +115,8 @@
                         @endforeach
                     </select>
                     <input type="text" wire:model.live.debounce.400ms="salesSearch"
-                           placeholder="Search sellable products (min 2 chars)…"
-                           class="flex-1 min-w-[220px] rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 text-sm">
+                           placeholder="Filter products…"
+                           class="flex-1 min-w-[200px] rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 text-sm">
                 </div>
 
                 <div class="overflow-x-auto border border-zinc-200 dark:border-zinc-700 rounded-lg">
@@ -135,11 +144,14 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="px-3 py-6 text-center text-zinc-400 text-sm">Type at least 2 characters to search.</td></tr>
+                                <tr><td colspan="5" class="px-3 py-6 text-center text-zinc-400 text-sm">No products found.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
+                @if($salesProducts->hasPages())
+                    <div>{{ $salesProducts->onEachSide(1)->links() }}</div>
+                @endif
             @endif
         </div>
     @endif
@@ -148,7 +160,7 @@
     @if($tab === 'inventory' && $access['inventory'])
         <div class="space-y-3">
             <input type="text" wire:model.live.debounce.400ms="invSearch"
-                   placeholder="Search main-inventory items (min 2 chars)…"
+                   placeholder="Filter main-inventory items…"
                    class="w-full max-w-md rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 text-sm">
 
             <div class="overflow-x-auto border border-zinc-200 dark:border-zinc-700 rounded-lg">
@@ -178,11 +190,14 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="px-3 py-6 text-center text-zinc-400 text-sm">Type at least 2 characters to search.</td></tr>
+                            <tr><td colspan="6" class="px-3 py-6 text-center text-zinc-400 text-sm">No items found.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+            @if($invResults->hasPages())
+                <div>{{ $invResults->onEachSide(1)->links() }}</div>
+            @endif
         </div>
     @endif
 

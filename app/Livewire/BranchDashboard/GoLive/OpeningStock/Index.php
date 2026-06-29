@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 use TallStackUi\Traits\Interactions;
 
 /**
@@ -26,14 +27,18 @@ use TallStackUi\Traits\Interactions;
 #[Layout('components.layouts.app.branch-dashboard')]
 class Index extends Component
 {
-    use Interactions;
+    use Interactions, WithPagination;
 
     #[Url(keep: true)]
     public ?string $b_id = null;
 
     public string $tab = 'production';
 
+    public int $perPage = 50;
+
     public ?int $prodDeptId = null;
+
+    public string $prodType = 'raw';
 
     public string $prodSearch = '';
 
@@ -44,6 +49,42 @@ class Index extends Component
     public string $invSearch = '';
 
     public bool $showLockModal = false;
+
+    // Reset pagination whenever the active list, scope, or filter changes.
+    public function updatingTab(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingProdDeptId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingProdType(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingProdSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSalesDeptId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSalesSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingInvSearch(): void
+    {
+        $this->resetPage();
+    }
 
     public function mount(): void
     {
@@ -225,101 +266,123 @@ class Index extends Component
         $this->redirect(branch_route('branch-dashboard.dashboards.router'), navigate: true);
     }
 
-    // ---- Search result builders -----------------------------------------
+    // ---- List builders (browsable + filtered by search) -----------------
 
     protected function productionResults()
     {
-        if (! $this->prodDeptId || mb_strlen($this->prodSearch) < 2) {
-            return collect();
+        if (! $this->prodDeptId) {
+            return Item::query()->whereRaw('1 = 0')->paginate($this->perPage);
         }
 
         $branchId = current_branch_id();
         $store = ProductionStore::forBranch($branchId)->forDepartment($this->prodDeptId)->first();
-        $existing = $store ? ProductionStoreStock::where('store_id', $store->id)->get()->keyBy('item_id') : collect();
         $uoms = $this->uomMap();
+        $search = trim($this->prodSearch);
 
-        $rows = collect();
+        if ($this->prodType === 'product') {
+            $paginator = Product::where('department_id', $this->prodDeptId)
+                ->when($search !== '', fn ($q) => $q->where('name', 'like', '%'.$search.'%'))
+                ->orderBy('name')->paginate($this->perPage);
 
-        Item::where('branch_id', $branchId)
-            ->where(fn ($q) => $q->where('name', 'like', '%'.$this->prodSearch.'%')->orWhere('sku', 'like', '%'.$this->prodSearch.'%'))
-            ->orderBy('name')->limit(15)->get()
-            ->each(function (Item $it) use ($rows, $existing, $uoms) {
-                $cur = $existing[(string) $it->id] ?? null;
-                $rows->push([
-                    'type' => 'Raw',
-                    'id' => (string) $it->id,
-                    'name' => $it->name,
-                    'uom' => $uoms[$it->uom_id] ?? '',
-                    'current' => $cur ? (float) $cur->quantity_available : 0,
-                    'cost' => $cur ? (float) $cur->average_cost : (float) (Stock::where('item_id', $it->id)->value('average_cost') ?? 0),
-                ]);
-            });
+            $ids = collect($paginator->items())->map(fn ($p) => (string) $p->id)->all();
+            $existing = $store ? ProductionStoreStock::where('store_id', $store->id)->whereIn('item_id', $ids)->get()->keyBy('item_id') : collect();
 
-        Product::where('department_id', $this->prodDeptId)
-            ->where('name', 'like', '%'.$this->prodSearch.'%')
-            ->orderBy('name')->limit(15)->get()
-            ->each(function (Product $p) use ($rows, $existing, $uoms) {
+            $paginator->setCollection($paginator->getCollection()->map(function (Product $p) use ($existing, $uoms) {
                 $cur = $existing[(string) $p->id] ?? null;
-                $rows->push([
+
+                return [
                     'type' => 'Product',
                     'id' => (string) $p->id,
                     'name' => $p->name,
                     'uom' => $uoms[$p->uom_id] ?? 'pcs',
                     'current' => $cur ? (float) $cur->quantity_available : 0,
                     'cost' => $cur ? (float) $cur->average_cost : (float) ($p->cost ?? 0),
-                ]);
-            });
+                ];
+            }));
 
-        return $rows;
+            return $paginator;
+        }
+
+        $paginator = Item::where('branch_id', $branchId)
+            ->when($search !== '', fn ($q) => $q->where(fn ($x) => $x->where('name', 'like', '%'.$search.'%')->orWhere('sku', 'like', '%'.$search.'%')))
+            ->orderBy('name')->paginate($this->perPage);
+
+        $ids = collect($paginator->items())->map(fn ($i) => (string) $i->id)->all();
+        $existing = $store ? ProductionStoreStock::where('store_id', $store->id)->whereIn('item_id', $ids)->get()->keyBy('item_id') : collect();
+        $costFallback = Stock::where('branch_id', $branchId)->whereIn('item_id', $ids)->pluck('average_cost', 'item_id');
+
+        $paginator->setCollection($paginator->getCollection()->map(function (Item $it) use ($existing, $costFallback, $uoms) {
+            $cur = $existing[(string) $it->id] ?? null;
+
+            return [
+                'type' => 'Raw',
+                'id' => (string) $it->id,
+                'name' => $it->name,
+                'uom' => $uoms[$it->uom_id] ?? '',
+                'current' => $cur ? (float) $cur->quantity_available : 0,
+                'cost' => $cur ? (float) $cur->average_cost : (float) ($costFallback[$it->id] ?? 0),
+            ];
+        }));
+
+        return $paginator;
     }
 
     protected function salesResults()
     {
-        if (! $this->salesDeptId || mb_strlen($this->salesSearch) < 2) {
-            return collect();
+        if (! $this->salesDeptId) {
+            return Product::query()->whereRaw('1 = 0')->paginate($this->perPage);
         }
 
         $uoms = $this->uomMap();
+        $search = trim($this->salesSearch);
+
+        $paginator = Product::where('sales_department_id', $this->salesDeptId)
+            ->when($search !== '', fn ($q) => $q->where('name', 'like', '%'.$search.'%'))
+            ->orderBy('name')->paginate($this->perPage);
+
+        $ids = collect($paginator->items())->map(fn ($p) => $p->id)->all();
         $existing = ProductStock::where('stock_date', Carbon::today()->toDateString())
             ->where('department_id', $this->salesDeptId)
             ->where('shift_type', 'morning')
+            ->whereIn('product_id', $ids)
             ->pluck('opening_quantity', 'product_id');
 
-        return Product::where('sales_department_id', $this->salesDeptId)
-            ->where('name', 'like', '%'.$this->salesSearch.'%')
-            ->orderBy('name')->limit(25)->get()
-            ->map(fn (Product $p) => [
-                'id' => (string) $p->id,
-                'name' => $p->name,
-                'uom' => $uoms[$p->sales_uom_id] ?? ($uoms[$p->uom_id] ?? 'pcs'),
-                'current' => (float) ($existing[$p->id] ?? 0),
-            ]);
+        $paginator->setCollection($paginator->getCollection()->map(fn (Product $p) => [
+            'id' => (string) $p->id,
+            'name' => $p->name,
+            'uom' => $uoms[$p->sales_uom_id] ?? ($uoms[$p->uom_id] ?? 'pcs'),
+            'current' => (float) ($existing[$p->id] ?? 0),
+        ]));
+
+        return $paginator;
     }
 
     protected function inventoryResults()
     {
-        if (mb_strlen($this->invSearch) < 2) {
-            return collect();
-        }
-
         $branchId = current_branch_id();
         $uoms = $this->uomMap();
-        $existing = Stock::where('branch_id', $branchId)->get()->keyBy('item_id');
+        $search = trim($this->invSearch);
 
-        return Item::where('branch_id', $branchId)
-            ->where(fn ($q) => $q->where('name', 'like', '%'.$this->invSearch.'%')->orWhere('sku', 'like', '%'.$this->invSearch.'%'))
-            ->orderBy('name')->limit(25)->get()
-            ->map(function (Item $it) use ($existing, $uoms) {
-                $cur = $existing[$it->id] ?? null;
+        $paginator = Item::where('branch_id', $branchId)
+            ->when($search !== '', fn ($q) => $q->where(fn ($x) => $x->where('name', 'like', '%'.$search.'%')->orWhere('sku', 'like', '%'.$search.'%')))
+            ->orderBy('name')->paginate($this->perPage);
 
-                return [
-                    'id' => (string) $it->id,
-                    'name' => $it->name,
-                    'uom' => $uoms[$it->uom_id] ?? '',
-                    'current' => $cur ? (float) $cur->quantity_available : 0,
-                    'cost' => $cur ? (float) $cur->average_cost : 0,
-                ];
-            });
+        $ids = collect($paginator->items())->map(fn ($i) => $i->id)->all();
+        $existing = Stock::where('branch_id', $branchId)->whereIn('item_id', $ids)->get()->keyBy('item_id');
+
+        $paginator->setCollection($paginator->getCollection()->map(function (Item $it) use ($existing, $uoms) {
+            $cur = $existing[$it->id] ?? null;
+
+            return [
+                'id' => (string) $it->id,
+                'name' => $it->name,
+                'uom' => $uoms[$it->uom_id] ?? '',
+                'current' => $cur ? (float) $cur->quantity_available : 0,
+                'cost' => $cur ? (float) $cur->average_cost : 0,
+            ];
+        }));
+
+        return $paginator;
     }
 
     protected function uomMap(): array
