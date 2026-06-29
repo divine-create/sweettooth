@@ -103,15 +103,17 @@ class Index extends Component
     {
         $user = current_actor();
         $level = (int) ($user?->roles()->max('level') ?? 0);
-        $canAll = is_super_admin() || $level >= 4;
+        // Go-live admins (full access + lock): super admin, MD / Operations Manager
+        // (role level >= 4), and HR.
+        $isAdmin = is_super_admin() || $level >= 4 || (bool) ($user?->hasRole(['HR', 'HR Manager', 'HR Officer']) ?? false);
         $catName = optional(optional($user?->department)->category)->name;
 
         return [
-            'production' => $canAll || $catName === 'Production',
-            'sales' => $canAll || $catName === 'Sales',
-            'inventory' => $canAll || (bool) ($user?->can('manage-inventory') ?? false),
-            'all' => $canAll,
-            'lock' => is_super_admin() || $level >= 5,
+            'production' => $isAdmin || $catName === 'Production',
+            'sales' => $isAdmin || $catName === 'Sales',
+            'inventory' => $isAdmin || (bool) ($user?->can('manage-inventory') ?? false),
+            'all' => $isAdmin,
+            'lock' => $isAdmin,
         ];
     }
 
