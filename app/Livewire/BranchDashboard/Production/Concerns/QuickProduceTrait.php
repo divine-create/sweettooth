@@ -482,6 +482,38 @@ trait QuickProduceTrait
         return $qty;
     }
 
+    /**
+     * Translate a produced quantity (in the recipe's base/production UOM, e.g.
+     * grams) into what the sales department will actually receive, expressed in
+     * the product's SALES UOM. Production stocks and dispatches in the base unit;
+     * the till sells in the sales unit, so this is the bridge the operator needs
+     * to see at produce/dispatch time ("40 g produced -> 1 portion to sell").
+     *
+     * Falls back to the base unit when the product has no distinct sales UOM
+     * configured, so the readout is always meaningful (shows "40 g" until a sales
+     * unit is set, then automatically switches to "1 portion").
+     *
+     * @return array{qty: float, symbol: string, converted: bool}
+     */
+    public function salesReceivesFor(float $baseQty): array
+    {
+        $product = $this->selectedRecipe?->product;
+
+        if (! $product) {
+            return [
+                'qty' => $baseQty,
+                'symbol' => $this->selectedRecipe?->uomSymbol ?? '',
+                'converted' => false,
+            ];
+        }
+
+        return [
+            'qty' => $product->convertBaseToSalesQuantity($baseQty),
+            'symbol' => $product->effectiveSalesUomSymbol,
+            'converted' => $product->hasSalesUomConversion(),
+        ];
+    }
+
     public function dispatchToSales()
     {
         if (! $this->selectedRecipe) {

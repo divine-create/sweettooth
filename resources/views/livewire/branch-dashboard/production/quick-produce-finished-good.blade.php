@@ -81,6 +81,26 @@
                                 @endif
                             </div>
                         </div>
+
+                        @php $salesReceives = $this->salesReceivesFor((float) $approvedQuantity); @endphp
+                        <div class="mt-3 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 p-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-indigo-800 dark:text-indigo-200">Sales will receive</span>
+                                <span class="text-base font-bold text-indigo-900 dark:text-indigo-100">
+                                    {{ rtrim(rtrim(number_format($salesReceives['qty'], 2), '0'), '.') }} {{ $salesReceives['symbol'] }}
+                                    @if($salesReceives['converted'])
+                                        <span class="text-xs font-normal text-indigo-600 dark:text-indigo-300">
+                                            (from {{ rtrim(rtrim(number_format($approvedQuantity, 2), '0'), '.') }} {{ $selectedRecipe->uomSymbol }} produced)
+                                        </span>
+                                    @endif
+                                </span>
+                            </div>
+                            @unless($salesReceives['converted'])
+                                <p class="text-xs text-indigo-600 dark:text-indigo-300 mt-1">
+                                    Sold in {{ $selectedRecipe->uomSymbol }} — set a sales unit on this product to sell it by portion/piece.
+                                </p>
+                            @endunless
+                        </div>
                     </div>
                 @endif
             </div>
@@ -220,10 +240,18 @@
                         </div>
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Quantity to send</label>
-                            <input type="number" step="0.01" min="0" max="{{ $yieldOutput }}" wire:model="dispatchQuantity"
+                            <input type="number" step="0.01" min="0" max="{{ $yieldOutput }}" wire:model.live="dispatchQuantity"
                                    class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600" />
                             <p class="text-xs text-zinc-400 mt-1">
                                 Max {{ rtrim(rtrim(number_format($yieldOutput,2),'0'),'.') }} {{ $selectedRecipe->uomSymbol ?? '' }}. Any remainder stays in finished goods.
+                            </p>
+                            @php $sendSales = $this->salesReceivesFor((float) ($dispatchQuantity ?: 0)); @endphp
+                            <p class="text-xs mt-1 text-indigo-700 dark:text-indigo-300">
+                                Sales will receive:
+                                <span class="font-semibold">{{ rtrim(rtrim(number_format($sendSales['qty'], 2), '0'), '.') }} {{ $sendSales['symbol'] }}</span>
+                                @if($sendSales['converted'])
+                                    <span class="text-indigo-500">(from {{ rtrim(rtrim(number_format((float) ($dispatchQuantity ?: 0), 2), '0'), '.') }} {{ $selectedRecipe->uomSymbol }})</span>
+                                @endif
                             </p>
                         </div>
                         <div class="flex justify-end">
