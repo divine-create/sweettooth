@@ -419,10 +419,10 @@ trait QuickProduceTrait
             }
 
             if ($this->selectedRecipe->is_wip) {
-                $this->toast()->success("WIP produced: {$this->approvedQuantity} units added to stock.")->send();
+                $this->toast()->success("WIP produced: {$this->approvedQuantity} {$this->selectedRecipe->uomSymbol} added to stock.")->send();
                 $this->resetProduction();
             } else {
-                $this->toast()->success("Produced {$this->approvedQuantity} units of {$this->selectedRecipe->product_name}")->send();
+                $this->toast()->success("Produced {$this->approvedQuantity} {$this->selectedRecipe->uomSymbol} of {$this->selectedRecipe->product_name}")->send();
                 // Set quantity for dispatch to only the APPROVED amount; default
                 // the dispatch quantity to the full batch (cashier may reduce it
                 // or keep the batch in finished goods).

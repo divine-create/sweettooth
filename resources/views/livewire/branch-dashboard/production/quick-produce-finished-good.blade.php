@@ -58,12 +58,12 @@
 
                             <div class="space-y-3">
                                 <div>
-                                    <label class="block text-xs font-medium text-green-700 dark:text-green-400">Approved Quantity</label>
+                                    <label class="block text-xs font-medium text-green-700 dark:text-green-400">Approved Quantity ({{ $selectedRecipe->uomSymbol }})</label>
                                     <input type="number" wire:model.live="approvedQuantity" step="0.01" min="0"
                                            class="w-full rounded border p-2 bg-green-50 dark:bg-green-900/10 dark:border-green-800"/>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-red-700 dark:text-red-400">Rejected Quantity</label>
+                                    <label class="block text-xs font-medium text-red-700 dark:text-red-400">Rejected Quantity ({{ $selectedRecipe->uomSymbol }})</label>
                                     <input type="number" wire:model.live="rejectedQuantity" step="0.01" min="0"
                                            class="w-full rounded border p-2 bg-red-50 dark:bg-red-900/10 dark:border-red-800"/>
                                 </div>
@@ -155,7 +155,7 @@
                         {{ $isRedispatch ? 'Dispatch Pending Batch' : 'Production Complete!' }}
                     </h3>
                     <p class="text-zinc-600 dark:text-zinc-300 mb-4">
-                        {{ $isRedispatch ? 'Dispatching' : 'Produced' }} {{ number_format($yieldOutput, 2) }} units of {{ $selectedRecipe?->product_name }}
+                        {{ $isRedispatch ? 'Dispatching' : 'Produced' }} {{ number_format($yieldOutput, 2) }} {{ $selectedRecipe?->uomSymbol }} of {{ $selectedRecipe?->product_name }}
                     </p>
 
                     @if(!$selectedRecipe?->product_id)

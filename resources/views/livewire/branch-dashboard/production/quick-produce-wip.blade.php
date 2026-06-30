@@ -58,12 +58,12 @@
 
                             <div class="space-y-3">
                                 <div>
-                                    <label class="block text-xs font-medium text-green-700 dark:text-green-400">Approved Quantity</label>
+                                    <label class="block text-xs font-medium text-green-700 dark:text-green-400">Approved Quantity ({{ $selectedRecipe->uomSymbol }})</label>
                                     <input type="number" wire:model.live="approvedQuantity" step="0.01" min="0"
                                            class="w-full rounded border p-2 bg-green-50 dark:bg-green-900/10 dark:border-green-800"/>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-red-700 dark:text-red-400">Rejected Quantity</label>
+                                    <label class="block text-xs font-medium text-red-700 dark:text-red-400">Rejected Quantity ({{ $selectedRecipe->uomSymbol }})</label>
                                     <input type="number" wire:model.live="rejectedQuantity" step="0.01" min="0"
                                            class="w-full rounded border p-2 bg-red-50 dark:bg-red-900/10 dark:border-red-800"/>
                                 </div>
@@ -154,7 +154,7 @@
                 <div class="p-6">
                     <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100 mb-4">WIP Production Complete!</h3>
                     <p class="text-zinc-600 dark:text-zinc-300 mb-4">
-                        Produced {{ number_format($yieldOutput, 2) }} units of {{ $selectedRecipe?->product_name }}
+                        Produced {{ number_format($yieldOutput, 2) }} {{ $selectedRecipe?->uomSymbol }} of {{ $selectedRecipe?->product_name }}
                     </p>
 
                     <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
