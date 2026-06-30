@@ -1763,11 +1763,42 @@ class Index extends BaseComponent
             return;
         }
 
+        $activeSale = $table->getActiveSale();
+        if ($activeSale) {
+            DB::transaction(function () use ($activeSale) {
+                $items = $activeSale->saleItems()->with('product')->get();
+                foreach ($items as $item) {
+                    $product = $item->product;
+                    if (! $product) {
+                        continue;
+                    }
+                    $baseQty = $this->toBaseQty($product, (float) $item->quantity);
+                    $stock = $this->getTodayStockForProduct((string) $item->product_id, true);
+                    if ($stock && Schema::hasColumn('product_stocks', 'quantity_reserved')) {
+                        $stock->quantity_reserved = max(0, (float) ($stock->quantity_reserved ?? 0) - $baseQty);
+                        $stock->updateCalculatedFields();
+                        $stock->save();
+                    }
+                }
+            });
+        }
+
         // Use the existing completeSale method but update table_id
         $this->completeSale();
 
-        // Mark table as available after payment
-        $table->markAsAvailable();
+        // If the sale was completed successfully, delete the old hold sale
+        if ($activeSale && $this->currentSaleId && $this->currentSaleId !== $activeSale->id) {
+            DB::transaction(function () use ($activeSale, $table) {
+                $activeSale->saleItems()->delete();
+                $activeSale->delete();
+                
+                // Mark table as available after payment
+                $table->markAsAvailable();
+            });
+        } else {
+            // Fallback: just mark table as available
+            $table->markAsAvailable();
+        }
 
         $this->selectedTableId = null;
     }

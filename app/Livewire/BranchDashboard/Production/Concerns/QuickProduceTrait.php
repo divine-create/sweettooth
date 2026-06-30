@@ -706,6 +706,12 @@ trait QuickProduceTrait
                 continue;
             }
 
+            // Only track true Raw Materials (Items), not intermediate WIP Products
+            $itemType = $ing['item_type'] ?? \App\Models\Item::class;
+            if ($itemType !== \App\Models\Item::class) {
+                continue;
+            }
+
             $existing = \App\Models\RawMaterialUtilization::where([
                 'shift_id'  => $shift->id,
                 'recipe_id' => $this->selectedRecipe->id,

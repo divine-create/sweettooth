@@ -165,10 +165,10 @@ class SaleItem extends Model
             }
 
             // For direct inventory item sales: decrement stocks.quantity_available
-            if ($saleItem->wasRecentlyCreated && $saleItem->item_id) {
-                $sale = $saleItem->sale;
+            $sale = $saleItem->sale;
+            if ($saleItem->wasRecentlyCreated && $saleItem->item_id && $sale && $sale->status === 'completed') {
                 $inventoryStock = Stock::where('item_id', $saleItem->item_id)
-                    ->when($sale?->branch_id, fn ($q) => $q->where('branch_id', $sale->branch_id))
+                    ->when($sale->branch_id, fn ($q) => $q->where('branch_id', $sale->branch_id))
                     ->first();
 
                 if ($inventoryStock) {
@@ -186,7 +186,7 @@ class SaleItem extends Model
                         'unit_cost'       => (float) ($inventoryStock->average_cost ?? 0),
                         'cost_impact'     => -((float) $saleItem->quantity * (float) ($inventoryStock->average_cost ?? 0)),
                         'reference_type'  => Sale::class,
-                        'reference_id'    => (string) ($sale?->id ?? ''),
+                        'reference_id'    => (string) ($sale->id ?? ''),
                         'moved_by_type'   => \App\Models\User::class,
                         'moved_by_id'     => auth()->id(),
                         'movement_date'   => now(),
@@ -255,10 +255,10 @@ class SaleItem extends Model
             }
 
             // Restore inventory stock when a direct inventory item sale is deleted
-            if ($saleItem->item_id) {
-                $sale = $saleItem->sale;
+            $sale = $saleItem->sale;
+            if ($saleItem->item_id && $sale && $sale->status === 'completed') {
                 $inventoryStock = Stock::where('item_id', $saleItem->item_id)
-                    ->when($sale?->branch_id, fn ($q) => $q->where('branch_id', $sale->branch_id))
+                    ->when($sale->branch_id, fn ($q) => $q->where('branch_id', $sale->branch_id))
                     ->first();
 
                 if ($inventoryStock) {
@@ -276,7 +276,7 @@ class SaleItem extends Model
                         'unit_cost'       => (float) ($inventoryStock->average_cost ?? 0),
                         'cost_impact'     => (float) $saleItem->quantity * (float) ($inventoryStock->average_cost ?? 0),
                         'reference_type'  => Sale::class,
-                        'reference_id'    => (string) ($sale?->id ?? ''),
+                        'reference_id'    => (string) ($sale->id ?? ''),
                         'moved_by_type'   => \App\Models\User::class,
                         'moved_by_id'     => auth()->id(),
                         'movement_date'   => now(),
@@ -287,15 +287,34 @@ class SaleItem extends Model
             }
 
             // Restore product stock when sale item is deleted
-            if ($saleItem->sale && $saleItem->sale->salesShift) {
-                $productStock = ProductStock::where('sales_shift_id', $saleItem->sale->sales_shift_id)
-                    ->where('product_id', $saleItem->product_id)
-                    ->where('stock_date', $saleItem->sale->sale_time->format('Y-m-d'))
-                    ->first();
+            if ($sale && $sale->status === 'completed') {
+                $productStock = null;
+
+                if ($sale->sales_shift_id) {
+                    $productStock = ProductStock::where('sales_shift_id', $sale->sales_shift_id)
+                        ->where('product_id', $saleItem->product_id)
+                        ->first();
+                }
+
+                if (!$productStock && $sale->shift_id) {
+                    $productStock = ProductStock::where('shift_id', $sale->shift_id)
+                        ->where('product_id', $saleItem->product_id)
+                        ->first();
+                }
+
+                if (!$productStock && $sale->department_id) {
+                    $saleDate = $sale->sale_time ? $sale->sale_time->format('Y-m-d') : now()->format('Y-m-d');
+                    $productStock = ProductStock::where('department_id', $sale->department_id)
+                        ->where('product_id', $saleItem->product_id)
+                        ->where('stock_date', $saleDate)
+                        ->where('workflow_step', '!=', 'closing_completed')
+                        ->orderByDesc('id')
+                        ->first();
+                }
 
                 if ($productStock) {
-                    $productStock->quantity_sold -= $saleItem->quantity;
-                    $productStock->amount -= $saleItem->total;
+                    $productStock->quantity_sold = max(0, (float) $productStock->quantity_sold - (float) $saleItem->quantity);
+                    $productStock->amount = max(0, (float) $productStock->amount - (float) $saleItem->total);
                     $productStock->updateCalculatedFields();
                     $productStock->save();
                 }
