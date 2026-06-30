@@ -62,7 +62,14 @@ class Stock extends Component
 
     public string $sendUom = '';
 
+    // Sales-side unit the dispatch is entered in. Falls back to the production
+    // UOM ($sendUom) when the product has no distinct sales unit configured.
+    public string $sendSalesUom = '';
+
     public float $sendAvailable = 0.0;
+
+    // Held balance expressed in the sales UOM (= $sendAvailable when no conversion).
+    public float $sendAvailableSales = 0.0;
 
     public $sendQuantity = null;
 
@@ -232,7 +239,7 @@ class Stock extends Component
             return;
         }
 
-        $product = Product::with('unitOfMeasure')->find($productId);
+        $product = Product::with(['unitOfMeasure', 'salesUom'])->find($productId);
 
         if (! $product) {
             $this->toast()->error('Product not found.')->send();
@@ -240,14 +247,39 @@ class Stock extends Component
             return;
         }
 
+        // The held balance is in the base/production UOM (e.g. grams). The operator
+        // enters the dispatch amount in the sales UOM; we convert back to base on
+        // submit. effectiveSalesUomSymbol / convertBaseToSalesQuantity fall back to
+        // the production UOM when no sales unit is configured.
         $this->sendProductId = $productId;
         $this->sendProductName = $product->name;
         $this->sendUom = $product->unitOfMeasure?->symbol ?? '';
+        $this->sendSalesUom = $product->effectiveSalesUomSymbol;
         $this->sendAvailable = $available;
-        $this->sendQuantity = $available;
+        $this->sendAvailableSales = $product->convertBaseToSalesQuantity($available);
+        $this->sendQuantity = $this->sendAvailableSales;
         $this->sendSalesDepartmentId = null;
         $this->sendDepartments = $this->resolveSalesDepartmentsForProduct($productId);
         $this->showSendModal = true;
+    }
+
+    /**
+     * Live preview of how much will actually leave the store (base/production UOM)
+     * for the sales-UOM quantity currently entered.
+     *
+     * @return array{base: float, base_uom: string, converts: bool}
+     */
+    public function sendBasePreview(): array
+    {
+        $product = $this->sendProductId ? Product::find($this->sendProductId) : null;
+        $sales = (float) ($this->sendQuantity ?: 0);
+        $base = $product ? $product->convertSalesToBaseQuantity($sales) : $sales;
+
+        return [
+            'base' => $base,
+            'base_uom' => $this->sendUom,
+            'converts' => $this->sendSalesUom !== $this->sendUom,
+        ];
     }
 
     public function closeSendModal(): void
@@ -256,7 +288,9 @@ class Stock extends Component
         $this->sendProductId = null;
         $this->sendProductName = '';
         $this->sendUom = '';
+        $this->sendSalesUom = '';
         $this->sendAvailable = 0.0;
+        $this->sendAvailableSales = 0.0;
         $this->sendQuantity = null;
         $this->sendSalesDepartmentId = null;
         $this->sendDepartments = [];
@@ -312,15 +346,17 @@ class Stock extends Component
             return;
         }
 
+        // Quantity is entered in the sales UOM; validate against the held balance
+        // expressed in that same unit.
         $this->validate([
-            'sendQuantity' => 'required|numeric|min:0.01|max:'.$this->sendAvailable,
+            'sendQuantity' => 'required|numeric|min:0.01|max:'.$this->sendAvailableSales,
             'sendSalesDepartmentId' => 'required|integer',
         ], [], [
             'sendQuantity' => 'quantity',
             'sendSalesDepartmentId' => 'sales department',
         ]);
 
-        $product = Product::with('unitOfMeasure')->find($this->sendProductId);
+        $product = Product::with(['unitOfMeasure', 'salesUom'])->find($this->sendProductId);
 
         if (! $product) {
             $this->toast()->error('Product not found.')->send();
@@ -332,7 +368,22 @@ class Stock extends Component
         $shift = $actor
             ? Shift::where('employee_id', $actor->id)->where('status', 'active')->first()
             : null;
-        $quantity = (float) $this->sendQuantity;
+
+        $salesQuantity = (float) $this->sendQuantity;
+
+        // Convert the sales-UOM amount back to the base/production UOM that the
+        // store holds and the dispatch is recorded in. Clamp to the held balance
+        // to absorb any rounding in the round-trip conversion.
+        $quantity = $product->convertSalesToBaseQuantity($salesQuantity);
+        if ($quantity > $this->sendAvailable) {
+            $quantity = $this->sendAvailable;
+        }
+
+        if ($quantity <= 0) {
+            $this->toast()->error('Quantity to send must be greater than zero.')->send();
+
+            return;
+        }
 
         DB::transaction(function () use ($store, $product, $actor, $shift, $quantity) {
             $dispatch = ProductDispatch::create([
@@ -361,7 +412,13 @@ class Stock extends Component
             );
         });
 
-        $this->toast()->success("Sent {$quantity} {$this->sendUom} of {$this->sendProductName} to sales (pending confirmation).")->send();
+        $salesLabel = rtrim(rtrim(number_format($salesQuantity, 2), '0'), '.');
+        $baseLabel = rtrim(rtrim(number_format($quantity, 2), '0'), '.');
+        $sentText = $this->sendSalesUom !== $this->sendUom
+            ? "{$salesLabel} {$this->sendSalesUom} ({$baseLabel} {$this->sendUom})"
+            : "{$baseLabel} {$this->sendUom}";
+
+        $this->toast()->success("Sent {$sentText} of {$this->sendProductName} to sales (pending confirmation).")->send();
         $this->closeSendModal();
     }
 

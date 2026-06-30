@@ -29,8 +29,14 @@ trait QuickProduceTrait
 
     // Quantity to dispatch from the just-produced batch (defaults to the full
     // approved output; the cashier may send only part and keep the rest in
-    // finished goods to dispatch later).
+    // finished goods to dispatch later). Held internally in the BASE/production
+    // UOM — the dispatch modal lets the operator enter it in the sales UOM
+    // (dispatchSalesQuantity) and converts back to this on every change.
     public $dispatchQuantity = 0;
+
+    // Dispatch amount as typed by the operator, in the product's SALES UOM.
+    // Falls back to the production UOM when the product has no sales unit.
+    public $dispatchSalesQuantity = 0;
 
     public $approvedQuantity = 0;
 
@@ -141,6 +147,21 @@ trait QuickProduceTrait
         $this->calculateYield();
         $this->resolveIngredients();
         $this->checkStock();
+    }
+
+    /**
+     * The dispatch modal collects the send quantity in the product's sales UOM.
+     * Convert it back to the base/production UOM that the store holds and the
+     * dispatch is recorded in, so the downstream logic (validation, stock
+     * draw-down, ProductDispatch.quantity) stays in base units as before.
+     */
+    public function updatedDispatchSalesQuantity(): void
+    {
+        $product = $this->selectedRecipe?->product;
+        $sales = (float) ($this->dispatchSalesQuantity ?: 0);
+        $this->dispatchQuantity = $product
+            ? $product->convertSalesToBaseQuantity($sales)
+            : $sales;
     }
 
     protected function calculateYield()
@@ -428,6 +449,12 @@ trait QuickProduceTrait
                 // or keep the batch in finished goods).
                 $this->yieldOutput = $this->approvedQuantity;
                 $this->dispatchQuantity = $this->approvedQuantity;
+                // Pre-fill the sales-UOM input with the sales equivalent of the
+                // full approved output (falls back to base when no sales unit).
+                $product = $this->selectedRecipe->product;
+                $this->dispatchSalesQuantity = $product
+                    ? $product->convertBaseToSalesQuantity((float) $this->approvedQuantity)
+                    : $this->approvedQuantity;
                 $this->isRedispatch = false;
                 $this->showDispatchModal = true;
             }
@@ -721,6 +748,7 @@ trait QuickProduceTrait
         $this->quantity = 1;
         $this->yieldOutput = 0;
         $this->dispatchQuantity = 0;
+        $this->dispatchSalesQuantity = 0;
         $this->approvedQuantity = 0;
         $this->rejectedQuantity = 0;
         $this->rejectionReason = null;

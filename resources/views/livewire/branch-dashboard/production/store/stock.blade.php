@@ -265,7 +265,10 @@
                 <div class="space-y-4">
                     <div class="text-sm text-zinc-600 dark:text-zinc-300">
                         Available in store:
-                        <span class="font-semibold text-zinc-900 dark:text-white">{{ rtrim(rtrim(number_format($sendAvailable,2),'0'),'.') }} {{ $sendUom }}</span>
+                        <span class="font-semibold text-zinc-900 dark:text-white">{{ rtrim(rtrim(number_format($sendAvailableSales,2),'0'),'.') }} {{ $sendSalesUom }}</span>
+                        @if($sendSalesUom !== $sendUom)
+                            <span class="text-xs text-zinc-400">(= {{ rtrim(rtrim(number_format($sendAvailable,2),'0'),'.') }} {{ $sendUom }})</span>
+                        @endif
                     </div>
 
                     <div>
@@ -287,10 +290,16 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Quantity to send ({{ $sendUom }})</label>
-                        <input type="number" step="0.01" min="0.01" max="{{ $sendAvailable }}" wire:model="sendQuantity"
+                        <label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Quantity to send ({{ $sendSalesUom }})</label>
+                        <input type="number" step="0.01" min="0.01" max="{{ $sendAvailableSales }}" wire:model.live="sendQuantity"
                                class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-900 text-sm" />
                         @error('sendQuantity') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                        @php $sendPreview = $this->sendBasePreview(); @endphp
+                        @if($sendPreview['converts'])
+                            <p class="text-xs text-indigo-600 dark:text-indigo-300 mt-1">
+                                = {{ rtrim(rtrim(number_format($sendPreview['base'], 2), '0'), '.') }} {{ $sendPreview['base_uom'] }} drawn from the production store
+                            </p>
+                        @endif
                     </div>
                 </div>
 

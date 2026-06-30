@@ -238,21 +238,19 @@
                                 @endforeach
                             </select>
                         </div>
+                        @php $maxSales = $this->salesReceivesFor((float) $yieldOutput); @endphp
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Quantity to send</label>
-                            <input type="number" step="0.01" min="0" max="{{ $yieldOutput }}" wire:model.live="dispatchQuantity"
+                            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Quantity to send ({{ $maxSales['symbol'] }})</label>
+                            <input type="number" step="0.01" min="0" max="{{ $maxSales['qty'] }}" wire:model.live="dispatchSalesQuantity"
                                    class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600" />
                             <p class="text-xs text-zinc-400 mt-1">
-                                Max {{ rtrim(rtrim(number_format($yieldOutput,2),'0'),'.') }} {{ $selectedRecipe->uomSymbol ?? '' }}. Any remainder stays in finished goods.
+                                Max {{ rtrim(rtrim(number_format($maxSales['qty'],2),'0'),'.') }} {{ $maxSales['symbol'] }}. Any remainder stays in finished goods.
                             </p>
-                            @php $sendSales = $this->salesReceivesFor((float) ($dispatchQuantity ?: 0)); @endphp
-                            <p class="text-xs mt-1 text-indigo-700 dark:text-indigo-300">
-                                Sales will receive:
-                                <span class="font-semibold">{{ rtrim(rtrim(number_format($sendSales['qty'], 2), '0'), '.') }} {{ $sendSales['symbol'] }}</span>
-                                @if($sendSales['converted'])
-                                    <span class="text-indigo-500">(from {{ rtrim(rtrim(number_format((float) ($dispatchQuantity ?: 0), 2), '0'), '.') }} {{ $selectedRecipe->uomSymbol }})</span>
-                                @endif
-                            </p>
+                            @if($maxSales['converted'])
+                                <p class="text-xs mt-1 text-indigo-700 dark:text-indigo-300">
+                                    = <span class="font-semibold">{{ rtrim(rtrim(number_format((float) ($dispatchQuantity ?: 0), 2), '0'), '.') }} {{ $selectedRecipe->uomSymbol }}</span> drawn from the production store
+                                </p>
+                            @endif
                         </div>
                         <div class="flex justify-end">
                             <button wire:click="dispatchToSales" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
