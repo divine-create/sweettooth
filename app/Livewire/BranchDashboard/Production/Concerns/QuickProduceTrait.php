@@ -180,7 +180,15 @@ trait QuickProduceTrait
         }
 
         $wipService = app(\App\Services\WipRecipeService::class);
-        $resolved = $wipService->resolveIngredients($this->selectedRecipe, $this->quantity, false);
+
+        // `$this->quantity` is the number of BATCHES (see the "Quantity to Produce
+        // (batches)" field). WipRecipeService::resolveIngredients() expects the
+        // total OUTPUT quantity in units and internally divides by the recipe
+        // yield to get the batch factor. Passing batches here scaled every
+        // ingredient down by the yield (e.g. 40g onions -> 1g for a yield of 40),
+        // so pass the produced unit total instead.
+        $outputQty = (float) $this->quantity * (float) $this->selectedRecipe->yield_quantity;
+        $resolved = $wipService->resolveIngredients($this->selectedRecipe, $outputQty, false);
 
         $this->ingredients = $resolved->map(function ($ing) {
             $model = $ing->item;
