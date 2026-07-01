@@ -326,6 +326,29 @@ class Index extends BaseComponent
                 // Use DB::table to bypass the saving hook so closing_quantity on
                 // closing_completed records (e.g. corrected variances) is never
                 // accidentally recalculated by an opening_quantity/addition_quantity change.
+                //
+                // For rows that are NOT yet closed, we must still keep the derived
+                // availability in sync with the opening/addition values being written.
+                // Otherwise a dispatch received before this opening save is dropped from
+                // closing_quantity and the POS (which reads stored closing_quantity)
+                // under-reports available stock. Mirror ProductStock::calculateTotalAvailable/
+                // calculateClosing so this raw write stays consistent with the model hook.
+                if ($existingStock->workflow_step !== 'closing_completed') {
+                    $opening   = (float) ($updateData['opening_quantity'] ?? 0);
+                    $additions = (float) ($updateData['addition_quantity'] ?? 0);
+                    $totalAvailable = $opening + $additions
+                        - (float) $existingStock->callback_quantity
+                        - (float) $existingStock->redress_quantity;
+                    $closing = $totalAvailable
+                        - (float) $existingStock->transfer_quantity
+                        - (float) $existingStock->glovo_quantity
+                        - (float) $existingStock->quantity_sold
+                        - (float) ($existingStock->quantity_reserved ?? 0);
+
+                    $updateData['total_available']  = $totalAvailable;
+                    $updateData['closing_quantity'] = $closing;
+                }
+
                 DB::table('product_stocks')
                     ->where('id', $existingStock->id)
                     ->update(array_merge($updateData, ['updated_at' => now()]));
