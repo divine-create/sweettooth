@@ -88,7 +88,13 @@ class SaleItem extends Model
     // Helper Methods
     public function calculateSubtotal(): float
     {
-        return $this->quantity * $this->unit_price;
+        // unit_price is quoted per sales unit (e.g. per scoop), so the line value
+        // must be based on the sales quantity — not the base quantity (e.g. grams).
+        // Fall back to base quantity for lines without a sales-unit conversion,
+        // where sales_quantity is null and unit_price is already per base unit.
+        $pricingQuantity = (float) ($this->sales_quantity ?? $this->quantity);
+
+        return $pricingQuantity * $this->unit_price;
     }
 
     public function calculateTotal(): float
