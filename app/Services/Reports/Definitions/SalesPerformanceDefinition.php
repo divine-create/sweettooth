@@ -35,7 +35,7 @@ class SalesPerformanceDefinition implements ReportDefinition
         // Lazy access (used in buildSalesDetails/staff performance) resolves the
         // real cashier name correctly.
         $sales = Sale::query()
-            ->with(['department', 'salesShift', 'saleItems.product', 'saleItems.salesUom', 'payments'])
+            ->with(['department', 'salesShift', 'shift', 'saleItems.product', 'saleItems.salesUom', 'payments'])
             ->where('branch_id', $branchId)
             ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
             ->when($fromDate && $toDate, fn($q) => $q->whereBetween('sale_time', [$fromDate, $toDate]))
@@ -182,7 +182,7 @@ class SalesPerformanceDefinition implements ReportDefinition
     {
         return [
             'sales_details' => [
-                'headers' => ['Sale #', 'Time', 'Shift', 'Sold By', 'Items', 'Subtotal', 'Discount', 'Tax', 'Total', 'Cash', 'Card', 'Mobile', 'Other', 'Status'],
+                'headers' => ['Sale #', 'Time', 'Shift', 'Sold By', 'Items', 'Subtotal', 'Discount', 'Tax', 'Total', 'Cash', 'Transfer', 'POS', 'Other', 'Status'],
                 'rows' => array_map(function ($row) {
                     return [
                         $row['sale_number'],
@@ -195,8 +195,8 @@ class SalesPerformanceDefinition implements ReportDefinition
                         $row['tax'],
                         $row['total'],
                         $row['payment_breakdown']['cash'] ?? 0,
-                        $row['payment_breakdown']['card'] ?? 0,
-                        $row['payment_breakdown']['mobile_money'] ?? 0,
+                        $row['payment_breakdown']['transfer'] ?? 0,
+                        $row['payment_breakdown']['pos'] ?? 0,
                         $row['payment_breakdown']['other'] ?? 0,
                         $row['status'],
                     ];
@@ -397,24 +397,28 @@ class SalesPerformanceDefinition implements ReportDefinition
             return $sale->payments->where('status', 'completed');
         });
 
-        $cashSales = $completedPayments->where('payment_method', 'cash');
-        $cardSales = $completedPayments->where('payment_method', 'card');
-        $mobileSales = $completedPayments->where('payment_method', 'mobile_money');
+        // POS supports cash / transfer / pos. Anything else is bucketed as Other
+        // so no revenue is silently dropped.
+        $known = ['cash', 'transfer', 'pos'];
+        $bucket = function ($rows) {
+            return [
+                'orders' => $rows->count(),
+                'revenue' => $rows->sum('amount'),
+            ];
+        };
 
-        return [
-            'cash' => [
-                'orders' => $cashSales->count(),
-                'revenue' => $cashSales->sum('amount'),
-            ],
-            'card' => [
-                'orders' => $cardSales->count(),
-                'revenue' => $cardSales->sum('amount'),
-            ],
-            'mobile_money' => [
-                'orders' => $mobileSales->count(),
-                'revenue' => $mobileSales->sum('amount'),
-            ],
+        $analysis = [
+            'cash' => $bucket($completedPayments->where('payment_method', 'cash')),
+            'transfer' => $bucket($completedPayments->where('payment_method', 'transfer')),
+            'pos' => $bucket($completedPayments->where('payment_method', 'pos')),
         ];
+
+        $other = $completedPayments->whereNotIn('payment_method', $known);
+        if ($other->isNotEmpty()) {
+            $analysis['other'] = $bucket($other);
+        }
+
+        return $analysis;
     }
 
     private function generateHourlyDistribution($sales): array
@@ -485,10 +489,17 @@ class SalesPerformanceDefinition implements ReportDefinition
                 return strtoupper(str_replace('_', ' ', (string) $method)) . ' ' . number_format($payments->sum('amount'), 2);
             })->implode(' | ');
 
+            // POS sales use the general `shift` (shift_id); older records may use
+            // the legacy `salesShift` (sales_shift_id). Prefer whichever exists.
+            $shiftLabel = $sale->salesShift?->shift_type
+                ?? $sale->shift?->shift_type
+                ?? $sale->shift?->shift_number
+                ?? 'N/A';
+
             return [
                 'sale_number' => $sale->sale_number ?? $sale->id,
                 'sale_time' => optional($sale->sale_time)->format('Y-m-d H:i'),
-                'shift' => $sale->salesShift?->shift_type ?? 'N/A',
+                'shift' => $shiftLabel ? ucfirst((string) $shiftLabel) : 'N/A',
                 'sold_by' => $soldBy ?: 'System',
                 'items' => $items ?: 'N/A',
                 'items_list' => $itemsList->values()->toArray(),
@@ -498,9 +509,9 @@ class SalesPerformanceDefinition implements ReportDefinition
                 'total' => (float) $sale->total,
                 'payment_breakdown' => [
                     'cash' => $paymentTotals->get('cash', 0),
-                    'card' => $paymentTotals->get('card', 0),
-                    'mobile_money' => $paymentTotals->get('mobile_money', 0),
-                    'other' => $paymentTotals->except(['cash', 'card', 'mobile_money'])->sum(),
+                    'transfer' => $paymentTotals->get('transfer', 0),
+                    'pos' => $paymentTotals->get('pos', 0),
+                    'other' => $paymentTotals->except(['cash', 'transfer', 'pos'])->sum(),
                 ],
                 'payment_methods' => $paymentMethods ?: 'N/A',
                 'status' => ucfirst((string) $sale->status),
