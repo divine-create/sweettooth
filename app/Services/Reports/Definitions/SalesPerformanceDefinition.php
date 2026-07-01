@@ -29,8 +29,13 @@ class SalesPerformanceDefinition implements ReportDefinition
         $fromDate = $from ? Carbon::parse($from)->startOfDay() : null;
         $toDate = $to ? Carbon::parse($to)->endOfDay() : null;
 
+        // NOTE: 'soldBy' is intentionally NOT eager-loaded. Eager-loading this
+        // morphTo returns a null name here (Laravel morphTo/eager quirk with the
+        // UUID-keyed User/Employee models), which made every row show "System".
+        // Lazy access (used in buildSalesDetails/staff performance) resolves the
+        // real cashier name correctly.
         $sales = Sale::query()
-            ->with(['soldBy', 'department', 'salesShift', 'saleItems.product', 'saleItems.salesUom', 'payments'])
+            ->with(['department', 'salesShift', 'saleItems.product', 'saleItems.salesUom', 'payments'])
             ->where('branch_id', $branchId)
             ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
             ->when($fromDate && $toDate, fn($q) => $q->whereBetween('sale_time', [$fromDate, $toDate]))

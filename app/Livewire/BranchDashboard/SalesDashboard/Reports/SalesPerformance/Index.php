@@ -55,6 +55,12 @@ class Index extends Component
         $this->initSalesDepartments($this->branchId);
         $this->setDateRange();
         $this->refreshSavedReports();
+
+        // Show data immediately instead of a blank page. Only auto-run when a
+        // department is resolved so we never pop the department-selection modal.
+        if ($this->departmentId) {
+            $this->generatePreview(silent: true);
+        }
     }
 
     #[On('branch-changed')]
@@ -90,14 +96,43 @@ class Index extends Component
             $this->toast()->error('Sales department not found for this URL.')->send();
         }
 
+        // Only honour a session department if it is actually one of the sales
+        // departments (the session value is shared across modules and may point
+        // at a production/inventory department that has no sales).
+        $sessionDeptId = session('selected_department_id');
+        $sessionDeptIsValid = $sessionDeptId
+            && $this->availableDepartments->firstWhere('id', $sessionDeptId);
+
         $this->selectedDepartmentId = $this->departmentId
-            ?? session('selected_department_id')
-            ?? $this->availableDepartments->first()?->id;
+            ?? ($sessionDeptIsValid ? $sessionDeptId : null)
+            ?? $this->defaultSalesDepartmentId();
 
         if ($this->selectedDepartmentId) {
             $this->departmentId = $this->selectedDepartmentId;
         }
         $this->refreshSavedReports();
+    }
+
+    /**
+     * Choose a sensible default sales department: the one with the most recent
+     * sale (so the report opens on a department that actually has data), falling
+     * back to the first available department.
+     */
+    private function defaultSalesDepartmentId(): ?string
+    {
+        $deptIds = collect($this->availableDepartments)->pluck('id');
+        if ($deptIds->isEmpty()) {
+            return null;
+        }
+
+        $recentDeptId = \App\Models\Sale::query()
+            ->where('branch_id', $this->branchId)
+            ->whereIn('department_id', $deptIds)
+            ->where('status', '!=', 'cancelled')
+            ->orderByDesc('sale_time')
+            ->value('department_id');
+
+        return $recentDeptId ?? $this->availableDepartments->first()?->id;
     }
 
     public function setDateRange(): void
@@ -134,7 +169,7 @@ class Index extends Component
         }
     }
 
-    public function generatePreview(): void
+    public function generatePreview(bool $silent = false): void
     {
         if (! $this->ensureDepartmentSelected('preview')) {
             return;
@@ -162,7 +197,9 @@ class Index extends Component
             $this->tablesData = $payload['tables'] ?? ($this->reportData['tables'] ?? []);
             $this->narrative = $payload['narrative'] ?? ($this->reportData['narrative'] ?? []);
 
-            $this->toast()->success('Sales performance report generated successfully')->send();
+            if (! $silent) {
+                $this->toast()->success('Sales performance report generated successfully')->send();
+            }
         } catch (\Exception $e) {
             $this->toast()->error('Error: '.$e->getMessage())->send();
         } finally {
@@ -255,6 +292,21 @@ class Index extends Component
 
         $this->selectedSaleDetail = $salesDetails[$index] ?? null;
         $this->showSaleDetailModal = $this->selectedSaleDetail !== null;
+    }
+
+    /**
+     * Overrides the trait so that switching the sales-department dropdown
+     * immediately re-runs the report instead of leaving a stale/empty view.
+     */
+    public function updatedSelectedDepartmentId($value): void
+    {
+        if (! $value) {
+            return;
+        }
+
+        $this->departmentId = $value;
+        session(['selected_department_id' => $value]);
+        $this->generatePreview(silent: true);
     }
 
     public function render()
