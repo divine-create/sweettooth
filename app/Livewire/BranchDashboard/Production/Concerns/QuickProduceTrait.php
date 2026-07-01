@@ -812,7 +812,17 @@ trait QuickProduceTrait
     {
         $productId = $this->selectedRecipe?->product_id;
 
-        $query = Department::with('category')
+        // A recipe with no linked product can't be dispatched to sales.
+        if (! $productId) {
+            return collect();
+        }
+
+        // Any active sales-category department in this branch (plus global ones)
+        // is a valid destination. Destinations are intentionally NOT limited to
+        // the product's existing assignments: the product is auto-linked to the
+        // receiving sales point on receipt (see the sales Dispatches receiving
+        // flow), so it becomes sellable there once accepted.
+        return Department::with('category')
             ->whereHas('category', function ($q) {
                 $q->whereRaw('LOWER(name) = ?', ['sales']);
             })
@@ -820,29 +830,8 @@ trait QuickProduceTrait
                 $q->where('branch_id', $this->getBranchId())
                   ->orWhereNull('branch_id');
             })
-            ->where('is_active', true);
-
-        if ($productId) {
-            $product = \App\Models\Product::with('departments:id')->find($productId);
-            if ($product) {
-                $allowedIds = $product->departments->pluck('id')->toArray();
-                if ($product->sales_department_id) {
-                    $allowedIds[] = (int) $product->sales_department_id;
-                }
-                $allowedIds = array_unique($allowedIds);
-
-                if (! empty($allowedIds)) {
-                    $query->whereIn('id', $allowedIds);
-                } else {
-                    // Strictly return empty if product has no assignments
-                    return collect();
-                }
-            }
-        } else {
-            // If recipe is not linked to a product, it shouldn't be dispatched to sales
-            return collect();
-        }
-
-        return $query->orderBy('name')->get();
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
     }
 }

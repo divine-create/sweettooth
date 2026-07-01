@@ -223,35 +223,20 @@ class Index extends Component
     }
 
     /**
-     * Sales departments a product may be dispatched to — limited to the sales-
-     * category departments the product is assigned to (mirrors the Quick Produce
-     * dispatch scoping).
+     * Sales departments a product may be dispatched to — any active sales-category
+     * department in this branch (plus global sales departments). Destinations are
+     * intentionally NOT limited to the product's existing assignments: the product
+     * is auto-linked to the receiving sales point on receipt (see the sales
+     * Dispatches receiving flow), so it becomes sellable there once accepted.
      *
      * @return array<int,string>
      */
     protected function resolveSalesDepartmentsForProduct(string $productId): array
     {
-        $product = Product::with('departments:id')->find($productId);
-
-        if (! $product) {
-            return [];
-        }
-
-        $allowedIds = $product->departments->pluck('id')->all();
-        if ($product->sales_department_id) {
-            $allowedIds[] = (int) $product->sales_department_id;
-        }
-        $allowedIds = array_values(array_unique($allowedIds));
-
-        if (empty($allowedIds)) {
-            return [];
-        }
-
         return Department::with('category')
             ->whereHas('category', fn ($q) => $q->whereRaw('LOWER(name) = ?', ['sales']))
             ->where(fn ($q) => $q->where('branch_id', $this->getBranchId())->orWhereNull('branch_id'))
             ->where('is_active', true)
-            ->whereIn('id', $allowedIds)
             ->orderBy('name')
             ->pluck('name', 'id')
             ->all();
