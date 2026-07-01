@@ -60,10 +60,15 @@ class AccountingPeriod extends Model
 
     public function scopeCurrent($query)
     {
-        $now = now();
+        // period_start/period_end are cast to `date` (stored at midnight), so a
+        // datetime comparison against now() excludes the whole last day of the
+        // period (e.g. anything after 00:00 on the 30th falls outside a period
+        // ending 2026-06-30). Compare on the calendar date so the period covers
+        // its entire last day.
+        $today = now()->toDateString();
         return $query
-            ->where('period_start', '<=', $now)
-            ->where('period_end', '>=', $now)
+            ->whereDate('period_start', '<=', $today)
+            ->whereDate('period_end', '>=', $today)
             ->where('status', 'open');
     }
 

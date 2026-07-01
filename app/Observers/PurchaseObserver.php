@@ -21,7 +21,11 @@ class PurchaseObserver
      */
     public function created(Purchase $purchase): void
     {
-        if ($purchase->status === 'approved' && $purchase->gl_posting_status === 'pending') {
+        // Do NOT gate on gl_posting_status here: on the `created` event a freshly
+        // created model has that attribute unhydrated (null) — the DB default
+        // 'pending' isn't loaded into the instance — so checking it would wrongly
+        // skip posting. Gate on status only; postToGL() guards against re-posting.
+        if ($purchase->status === 'approved') {
             $this->postToGL($purchase);
         }
     }
@@ -46,8 +50,10 @@ class PurchaseObserver
     private function postToGL(Purchase $purchase): void
     {
         try {
-            // Avoid duplicate posting
-            if ($purchase->gl_posting_status !== 'pending') {
+            // Avoid duplicate posting. null (unhydrated on create) and 'pending'
+            // both mean "not yet posted"; only skip when already posted. The GL
+            // service also enforces idempotency at the entry level.
+            if ($purchase->gl_posting_status === 'posted') {
                 return;
             }
 
