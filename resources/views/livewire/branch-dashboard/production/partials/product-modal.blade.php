@@ -163,15 +163,14 @@
                             @enderror
                         </div>
 
-                        <!-- Cost -->
+                        <!-- Cost (auto-calculated from recipe — not editable) -->
                         <div>
                             <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Cost Price</label>
-                            <input type="number" step="0.01" wire:model="cost"
-                                class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
-                                placeholder="0.00">
-                            @error('cost')
-                                <span class="text-red-500 text-sm">{{ $message }}</span>
-                            @enderror
+                            <input type="number" step="0.01"
+                                value="{{ $cost !== null ? number_format((float) $cost, 2, '.', '') : '' }}"
+                                class="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 cursor-not-allowed"
+                                placeholder="Auto-calculated from recipe" readonly disabled>
+                            <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Derived from the product's recipe (ingredient cost ÷ yield). Not editable.</p>
                         </div>
 
                         <!-- Shelf Life -->

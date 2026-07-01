@@ -404,6 +404,27 @@ class Products extends BaseComponent
         $this->showModal = true;
     }
 
+    /**
+     * Resolve a product's cost from its recipe rather than user input.
+     * Returns the recipe's computed cost per unit when a recipe exists,
+     * otherwise preserves the existing cost (edit) or null (new product).
+     */
+    private function resolveProductCost(): ?float
+    {
+        if (! $this->isEditing || ! $this->productId) {
+            return null;
+        }
+
+        $product = Product::find($this->productId);
+        $recipe = $product?->recipes()->first();
+
+        if ($recipe) {
+            return round($recipe->calculateCostPerUnit(), 2);
+        }
+
+        return $product?->cost;
+    }
+
     public function save()
     {
         // Ensure department_id is ALWAYS set - derive from product_type_id, then fallback to current dept
@@ -427,7 +448,6 @@ class Products extends BaseComponent
             'category_id' => 'nullable|integer',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'cost' => 'nullable|numeric|min:0',
             'shelf_life_days' => 'required|integer|min:0',
             'uom_id' => 'required|exists:units_of_measure,id',
             'sales_uom_id' => 'nullable|exists:units_of_measure,id',
@@ -469,7 +489,11 @@ class Products extends BaseComponent
             'category_id' => $this->category_id,
             'description' => $this->description,
             'price' => $this->price,
-            'cost' => $this->cost,
+            // Cost is never hand-entered — it is derived from the product's
+            // recipe (ingredient cost ÷ yield). New products have no recipe yet,
+            // so cost stays null until one is attached; existing products keep
+            // their current cost when no recipe is present.
+            'cost' => $this->resolveProductCost(),
             'shelf_life_days' => $this->shelf_life_days,
             'uom_id' => $this->uom_id,
             'sales_uom_id' => $this->sales_uom_id,

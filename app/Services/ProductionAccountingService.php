@@ -153,8 +153,15 @@ class ProductionAccountingService
             }
 
             // Split the input cost between good output (capitalised to inventory)
-            // and rejected output (expensed as waste).
-            $approvedCost = $totalCost * ($approvedQty / $producedQty);
+            // and rejected output (expensed as waste). The split is by the
+            // good/rejected ratio of the OUTPUT — never by quantity_produced.
+            // quantity_produced is recorded in recipe-batch units (typically 1),
+            // while quantity_approved/rejected are in output units (e.g. grams),
+            // so dividing by producedQty inflates the capitalised cost by that
+            // scale (e.g. ×3354) and breaks the debit=credit invariant.
+            $outputQty    = $approvedQty + $rejectedQty;
+            $goodFraction = $outputQty > 0 ? ($approvedQty / $outputQty) : 1.0;
+            $approvedCost = $totalCost * $goodFraction;
             $rejectedCost = $totalCost - $approvedCost;
 
             // WIP recipes stock as Work in Progress; everything else as Finished Goods.
