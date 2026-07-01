@@ -212,7 +212,14 @@
 
                 @if ($sidebarService::canSeeEmployeeManagement($currentUser) || $sidebarService::isSuperAdmin() || $isHrRole)
                 <flux:navlist.group :heading="__('Employee Management')" expandable
-                    :expanded="request()->routeIs('branch-dashboard.employees.*') || request()->routeIs('branch-dashboard.assignments.*') || request()->routeIs('branch-dashboard.clock-in-board.*')"
+                    :expanded="request()->routeIs('branch-dashboard.employee.*')
+                        || request()->routeIs('branch-dashboard.employees.*')
+                        || request()->routeIs('branch-dashboard.assignments.*')
+                        || request()->routeIs('branch-dashboard.clock-in-board.*')
+                        || request()->routeIs('branch-dashboard.employee-appraisals')
+                        || request()->routeIs('branch-dashboard.employee-appraisal-history')
+                        || request()->routeIs('branch-dashboard.hr.appraisals.*')
+                        || request()->routeIs('branch-dashboard.hr.reports.*')"
                     class="grid" icon='users'>
                     <flux:navlist.item icon="user" :href="branch_route('branch-dashboard.employee.index')"
                     :current="request()->routeIs('branch-dashboard.employee.index')" wire:navigate>
@@ -514,7 +521,8 @@
             <flux:navlist.group :heading="__('Inventory')" icon='cube'>
                 @if($sidebarService::canSeeInventory($currentUser))
                  <flux:navlist.group :heading="__('Inventory Management')" expandable
-                     :expanded="request()->routeIs('branch-dashboard.inventory.*')" class="grid" icon='cube'>
+                     :expanded="request()->routeIs('branch-dashboard.inventory.*')
+                         || request()->routeIs('branch-dashboard.suppliers.*')" class="grid" icon='cube'>
                     <flux:navlist.item icon="squares-2x2" :href="branch_route('branch-dashboard.inventory.items')"
                         :current="request()->routeIs('branch-dashboard.inventory.items')" wire:navigate>
                         {{ __('Items') }}
@@ -718,7 +726,12 @@
             <flux:navlist.group :heading="__('Production')" icon="o-cog-6-tooth">
                 @forelse($departments as $dept)
                     <flux:navlist.group :heading="$dept->name" :badge="$dept->category?->name" expandable
-                        :expanded="(request()->get('dept_slug') == $dept->slug) ? true : false" class="grid">
+                        :expanded="$OPEN_DEPT === $dept->id
+                            || request()->get('dept_slug') == $dept->slug
+                            || request()->get('deptSlug') == $dept->slug
+                            || request()->route('deptSlug') == $dept->slug
+                            || request()->route('dept_slug') == $dept->slug
+                            || str_ends_with((string) request()->get('page'), '_' . $dept->slug)" class="grid">
                         <flux:navlist.item icon="clipboard-document-check"
                             :href="branch_route('branch-dashboard.production.sales-requests.workflow', [
                                 'deptSlug' => $dept->slug,
@@ -842,7 +855,8 @@
 
             @if(!$isHrOnly && $sidebarService::canSeeProduction($currentUser) && has_permission('view-production-reports'))
             <flux:navlist.group :heading="__('Production Reports')" class="grid" expandable
-                :expanded="request()->routeIs('branch-dashboard.production.reports.*')">
+                :expanded="request()->routeIs('branch-dashboard.production.reports.*')
+                    || request()->routeIs('branch-dashboard.production.reporting.*')">
                 <flux:navlist.item icon="chart-bar"
                     :href="branch_route('branch-dashboard.production.reports.operations')"
                     :current="request()->routeIs('branch-dashboard.production.reports.operations')" wire:navigate>
@@ -954,7 +968,13 @@
             <flux:navlist.group :heading="__('Sales Departments')" icon="building-storefront">
                 @forelse($salesDepartments as $dept)
                     <flux:navlist.group :heading="$dept->name" :badge="$dept->category?->name" expandable
-                        :expanded="(request()->get('sales_dept_slug') == $dept->slug) ? true : false" class="grid">
+                        :expanded="$OPEN_SALES_DEPT === $dept->id
+                            || request()->get('sales_dept_slug') == $dept->slug
+                            || request()->get('salesDeptSlug') == $dept->slug
+                            || request()->route('salesDeptSlug') == $dept->slug
+                            || request()->route('sales_dept_slug') == $dept->slug
+                            || request()->get('deptSlug') == $dept->slug
+                            || str_ends_with((string) request()->get('page'), '_' . $dept->slug)" class="grid">
                         <flux:navlist.item icon="clipboard-document-check"
                             :href="branch_route('branch-dashboard.sales-dashboard.stock-opening.index', [
                                 'salesDeptSlug' => $dept->slug,
