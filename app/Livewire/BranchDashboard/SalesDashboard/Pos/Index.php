@@ -772,11 +772,16 @@ class Index extends BaseComponent
                     $stock = $stocksByProduct[$productId] ?? null;
                     $available = $this->availableQuantity($stock);
 
-                    // Process sale with available quantity or full quantity
-                    $actualQty = ($available > 0 && $qty > $available) ? $available : $qty;
+                    // Hard cap the sale to what is actually available. availableQuantity()
+                    // already floors at 0, so a 0/negative-stock line yields $actualQty = 0
+                    // and is skipped below — oversell can never drive stock negative at
+                    // checkout, mirroring the add-to-cart guard.
+                    $actualQty = max(0.0, min($qty, $available));
 
                     if ($actualQty < $qty) {
-                        $lowStockWarnings[] = $line['name'].' (sold '.$actualQty.' of '.$qty.' requested)';
+                        $lowStockWarnings[] = $available <= 0
+                            ? $line['name'].' (out of stock — not sold)'
+                            : $line['name'].' (sold '.$actualQty.' of '.$qty.' requested)';
                     }
 
                     if ($actualQty > 0) {
