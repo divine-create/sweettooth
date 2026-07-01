@@ -117,8 +117,14 @@ class Index extends BaseComponent
             return [];
         }
 
-        // Return the department ID and any related sales departments
-        return [$department->id];
+        // Include any departments combined into the same sales point (config/sales.php)
+        // so the Till cashier can select & open member departments' products too.
+        $groupIds = \App\Support\CombinedSalesPoints::departmentIds(
+            $branchId,
+            (string) $department->slug,
+        );
+
+        return array_values(array_unique(array_merge([(int) $department->id], $groupIds)));
     }
 
     public function updatedSearch()

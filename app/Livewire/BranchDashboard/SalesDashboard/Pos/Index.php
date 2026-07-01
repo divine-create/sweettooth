@@ -2056,6 +2056,16 @@ class Index extends BaseComponent
             $ids[] = (int) $department->id;
         }
 
+        // Include departments combined into the same sales point (config/sales.php),
+        // so this POS lists and reads stock for every member department's products.
+        $groupIds = \App\Support\CombinedSalesPoints::departmentIds(
+            $branchId,
+            (string) $department->slug,
+        );
+        if (! empty($groupIds)) {
+            $ids = array_values(array_unique(array_merge($ids, $groupIds)));
+        }
+
         return $ids;
     }
 

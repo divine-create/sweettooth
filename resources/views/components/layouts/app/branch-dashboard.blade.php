@@ -917,6 +917,12 @@
 
                     $salesDepartments = $query->get();
 
+                    // Hide member departments of a combined sales point (config/sales.php)
+                    // so only the primary till renders as a single sales point.
+                    $salesDepartments = $salesDepartments->reject(
+                        fn($d) => \App\Support\CombinedSalesPoints::isMember($d->slug),
+                    );
+
                     // Sales Manager and Sales Staff only see their own sales department.
                     // Sales Supervisor (and Admin/Super Admin) can see all sales departments.
                     if (!$canSeeAllSalesDepartments && $userDepartment && ($isSalesManager || $isSalesStaff)) {

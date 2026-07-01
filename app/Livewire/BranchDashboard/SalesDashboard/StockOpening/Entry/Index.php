@@ -68,16 +68,40 @@ class Index extends BaseComponent
             }
 
             if ($department) {
-                return [$department->id];
+                return $this->withCombinedSalesPointIds([$department->id], (string) $department->slug, $branchId);
             }
         }
 
         // Fallback to explicit departmentId if provided
         if ($this->departmentId) {
-            return [(int) $this->departmentId];
+            $department = Department::find($this->departmentId);
+
+            return $this->withCombinedSalesPointIds(
+                [(int) $this->departmentId],
+                (string) ($department?->slug ?? ''),
+                $branchId,
+            );
         }
 
         return [];
+    }
+
+    /**
+     * Merge in any departments combined into the same sales point (config/sales.php)
+     * so the Till cashier's opening lists & counts member departments' products too.
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, int>
+     */
+    protected function withCombinedSalesPointIds(array $ids, string $slug, $branchId): array
+    {
+        if ($slug === '') {
+            return array_values(array_unique(array_map('intval', $ids)));
+        }
+
+        $groupIds = \App\Support\CombinedSalesPoints::departmentIds($branchId, $slug);
+
+        return array_values(array_unique(array_map('intval', array_merge($ids, $groupIds))));
     }
 
     protected function loadAvailableShifts(): void
@@ -131,7 +155,7 @@ class Index extends BaseComponent
             ->available()
             ->whereNotIn('product_type_id', $wipTypeIds)
             ->whereIn('sales_department_id', $salesDepartmentIds)
-            ->select(['id', 'name', 'sku', 'uom_id', 'product_type_id', 'shelf_life_days'])
+            ->select(['id', 'name', 'sku', 'uom_id', 'product_type_id', 'shelf_life_days', 'sales_department_id'])
             ->with(['unitOfMeasure:id,symbol'])
             ->orderBy('name')
             ->get();
@@ -221,6 +245,9 @@ class Index extends BaseComponent
 
             $stockOpenings[] = [
                 'product_id' => $product->id,
+                // Home sales department of the product. In a combined sales point
+                // this keeps each product's stock filed under its own department.
+                'department_id' => (int) ($product->sales_department_id ?: ($primaryDeptId ?? 0)),
                 'product_name' => $product->name,
                 'product_sku' => $product->sku,
                 'product_uom' => $product->unitOfMeasure?->symbol,
@@ -262,11 +289,15 @@ class Index extends BaseComponent
         $primaryDeptId = reset($salesDepartmentIds);
 
         foreach ($this->stockOpenings as $entry) {
+            // File the row under the product's own home department so a combined
+            // sales point never mixes one department's counts into another.
+            $deptId = (int) ($entry['department_id'] ?? 0) ?: $primaryDeptId;
+
             // Match on the unique constraint columns — (dept, product, date, shift_type) is guaranteed unique,
             // so shift_id is not needed and would miss records created without a shift link.
             $existingStock = ProductStock::where('stock_date', $stockDate)
                 ->where('product_id', $entry['product_id'])
-                ->where('department_id', $primaryDeptId)
+                ->where('department_id', $deptId)
                 ->where('shift_type', $this->shiftType)
                 ->first();
 
@@ -303,7 +334,7 @@ class Index extends BaseComponent
                     'sales_shift_id' => null,
                     'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                     'branch_id' => $this->b_id,
-                    'department_id' => $primaryDeptId,
+                    'department_id' => $deptId,
                     'product_id' => $entry['product_id'],
                     'stock_date' => $stockDate,
                     'quantity_sold' => 0,
@@ -317,7 +348,7 @@ class Index extends BaseComponent
                 StockVariance::updateOrCreate(
                     [
                         'branch_id'      => $this->b_id,
-                        'department_id'  => $primaryDeptId,
+                        'department_id'  => $deptId,
                         'product_id'     => $entry['product_id'],
                         'variance_date'  => $stockDate,
                         'shift_type'     => $this->shiftType,

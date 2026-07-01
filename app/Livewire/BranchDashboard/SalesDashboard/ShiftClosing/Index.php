@@ -75,6 +75,30 @@ class Index extends BaseComponent
 
     // loadBranchAndDepartment is now handled by SalesDepartmentContext trait
 
+    /**
+     * Departments whose product stock this shift closes. In a combined sales
+     * point (config/sales.php) the till cashier also closes member departments'
+     * stock — those rows were opened and sold under this same shift. Cash and
+     * sales reconciliation stay keyed to the shift under the primary department.
+     *
+     * @return array<int, int>
+     */
+    protected function closingStockDepartmentIds(): array
+    {
+        if (! $this->departmentId) {
+            return [];
+        }
+
+        $ids = [(int) $this->departmentId];
+        $dept = Department::find($this->departmentId);
+        if ($dept) {
+            $groupIds = \App\Support\CombinedSalesPoints::departmentIds($this->branchId, (string) $dept->slug);
+            $ids = array_values(array_unique(array_merge($ids, $groupIds)));
+        }
+
+        return $ids;
+    }
+
     protected function loadCurrentShift()
     {
         $employee = auth()->user();
@@ -122,10 +146,11 @@ class Index extends BaseComponent
         $shift = Shift::find($this->currentShiftId);
         if (!$shift) return;
 
+        $closingDeptIds = $this->closingStockDepartmentIds();
         $stocks = ProductStock::where('stock_date', $this->shiftDate)
             ->where('shift_type', $this->getProductStockShiftType())
-            ->when(Schema::hasColumn('product_stocks', 'department_id') && $this->departmentId, function ($query) {
-                $query->where('department_id', $this->departmentId);
+            ->when(Schema::hasColumn('product_stocks', 'department_id') && ! empty($closingDeptIds), function ($query) use ($closingDeptIds) {
+                $query->whereIn('department_id', $closingDeptIds);
             })
             ->with('product')
             ->get();
@@ -467,12 +492,13 @@ class Index extends BaseComponent
             $shiftEnd = now();
 
             // 1. UPDATE STOCK CLOSING
+            $closingDeptIds = $this->closingStockDepartmentIds();
             foreach ($this->closingStocks as $stockData) {
                 $productStock = ProductStock::where('stock_date', $this->shiftDate)
                     ->where('shift_type', $this->getProductStockShiftType())
                     ->where('product_id', $stockData['product_id'])
-                    ->when(Schema::hasColumn('product_stocks', 'department_id') && $this->departmentId, function ($q) {
-                        $q->where('department_id', $this->departmentId);
+                    ->when(Schema::hasColumn('product_stocks', 'department_id') && ! empty($closingDeptIds), function ($q) use ($closingDeptIds) {
+                        $q->whereIn('department_id', $closingDeptIds);
                     })
                     ->first();
 
@@ -503,7 +529,9 @@ class Index extends BaseComponent
                             ],
                             [
                                 'branch_id'         => $this->branchId,
-                                'department_id'     => $this->departmentId,
+                                // File under the stock row's own department so a combined
+                                // point keeps each department's variances separate.
+                                'department_id'     => $productStock->department_id ?? $this->departmentId,
                                 'product_id'        => $stockData['product_id'],
                                 'quantity'          => abs($liveVariance),
                                 'expected_quantity' => $stockData['expected_closing'],
@@ -519,7 +547,7 @@ class Index extends BaseComponent
                         // Create callback for expired items
                         Callback::create([
                             'branch_id' => $this->branchId,
-                            'department_id' => $this->departmentId,
+                            'department_id' => $productStock->department_id ?? $this->departmentId,
                             'product_id' => $stockData['product_id'],
                             'quantity' => $stockData['actual_closing'],
                             'reason' => 'expired',
