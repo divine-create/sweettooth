@@ -210,7 +210,7 @@ class WasteAnalysisReportService extends ReportService
         // Group production rejections by product
         foreach ($productionRecords->groupBy('recipe_id') as $recipeId => $records) {
             $recipe = $records->first()->recipe;
-            $productName = $recipe->name ?? 'Unknown';
+            $productName = $recipe->product_name ?? 'Unknown';
 
             if (!isset($products[$productName])) {
                 $products[$productName] = [

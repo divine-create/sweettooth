@@ -97,7 +97,6 @@ class MaterialApprovals extends Component
     {
         $actor = current_actor();
         $branchId = $this->getBranchId();
-        $dispatchData = [];
 
         // PHASE 1: VALIDATE STOCK - Check if inventory has enough stock for each item
         $insufficientItems = [];
@@ -126,115 +125,149 @@ class MaterialApprovals extends Component
             return;
         }
 
-        // PHASE 2: APPROVE AND DEPLETE STOCK
-        foreach ($this->approvalItems as $item) {
-            $detail = MaterialRequestDetail::find($item['id']);
+        // PHASE 2: APPROVE, DEPLETE & DISPATCH — atomically. Any failure (missing
+        // production store, insufficient locked stock, a propagated error) rolls back
+        // the entire batch, so inventory is never depleted without a matching dispatch
+        // and no item is left half-processed.
+        try {
+            DB::transaction(function () use ($actor, $branchId) {
+                $dispatchData = [];
 
-            $detail->update([
-                'quantity_approved' => $item['quantity_approved'],
-            ]);
+                foreach ($this->approvalItems as $item) {
+                    $detail = MaterialRequestDetail::find($item['id']);
 
-            $quantityToDispatch = $item['quantity_approved'] - $item['quantity_dispatched'];
+                    $detail->update([
+                        'quantity_approved' => $item['quantity_approved'],
+                    ]);
 
-            if ($quantityToDispatch > 0) {
-                $movement = null;
-                $unitCost = 0.0;
+                    $quantityToDispatch = $item['quantity_approved'] - $item['quantity_dispatched'];
 
-                // Deplete inventory stock
-                $stock = Stock::where('branch_id', $branchId)
-                    ->where('item_id', $item['item_id'])
-                    ->first();
-
-                if ($stock) {
-                    $oldQty = (float) $stock->quantity_available;
-                    $newQty = $oldQty - $quantityToDispatch;
-                    // Capture moving-average cost before depletion for GL posting.
-                    $unitCost = (float) $stock->average_cost;
-                    $stock->quantity_available = $newQty;
-                    $stock->save();
-
-                    // FEFO: consume from soonest-expiring batch first
-                    $batchService = app(StockBatchService::class);
-                    try {
-                        $consumed = $batchService->consumeFefo($stock, $quantityToDispatch);
-                        $fefoNote = $batchService->buildFefoNote($consumed);
-                    } catch (\RuntimeException $e) {
-                        Log::warning('FEFO consumption mismatch during dispatch: ' . $e->getMessage(), [
-                            'stock_id' => $stock->id,
-                            'quantity' => $quantityToDispatch,
-                        ]);
-                        $fefoNote = '';
+                    if ($quantityToDispatch <= 0) {
+                        continue;
                     }
 
-                    // Record stock movement
-                    $movement = StockMovement::create([
-                        'stock_id' => $stock->id,
-                        'branch_id' => $branchId,
-                        'type' => 'out',
-                        'quantity' => $quantityToDispatch,
-                        'quantity_before' => $oldQty,
-                        'quantity_after' => $newQty,
-                        'movement_date' => now(),
-                        'reference_type' => MaterialRequestDetail::class,
-                        'reference_id' => $detail->id,
-                        'moved_by_id' => $actor?->id,
-                        'moved_by_type' => get_class($actor),
-                        'notes' => $fefoNote ?: null,
-                    ]);
-                }
+                    $movement = null;
+                    $unitCost = 0.0;
 
-                // Dispatch to production store if target is production department
-                $targetDeptId = $this->selectedRequest->department_id;
-                $targetDept = Department::with('category')->find($targetDeptId);
-                $isProductionDept = $targetDept && $targetDept->category && $targetDept->category->name === 'Production';
+                    // Lock the stock row so concurrent dispatches or duplicate request
+                    // lines can't both read the same balance and drive it negative.
+                    $stock = Stock::where('branch_id', $branchId)
+                        ->where('item_id', $item['item_id'])
+                        ->lockForUpdate()
+                        ->first();
 
-                if ($isProductionDept) {
-                    $this->dispatchToProductionStore([
-                        'detail_id' => $item['id'],
-                        'item_id' => $item['item_id'],
-                        'quantity' => $quantityToDispatch,
-                        'uom_id' => $item['uom_id'],
-                        'dispatched_by_id' => $actor?->id,
-                        'dispatched_by_type' => get_class($actor),
-                    ]);
-                } else {
-                    $dispatchData[] = [
-                        'detail_id' => $item['id'],
-                        'item_id' => $item['item_id'],
-                        'quantity' => $quantityToDispatch,
-                        'uom_id' => $item['uom_id'],
-                        'dispatched_by_id' => $actor?->id,
-                        'dispatched_by_type' => get_class($actor),
-                    ];
+                    if ($stock) {
+                        $oldQty = (float) $stock->quantity_available;
 
-                    // Non-production consumption (e.g. Cleaning using cleaning
-                    // agents): expense the value out of inventory to the
-                    // department's expense account. Production stays GL-neutral.
-                    if ($movement && $targetDept) {
+                        // Re-validate under the lock (Phase 1 was optimistic/unlocked):
+                        // never let the balance go negative.
+                        if ($oldQty < $quantityToDispatch) {
+                            $itemModel = Item::find($item['item_id']);
+                            throw new \RuntimeException(
+                                'Insufficient stock for '.($itemModel?->name ?? 'item')
+                                .' (available '.$oldQty.', needed '.$quantityToDispatch.').'
+                            );
+                        }
+
+                        $newQty = $oldQty - $quantityToDispatch;
+                        // Capture moving-average cost before depletion for GL posting.
+                        $unitCost = (float) $stock->average_cost;
+                        $stock->quantity_available = $newQty;
+                        $stock->save();
+
+                        // FEFO: consume from soonest-expiring batch first. Batches are
+                        // expiry-tracking only (quantity_available is the source of
+                        // truth), so a shortfall is logged, not fatal. NOTE: this can
+                        // still leave sum(batches) < quantity_available — see BUG-13.
+                        $batchService = app(StockBatchService::class);
                         try {
-                            app(\App\Services\GlPostingService::class)
-                                ->postMaterialConsumption($movement, $targetDept, $unitCost);
-                        } catch (\Throwable $e) {
-                            Log::error('Material consumption GL posting failed', [
-                                'movement_id' => $movement->id,
-                                'department_id' => $targetDept->id,
-                                'error' => $e->getMessage(),
+                            $consumed = $batchService->consumeFefo($stock, $quantityToDispatch);
+                            $fefoNote = $batchService->buildFefoNote($consumed);
+                        } catch (\RuntimeException $e) {
+                            Log::warning('FEFO consumption mismatch during dispatch: '.$e->getMessage(), [
+                                'stock_id' => $stock->id,
+                                'quantity' => $quantityToDispatch,
                             ]);
+                            $fefoNote = '';
+                        }
+
+                        // Record stock movement
+                        $movement = StockMovement::create([
+                            'stock_id' => $stock->id,
+                            'branch_id' => $branchId,
+                            'type' => 'out',
+                            'quantity' => $quantityToDispatch,
+                            'quantity_before' => $oldQty,
+                            'quantity_after' => $newQty,
+                            'movement_date' => now(),
+                            'reference_type' => MaterialRequestDetail::class,
+                            'reference_id' => $detail->id,
+                            'moved_by_id' => $actor?->id,
+                            'moved_by_type' => get_class($actor),
+                            'notes' => $fefoNote ?: null,
+                        ]);
+                    }
+
+                    // Dispatch to production store if target is production department
+                    $targetDeptId = $this->selectedRequest->department_id;
+                    $targetDept = Department::with('category')->find($targetDeptId);
+                    $isProductionDept = $targetDept && $targetDept->category && $targetDept->category->name === 'Production';
+
+                    if ($isProductionDept) {
+                        // Throws if no active production store — the transaction rolls
+                        // back so stock is not depleted with nowhere to go (BUG-08).
+                        $this->dispatchToProductionStore([
+                            'detail_id' => $item['id'],
+                            'item_id' => $item['item_id'],
+                            'quantity' => $quantityToDispatch,
+                            'uom_id' => $item['uom_id'],
+                            'dispatched_by_id' => $actor?->id,
+                            'dispatched_by_type' => get_class($actor),
+                        ]);
+                    } else {
+                        $dispatchData[] = [
+                            'detail_id' => $item['id'],
+                            'item_id' => $item['item_id'],
+                            'quantity' => $quantityToDispatch,
+                            'uom_id' => $item['uom_id'],
+                            'dispatched_by_id' => $actor?->id,
+                            'dispatched_by_type' => get_class($actor),
+                        ];
+
+                        // Non-production consumption (e.g. Cleaning): expense the value
+                        // out of inventory to the department's expense account.
+                        // Production stays GL-neutral. GL failure is logged, not fatal,
+                        // to avoid blocking physical dispatch on a GL misconfiguration.
+                        if ($movement && $targetDept) {
+                            try {
+                                app(\App\Services\GlPostingService::class)
+                                    ->postMaterialConsumption($movement, $targetDept, $unitCost);
+                            } catch (\Throwable $e) {
+                                Log::error('Material consumption GL posting failed', [
+                                    'movement_id' => $movement->id,
+                                    'department_id' => $targetDept->id,
+                                    'error' => $e->getMessage(),
+                                ]);
+                            }
                         }
                     }
+
+                    $detail->quantity_dispatched += $quantityToDispatch;
+                    $detail->save();
                 }
 
-                $detail->quantity_dispatched += $quantityToDispatch;
-                $detail->save();
-            }
+                if (! empty($dispatchData)) {
+                    app(MaterialRequestService::class)->dispatch($dispatchData);
+                }
+
+                $this->updateRequestStatus();
+            });
+        } catch (\Throwable $e) {
+            $this->toast()->error($e->getMessage() ?: 'Dispatch failed — no changes were made.')->send();
+
+            return;
         }
 
-        if (! empty($dispatchData)) {
-            $service = app(MaterialRequestService::class);
-            $service->dispatch($dispatchData);
-        }
-
-        $this->updateRequestStatus();
         $this->toast()->success('Request approved and dispatched successfully')->send();
         $this->showApprovalModal = false;
     }
@@ -269,9 +302,10 @@ class MaterialApprovals extends Component
                 'any_stores_for_this_branch' => $anyStoreForBranch->pluck('id', 'department_id'),
             ]);
 
-            $this->toast()->error('No Production Store exists for this department. Please create it first.')->send();
-
-            return;
+            // Throw (do not early-return): the caller runs this inside a DB
+            // transaction, and returning here would leave inventory depleted with no
+            // destination. Throwing rolls the whole dispatch back (BUG-08).
+            throw new \RuntimeException('No Production Store exists for this department. Please create it first.');
         }
 
         Log::info('ProductionStore found', [

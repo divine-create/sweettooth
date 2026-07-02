@@ -382,22 +382,44 @@ class Index extends BaseComponent
         $line = $this->cart[$lineKey];
         $newQty = $line['qty'] + 1;
 
+        // $available must be expressed in the SAME unit as the cart qty. For products
+        // with a sales-UOM conversion the stock is in base units (grams) while qty is
+        // in sales units (scoops), so convert availability to sales units — otherwise
+        // the guard never fires and the cart can be built past real stock.
         if (isset($line['item_id'])) {
             $available = (float) ($line['available'] ?? 0);
         } else {
             $stock = $this->getTodayStockForProduct((string) $line['product_id']);
-            $available = $this->availableQuantity($stock);
-            $this->cart[$lineKey]['available'] = $available;
+            $availableBase = $this->availableQuantity($stock);
+            $this->cart[$lineKey]['available'] = $availableBase;
+            $available = $this->availableInSalesUnits((string) $line['product_id'], $availableBase);
+            $this->cart[$lineKey]['available_sales_qty'] = $available;
         }
 
         if ($newQty > $available) {
-            $this->toast()->warning('Cannot exceed available stock ('.$available.') for '.$line['name'])->send();
+            $this->toast()->warning('Cannot exceed available stock ('.$available.' '.($line['sales_uom'] ?? '').') for '.$line['name'])->send();
 
             return;
         }
 
         $this->cart[$lineKey]['qty'] = $newQty;
         $this->recalculateTotals();
+    }
+
+    /**
+     * Available stock expressed in the product's SALES units (e.g. scoops), given
+     * an availability already computed in base units (e.g. grams). Non-conversion
+     * products return the base figure unchanged.
+     */
+    private function availableInSalesUnits(string $productId, float $availableBase): float
+    {
+        $product = \App\Models\Product::find($productId);
+
+        if ($product && $product->hasSalesUomConversion()) {
+            return floor($product->convertBaseToSalesQuantity($availableBase));
+        }
+
+        return $availableBase;
     }
 
     public function decrement(string $lineKey): void
@@ -419,16 +441,22 @@ class Index extends BaseComponent
         $line = $this->cart[$lineKey];
         $qty = max(1, (float) $quantity);
 
+        // $available must be in the SAME unit as $qty (sales units for conversion
+        // products). The old code compared sales-unit $qty against base-unit stock and
+        // then "capped" $qty to the base (gram) figure — e.g. capping 600 scoops to
+        // "500" actually meant 500 scoops = 50,000 g, a huge oversell. Convert first.
         if (isset($line['item_id'])) {
             $available = (float) ($line['available'] ?? 0);
         } else {
             $stock = $this->getTodayStockForProduct((string) $line['product_id']);
-            $available = $this->availableQuantity($stock);
-            $this->cart[$lineKey]['available'] = $available;
+            $availableBase = $this->availableQuantity($stock);
+            $this->cart[$lineKey]['available'] = $availableBase;
+            $available = $this->availableInSalesUnits((string) $line['product_id'], $availableBase);
+            $this->cart[$lineKey]['available_sales_qty'] = $available;
         }
 
         if ($qty > $available) {
-            $this->toast()->warning('Cannot exceed available stock ('.$available.') for '.$line['name'])->send();
+            $this->toast()->warning('Cannot exceed available stock ('.$available.' '.($line['sales_uom'] ?? '').') for '.$line['name'])->send();
             $qty = $available;
         }
 
@@ -767,27 +795,29 @@ class Index extends BaseComponent
 
                     // ── Production product sale (existing logic) ─────────────
                     $productId = (string) $line['product_id'];
-                    $qty = (float) $line['qty'];
+                    $qty = (float) $line['qty']; // in SALES units (e.g. scoops)
 
                     $stock = $stocksByProduct[$productId] ?? null;
-                    $available = $this->availableQuantity($stock);
+                    $available = $this->availableQuantity($stock); // in BASE units (e.g. grams)
+                    $product = $productsById->get($productId);
 
-                    // Hard cap the sale to what is actually available. availableQuantity()
-                    // already floors at 0, so a 0/negative-stock line yields $actualQty = 0
-                    // and is skipped below — oversell can never drive stock negative at
-                    // checkout, mirroring the add-to-cart guard.
-                    $actualQty = max(0.0, min($qty, $available));
+                    // Hard cap the sale to what is actually available — comparing in the SAME
+                    // unit as the cart quantity. availableQuantity() is base units while $qty is
+                    // sales units; converting availability to sales units first is essential.
+                    // The old code compared base grams to sales scoops, so min($qty,$available)
+                    // was a no-op for any sales-UOM product and let oversell through checkout.
+                    $availableSales = ($product && $product->hasSalesUomConversion())
+                        ? floor($product->convertBaseToSalesQuantity($available))
+                        : $available;
+                    $actualQty = max(0.0, min($qty, $availableSales));
 
                     if ($actualQty < $qty) {
-                        $lowStockWarnings[] = $available <= 0
+                        $lowStockWarnings[] = $availableSales <= 0
                             ? $line['name'].' (out of stock — not sold)'
                             : $line['name'].' (sold '.$actualQty.' of '.$qty.' requested)';
                     }
 
                     if ($actualQty > 0) {
-                        // Get the product for UOM conversion
-                        $product = $productsById->get($productId);
-
                         // Calculate base quantity for stock deduction
                         $baseQty = $actualQty;
                         $salesQty = $actualQty;

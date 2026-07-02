@@ -157,7 +157,15 @@ class Index extends BaseComponent
 
         $closingStocks = [];
         foreach ($stocks as $stock) {
-            // Calculate sold quantity from SaleItems for this employee's shift only
+            // Calculate sold quantity from SaleItems for this employee's shift only.
+            // Count ONLY completed sales: that is exactly what deducted stock (see the
+            // SaleItem::booted observer, which only updates product_stocks when the sale
+            // is 'completed'), and it matches the quantity_sold column used elsewhere.
+            // Crucially this EXCLUDES 'hold' (open table tabs): those are already
+            // represented by quantity_reserved below, and their SaleItem.quantity is
+            // stored in SALES units (scoops) while completed rows are in BASE units
+            // (grams) — counting them here double-subtracted the tab and mixed units,
+            // producing phantom shortages at close.
             $soldQuantity = SaleItem::whereHas('sale', function($q) {
                 if ($this->currentShiftId) {
                     $q->where('shift_id', $this->currentShiftId);
@@ -166,7 +174,7 @@ class Index extends BaseComponent
                       ->where('department_id', $this->departmentId)
                       ->whereDate('sale_time', $this->shiftDate);
                 }
-                $q->where('status', '!=', 'cancelled');
+                $q->where('status', 'completed');
             })
             ->where('product_id', $stock->product_id)
             ->sum('quantity');

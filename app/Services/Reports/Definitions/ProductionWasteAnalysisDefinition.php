@@ -64,6 +64,10 @@ class ProductionWasteAnalysisDefinition implements ReportDefinition
             'waste_by_reason' => $this->buildWasteByReason($productionRecords, $callbacks),
             'finished_goods_waste' => $this->buildWasteByProduct($finishedWaste, $callbacks),
             'wip_goods_waste' => $this->buildWasteByProduct($wipWaste, collect()),
+            // Combined per-product waste (all recipes + callbacks), sorted desc by
+            // total_waste. summary()/charts() read this key ('waste_by_product') for
+            // top_waste_product and the by-product chart; without it both were empty.
+            'waste_by_product' => $this->buildWasteByProduct($productionRecords, $callbacks),
             'waste_by_item' => $this->buildWasteByItem($callbacks),
             'daily_waste_trends' => $this->buildDailyWasteTrends($productionRecords, $callbacks),
             'employee_waste_analysis' => $this->buildEmployeeWasteAnalysis($productionRecords),
@@ -372,7 +376,7 @@ class ProductionWasteAnalysisDefinition implements ReportDefinition
 
         foreach ($productionRecords->groupBy('recipe_id') as $recipeId => $records) {
             $recipe = $records->first()->recipe;
-            $productName = $recipe->name ?? 'Unknown';
+            $productName = $recipe->product_name ?? 'Unknown';
 
             if (!isset($products[$productName])) {
                 $products[$productName] = [

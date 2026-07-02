@@ -902,6 +902,27 @@ class GlPostingService
                 'entered_by_id' => auth()->id(),
             ])->post(auth()->id());
 
+            // Debit: VAT Payable (reversing the output VAT booked at the original
+            // sale). Without this leg debits (subtotal) fall short of the AR credit
+            // (total = subtotal + tax), leaving the entry out of balance by the tax.
+            if (($creditNote->tax_amount ?? 0) > 0) {
+                $taxAccount = $this->account('sales_tax_payable');
+                $this->createEntry([
+                    'gl_account_id' => $taxAccount->id,
+                    'accounting_period_id' => $period->id,
+                    'entry_type' => 'credit_note',
+                    'reference_type' => CreditNote::class,
+                    'reference_id' => $creditNote->id,
+                    'reference_number' => $creditNote->credit_note_number,
+                    'description' => "Credit Note VAT reversal - {$creditNote->credit_note_number}",
+                    'debit' => $creditNote->tax_amount,
+                    'credit' => 0,
+                    'entry_date' => $creditNote->credit_note_date,
+                    'status' => 'draft',
+                    'entered_by_id' => auth()->id(),
+                ])->post(auth()->id());
+            }
+
             // Reverse COGS if items are returned to inventory
             $totalCogs = $creditNote->items->sum(function ($item) {
                 return $item->quantity * ($item->product?->cost_price ?? 0);
@@ -1003,7 +1024,11 @@ class GlPostingService
                 'reference_number' => $debitNote->debit_note_number,
                 'description' => "Debit Note Inventory Return - {$debitNote->debit_note_number}",
                 'debit' => 0,
-                'credit' => $debitNote->subtotal,
+                // Credit the full total (subtotal + tax): purchases capitalise the
+                // whole landed cost incl. tax into inventory (see postPurchaseTransaction,
+                // no separate input-VAT leg), so a purchase return must reverse the full
+                // amount. Crediting only subtotal left the entry short by the tax.
+                'credit' => $debitNote->total,
                 'entry_date' => $debitNote->debit_note_date,
                 'status' => 'draft',
                 'entered_by_id' => auth()->id(),
@@ -1045,8 +1070,9 @@ class GlPostingService
             $finishedGoodsAccount = $this->account('inventory'); // Finished Goods
             $rawMaterialsAccount = $this->account('inventory'); // Raw Materials
             $wipAccount = $this->account('inventory'); // Work in Progress (if exists)
-            $laborAccount = $this->account('labor_direct'); // Direct Labor
-            $overheadAccount = $this->account('overhead_manufacturing'); // Manufacturing Overhead
+            // labor_direct / overhead_manufacturing are resolved lazily below, only
+            // when there is a labor/overhead cost to post — otherwise an order with no
+            // labor/overhead would fail purely because those default accounts are unset.
 
             // Debit: Finished Goods Inventory
             $this->createEntry([
@@ -1082,49 +1108,44 @@ class GlPostingService
                 ])->post(auth()->id());
             }
 
-            // Credit: Labor (if applicable)
+            // Credit: Labor (if applicable). No try/catch swallow: if this leg can't
+            // post, the whole transaction must roll back — silently dropping it would
+            // leave debits (FG = total_cost incl. labor) greater than credits.
             if ($order->total_labor_cost > 0) {
-                try {
-                    $this->createEntry([
-                        'gl_account_id' => $laborAccount->id,
-                        'accounting_period_id' => $period->id,
-                        'entry_type' => 'production',
-                        'reference_type' => ProductionOrder::class,
-                        'reference_id' => $order->id,
-                        'reference_number' => $order->order_number,
-                        'description' => "Production Labor - {$order->order_number}",
-                        'debit' => 0,
-                        'credit' => $order->total_labor_cost,
-                        'entry_date' => $order->completed_date ?? now(),
-                        'status' => 'draft',
-                        'entered_by_id' => auth()->id(),
-                    ])->post(auth()->id());
-                } catch (Exception $e) {
-                    // If labor account doesn't exist, add to materials
-                    \Log::warning('Labor account not found, adding to materials', ['order_id' => $order->id]);
-                }
+                $laborAccount = $this->account('labor_direct'); // Direct Labor
+                $this->createEntry([
+                    'gl_account_id' => $laborAccount->id,
+                    'accounting_period_id' => $period->id,
+                    'entry_type' => 'production',
+                    'reference_type' => ProductionOrder::class,
+                    'reference_id' => $order->id,
+                    'reference_number' => $order->order_number,
+                    'description' => "Production Labor - {$order->order_number}",
+                    'debit' => 0,
+                    'credit' => $order->total_labor_cost,
+                    'entry_date' => $order->completed_date ?? now(),
+                    'status' => 'draft',
+                    'entered_by_id' => auth()->id(),
+                ])->post(auth()->id());
             }
 
-            // Credit: Overhead (if applicable)
+            // Credit: Overhead (if applicable). Same rationale as labor above.
             if ($order->total_overhead_cost > 0) {
-                try {
-                    $this->createEntry([
-                        'gl_account_id' => $overheadAccount->id,
-                        'accounting_period_id' => $period->id,
-                        'entry_type' => 'production',
-                        'reference_type' => ProductionOrder::class,
-                        'reference_id' => $order->id,
-                        'reference_number' => $order->order_number,
-                        'description' => "Production Overhead - {$order->order_number}",
-                        'debit' => 0,
-                        'credit' => $order->total_overhead_cost,
-                        'entry_date' => $order->completed_date ?? now(),
-                        'status' => 'draft',
-                        'entered_by_id' => auth()->id(),
-                    ])->post(auth()->id());
-                } catch (Exception $e) {
-                    \Log::warning('Overhead account not found', ['order_id' => $order->id]);
-                }
+                $overheadAccount = $this->account('overhead_manufacturing'); // Manufacturing Overhead
+                $this->createEntry([
+                    'gl_account_id' => $overheadAccount->id,
+                    'accounting_period_id' => $period->id,
+                    'entry_type' => 'production',
+                    'reference_type' => ProductionOrder::class,
+                    'reference_id' => $order->id,
+                    'reference_number' => $order->order_number,
+                    'description' => "Production Overhead - {$order->order_number}",
+                    'debit' => 0,
+                    'credit' => $order->total_overhead_cost,
+                    'entry_date' => $order->completed_date ?? now(),
+                    'status' => 'draft',
+                    'entered_by_id' => auth()->id(),
+                ])->post(auth()->id());
             }
 
             DB::commit();

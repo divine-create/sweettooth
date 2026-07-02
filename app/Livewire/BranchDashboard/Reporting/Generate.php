@@ -99,7 +99,38 @@ class Generate extends Component
             return;
         }
 
-        $this->departmentId = collect($this->availableDepartments)->first()?->id ?? null;
+        // Prefer the department that actually has recent production activity over a
+        // blind alphabetical pick — otherwise the generator opens on an empty
+        // department (e.g. CORNERSTONE) and every production report renders blank.
+        $this->departmentId = $this->mostActiveDepartmentId($this->availableDepartments, $category)
+            ?? collect($this->availableDepartments)->first()?->id
+            ?? null;
+    }
+
+    /**
+     * For production, return the available department with the most recent
+     * production record so the report lands on real data by default.
+     */
+    private function mostActiveDepartmentId(array $departments, ?string $category): mixed
+    {
+        if (strtolower((string) $category) !== 'production' || empty($departments)) {
+            return null;
+        }
+
+        $ids = collect($departments)->pluck('id')->filter()->all();
+        if (empty($ids)) {
+            return null;
+        }
+
+        $branchId = $this->branchId ?? current_branch_id();
+
+        return \App\Models\ProductionRecord::query()
+            ->join('daily_produces', 'production_records.daily_produce_id', '=', 'daily_produces.id')
+            ->join('shifts', 'daily_produces.shift_id', '=', 'shifts.id')
+            ->whereIn('shifts.department_id', $ids)
+            ->where('shifts.branch_id', $branchId)
+            ->orderByDesc('production_records.production_time')
+            ->value('shifts.department_id');
     }
 
     private function loadReports(): void

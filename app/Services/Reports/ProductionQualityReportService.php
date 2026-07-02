@@ -153,7 +153,7 @@ class ProductionQualityReportService extends ReportService
 
             return [
                 'product_id' => $recipe->id ?? null,
-                'product_name' => $recipe->name ?? 'Unknown Recipe',
+                'product_name' => $recipe->product_name ?? 'Unknown Recipe',
                 'total_batches' => $recipeRecords->count(),
                 'total_produced' => $totalProduced,
                 'total_approved' => $totalApproved,
@@ -185,7 +185,7 @@ class ProductionQualityReportService extends ReportService
 
             return [
                 'product_id' => $recipe->id ?? null,
-                'product_name' => $recipe->name ?? 'Unknown Recipe',
+                'product_name' => $recipe->product_name ?? 'Unknown Recipe',
                 'count' => $recipeCallbacks->count(),
                 'quantity' => $recipeCallbacks->sum('quantity'),
             ];

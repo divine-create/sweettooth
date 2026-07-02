@@ -37,7 +37,7 @@ class ProductionQualityDefinition implements ReportDefinition
             ->get();
 
         $callbacks = ProductionCallback::query()
-            ->with(['recipe', 'createdBy'])
+            ->with(['recipe']) // 'createdBy' does not exist on ProductionCallback (throws RelationNotFound); it was never used downstream anyway
             ->whereHas('shift', function ($q) use ($context) {
                 $q->where('branch_id', $context['branch_id']);
                 if ($context['department_id']) {
@@ -290,7 +290,7 @@ class ProductionQualityDefinition implements ReportDefinition
 
             return [
                 'product_id' => $recipe->id ?? null,
-                'product_name' => $recipe->name ?? 'Unknown Recipe',
+                'product_name' => $recipe->product_name ?? 'Unknown Recipe',
                 'total_batches' => $recipeRecords->count(),
                 'total_produced' => $totalProduced,
                 'total_approved' => $totalApproved,
@@ -319,7 +319,7 @@ class ProductionQualityDefinition implements ReportDefinition
 
             return [
                 'product_id' => $recipe->id ?? null,
-                'product_name' => $recipe->name ?? 'Unknown Recipe',
+                'product_name' => $recipe->product_name ?? 'Unknown Recipe',
                 'count' => $recipeCallbacks->count(),
                 'quantity' => $recipeCallbacks->sum('quantity'),
             ];

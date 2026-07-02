@@ -109,17 +109,17 @@ class ProductionAccountingService
                 return true;
             }
 
-            $period = $this->getCurrentPeriod();
-            if (!$period || $period->status !== 'open') {
-                throw new Exception('No open accounting period found');
-            }
-
             $recipe = $production->recipe;
             if (!$recipe) {
                 throw new Exception('Recipe not found for production record');
             }
 
             $branchId = $recipe->branch_id;
+
+            $period = $this->getCurrentPeriod($branchId);
+            if (!$period || $period->status !== 'open') {
+                throw new Exception('No open accounting period found');
+            }
 
             // Account numbers match the seeded chart of accounts.
             $rawMaterials  = $this->resolveAccount('inventory', $branchId);              // Raw Materials Inventory
@@ -153,12 +153,12 @@ class ProductionAccountingService
             }
 
             // Split the input cost between good output (capitalised to inventory)
-            // and rejected output (expensed as waste). The split is by the
-            // good/rejected ratio of the OUTPUT — never by quantity_produced.
-            // quantity_produced is recorded in recipe-batch units (typically 1),
-            // while quantity_approved/rejected are in output units (e.g. grams),
-            // so dividing by producedQty inflates the capitalised cost by that
-            // scale (e.g. ×3354) and breaks the debit=credit invariant.
+            // and rejected output (expensed as waste) by the good/rejected ratio of
+            // the OUTPUT. quantity_produced, quantity_approved and quantity_rejected
+            // are all in the SAME output units (e.g. grams) and approved+rejected ==
+            // produced, so this ratio is scale-independent. The raw-material cost
+            // itself is converted from output quantity to recipe batches inside
+            // calculateRawMaterialsCost() (via yield_quantity) — do not rescale here.
             $outputQty    = $approvedQty + $rejectedQty;
             $goodFraction = $outputQty > 0 ? ($approvedQty / $outputQty) : 1.0;
             $approvedCost = $totalCost * $goodFraction;
@@ -270,7 +270,7 @@ class ProductionAccountingService
     /**
      * Calculate raw materials cost based on recipe
      */
-    private function calculateRawMaterialsCost(Recipe $recipe, float $quantity): float
+    private function calculateRawMaterialsCost(Recipe $recipe, float $outputQuantity): float
     {
         $ingredients = RecipeIngredient::where('recipe_id', $recipe->id)->get();
 
@@ -278,12 +278,28 @@ class ProductionAccountingService
             return 0;
         }
 
+        // $outputQuantity is the produced OUTPUT quantity (e.g. grams) recorded on
+        // the production record as quantity_produced = batches × yield_quantity.
+        // getCostForBatchFactor() expects the number of *recipe batches*, not the
+        // output quantity — getTotalCost() already returns the cost of one full
+        // yield. Convert output -> batches via yield_quantity, otherwise the cost is
+        // inflated by the entire yield (e.g. ×8000 for an 8000 g recipe).
+        $yield = (float) $recipe->yield_quantity;
+        if ($yield <= 0) {
+            Log::warning('Recipe has non-positive yield_quantity; cannot cost production', [
+                'recipe_id' => $recipe->id,
+            ]);
+
+            return 0;
+        }
+        $batchFactor = $outputQuantity / $yield;
+
         $totalCost = 0.0;
         foreach ($ingredients as $ingredient) {
             // The real column is cost_per_unit (the previous code read a
             // non-existent unit_cost, so material cost always came out as 0).
-            // getCostForBatchFactor applies waste % and scales per unit produced.
-            $totalCost += $ingredient->getCostForBatchFactor((float) $quantity);
+            // getCostForBatchFactor applies waste % and scales per recipe batch.
+            $totalCost += $ingredient->getCostForBatchFactor($batchFactor);
         }
 
         return $totalCost;
@@ -382,11 +398,25 @@ class ProductionAccountingService
     /**
      * Get current open accounting period
      */
-    private function getCurrentPeriod(): ?AccountingPeriod
+    private function getCurrentPeriod($branchId = null): ?AccountingPeriod
     {
+        // period_start/period_end are cast to `date` (midnight); comparing against a
+        // datetime now() excluded the entire last calendar day of the period (a batch
+        // completed on the 31st at 14:00 found no open period → posting silently
+        // skipped). Compare on the calendar date, matching AccountingPeriod::current().
+        $today = now()->toDateString();
+
         return AccountingPeriod::where('status', 'open')
-            ->where('period_start', '<=', now())
-            ->where('period_end', '>=', now())
+            ->whereDate('period_start', '<=', $today)
+            ->whereDate('period_end', '>=', $today)
+            // Scope to the batch's branch when known; fall back to a branch-agnostic
+            // (null) period. Prefer a branch-specific period over a global one.
+            ->when($branchId, function ($q) use ($branchId) {
+                $q->where(function ($w) use ($branchId) {
+                    $w->where('branch_id', $branchId)->orWhereNull('branch_id');
+                });
+            })
+            ->orderByRaw('branch_id IS NULL')
             ->first();
     }
 

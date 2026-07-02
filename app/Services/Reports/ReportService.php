@@ -146,12 +146,28 @@ abstract class ReportService
                 ?? $this->departmentId;
         }
         if (!empty($meta['requires_department']) && !$this->departmentId) {
-            $fallbackDeptId = \App\Models\Department::where(function ($q) {
+            // Scope the fallback to a department in the REPORT'S category. Picking the
+            // alphabetically-first department across ALL categories (the old behaviour)
+            // could scope e.g. a Production report to an Accounting department, yielding
+            // a permanently blank report. Mirror Generate.php's category→dept-category map.
+            $category = strtolower((string) ($meta['category'] ?? $this->reportCategory ?? ''));
+            $deptCategoryName = [
+                'production' => 'Production',
+                'sales'      => 'Sales',
+                'inventory'  => 'Support',
+                'accounting' => 'Support',
+            ][$category] ?? null;
+
+            $fallbackQuery = \App\Models\Department::query()
+                ->where(function ($q) {
                     $q->where('branch_id', $this->branchId)
                         ->orWhereNull('branch_id');
-                })
-                ->orderBy('name')
-                ->value('id');
+                });
+            if ($deptCategoryName) {
+                $fallbackQuery->whereHas('category', fn ($q) => $q->where('name', $deptCategoryName));
+            }
+            $fallbackDeptId = $fallbackQuery->orderBy('name')->value('id');
+
             if ($fallbackDeptId) {
                 $this->departmentId = $fallbackDeptId;
                 session(['selected_department_id' => $fallbackDeptId]);
