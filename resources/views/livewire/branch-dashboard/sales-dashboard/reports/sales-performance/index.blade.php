@@ -40,6 +40,15 @@
                 </div>
             @endif
 
+            <div class="flex-1 min-w-[150px]">
+                <x-select.native label="Shift Type" wire:model.live="shiftType">
+                    <option value="">All Shifts</option>
+                    <option value="morning">Morning Shift</option>
+                    <option value="afternoon">Afternoon Shift</option>
+                    <option value="evening">Evening Shift</option>
+                </x-select.native>
+            </div>
+
             @include('livewire.partials.department-select-modal')
 
             <div class="flex gap-2">

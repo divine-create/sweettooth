@@ -16,6 +16,7 @@ abstract class ReportService
     protected $departmentId;
     protected $periodFrom;
     protected $periodTo;
+    protected $shiftType = null;
     protected int $cacheMinutes = 60;
 
     /**
@@ -43,6 +44,15 @@ abstract class ReportService
     {
         $this->periodFrom = $from;
         $this->periodTo = $to;
+        return $this;
+    }
+
+    /**
+     * Set shift type for report generation.
+     */
+    public function forShiftType($shiftType): self
+    {
+        $this->shiftType = $shiftType;
         return $this;
     }
 

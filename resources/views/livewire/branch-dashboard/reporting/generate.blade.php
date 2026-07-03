@@ -104,9 +104,19 @@
                     </x-select.native>
                 </div>
             @endif
-        </div>
 
-        <div class="flex flex-wrap gap-2 mt-6">
+            @if($reportCategory === 'sales')
+                <div>
+                    <x-select.native label="Shift Type" wire:model.live="shiftType">
+                        <option value="">All Shifts</option>
+                        <option value="morning">Morning Shift</option>
+                        <option value="afternoon">Afternoon Shift</option>
+                        <option value="evening">Evening Shift</option>
+                    </x-select.native>
+                </div>
+            @endif
+
+            <div class="col-span-full flex gap-2 pt-2">
             <x-button color="primary" wire:click="generatePreview" :loading="$isLoading">
                 <x-icon name="arrow-path" class="w-4 h-4 mr-2" />
                 Generate Preview

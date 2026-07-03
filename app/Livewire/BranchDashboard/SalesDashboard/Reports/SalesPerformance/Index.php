@@ -23,6 +23,7 @@ class Index extends Component
 
     public ?string $branchId = null;
     public ?string $salesDeptSlug = null;
+    public ?string $shiftType = null;
 
     public string $periodFilter = 'week';
     public ?string $customDateFrom = null;
@@ -169,6 +170,27 @@ class Index extends Component
         }
     }
 
+    public function updatedShiftType(): void
+    {
+        $this->generatePreview();
+    }
+
+    private function prepareService(): SalesPerformanceReportService
+    {
+        $service = (new SalesPerformanceReportService())
+            ->useDefinition(new SalesPerformanceDefinition());
+
+        $service->forBranch($this->branchId)
+            ->forDepartment($this->departmentId)
+            ->forPeriod($this->customDateFrom, $this->customDateTo);
+
+        if ($this->shiftType) {
+            $service->forShiftType($this->shiftType);
+        }
+
+        return $service;
+    }
+
     public function generatePreview(bool $silent = false): void
     {
         if (! $this->ensureDepartmentSelected('preview')) {
@@ -183,12 +205,7 @@ class Index extends Component
         $this->isLoading = true;
 
         try {
-            $service = (new SalesPerformanceReportService())
-                ->useDefinition(new SalesPerformanceDefinition());
-
-            $service->forBranch($this->branchId)
-                ->forDepartment($this->departmentId)
-                ->forPeriod($this->customDateFrom, $this->customDateTo);
+            $service = $this->prepareService();
 
             $payload = $service->getReportData();
             $this->reportData = $payload['report_data'] ?? $payload;
@@ -219,14 +236,9 @@ class Index extends Component
         ]);
 
         try {
-            $service = (new SalesPerformanceReportService())
-                ->useDefinition(new SalesPerformanceDefinition());
+            $service = $this->prepareService();
 
-            $this->generatedReport = $service
-                ->forBranch($this->branchId)
-                ->forDepartment($this->departmentId)
-                ->forPeriod($this->customDateFrom, $this->customDateTo)
-                ->generate(auth()->id());
+            $this->generatedReport = $service->generate(auth()->id());
 
             $this->showReportModal = true;
             $this->toast()->success('Sales performance report saved successfully')->send();

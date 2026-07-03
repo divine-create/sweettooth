@@ -23,6 +23,7 @@ class Generate extends Component
     public $periodFilter = 'week';
     public $customDateFrom;
     public $customDateTo;
+    public $shiftType = null;
 
     public $reportCategory;
     public $reportKey;
@@ -181,6 +182,11 @@ class Generate extends Component
         $this->setDateRange();
     }
 
+    public function updatedShiftType()
+    {
+        // Optional: trigger refresh if needed
+    }
+
     public function updatedDepartmentId($value)
     {
         if ($value) {
@@ -287,6 +293,10 @@ class Generate extends Component
                 ->forDepartment($this->departmentId)
                 ->forPeriod($this->customDateFrom, $this->customDateTo);
 
+            if ($this->shiftType && method_exists($service, 'forShiftType')) {
+                $service->forShiftType($this->shiftType);
+            }
+
             $payload = $service->getReportData();
             $this->reportData = $payload['report_data'] ?? $payload;
             $this->summaryMetrics = $payload['summary_metrics'] ?? ($this->reportData['summary_metrics'] ?? []);
@@ -322,11 +332,16 @@ class Generate extends Component
             $definitionClass = $resolved['definition'];
 
             $service = (new $serviceClass())->useDefinition(new $definitionClass());
-            $this->generatedReport = $service
-                ->forBranch($this->branchId)
+            
+            $service->forBranch($this->branchId)
                 ->forDepartment($this->departmentId)
-                ->forPeriod($this->customDateFrom, $this->customDateTo)
-                ->generate(auth()->id());
+                ->forPeriod($this->customDateFrom, $this->customDateTo);
+
+            if ($this->shiftType && method_exists($service, 'forShiftType')) {
+                $service->forShiftType($this->shiftType);
+            }
+
+            $this->generatedReport = $service->generate(auth()->id());
 
             $this->toast()->success('Report saved successfully')->send();
             $this->refreshSavedReports();

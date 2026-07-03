@@ -32,6 +32,7 @@ class SalesPerformanceReportService extends ReportService
             ->with(['soldBy', 'department', 'salesShift'])
             ->where('branch_id', $this->branchId)
             ->when($this->departmentId, fn($q) => $q->where('department_id', $this->departmentId))
+            ->when($this->shiftType, fn($q) => $q->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $this->shiftType)))
             ->whereBetween('sale_time', [$this->periodFrom, $this->periodTo])
             ->where('status', '!=', 'cancelled')
             ->get();
@@ -41,6 +42,7 @@ class SalesPerformanceReportService extends ReportService
             ->whereHas('sale', function ($q) {
                 $q->where('branch_id', $this->branchId)
                     ->when($this->departmentId, fn($q) => $q->where('department_id', $this->departmentId))
+                    ->when($this->shiftType, fn($q) => $q->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $this->shiftType)))
                     ->whereBetween('sale_time', [$this->periodFrom, $this->periodTo])
                     ->where('status', '!=', 'cancelled');
             })
@@ -50,6 +52,7 @@ class SalesPerformanceReportService extends ReportService
             ->with(['product'])
             ->where('branch_id', $this->branchId)
             ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
+            ->when($this->shiftType, fn ($q) => $q->where('shift_type', $this->shiftType))
             ->whereBetween('variance_date', [
                 \Carbon\Carbon::parse($this->periodFrom)->toDateString(),
                 \Carbon\Carbon::parse($this->periodTo)->toDateString(),
@@ -60,6 +63,7 @@ class SalesPerformanceReportService extends ReportService
             ->with(['product'])
             ->where('branch_id', $this->branchId)
             ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
+            ->when($this->shiftType, fn ($q) => $q->where('shift_type', $this->shiftType))
             ->whereBetween('callback_date', [
                 \Carbon\Carbon::parse($this->periodFrom)->toDateString(),
                 \Carbon\Carbon::parse($this->periodTo)->toDateString(),
