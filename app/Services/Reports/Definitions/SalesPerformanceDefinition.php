@@ -39,7 +39,9 @@ class SalesPerformanceDefinition implements ReportDefinition
             ->with(['department', 'salesShift', 'shift', 'saleItems.product', 'saleItems.salesUom', 'payments'])
             ->where('branch_id', $branchId)
             ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
-            ->when($shiftType, fn($q) => $q->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType)))
+            ->when($shiftType, fn($q) => $q->where(fn($w) => $w
+                ->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType))
+                ->orWhereHas('shift', fn($sq) => $sq->where('shift_type', $shiftType))))
             ->when($fromDate && $toDate, fn($q) => $q->whereBetween('sale_time', [$fromDate, $toDate]))
             ->where('status', '!=', 'cancelled')
             ->get();
@@ -49,7 +51,9 @@ class SalesPerformanceDefinition implements ReportDefinition
             ->whereHas('sale', function ($q) use ($branchId, $departmentId, $from, $to, $shiftType) {
                 $q->where('branch_id', $branchId)
                     ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
-                    ->when($shiftType, fn($q) => $q->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType)))
+                    ->when($shiftType, fn($q) => $q->where(fn($w) => $w
+                        ->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType))
+                        ->orWhereHas('shift', fn($sq) => $sq->where('shift_type', $shiftType))))
                     ->when($from && $to, function ($query) use ($from, $to) {
                         $query->whereBetween('sale_time', [
                             Carbon::parse($from)->startOfDay(),
