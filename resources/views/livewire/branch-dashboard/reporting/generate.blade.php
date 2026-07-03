@@ -111,6 +111,7 @@
                         <option value="">All Shifts</option>
                         <option value="morning">Morning Shift</option>
                         <option value="afternoon">Evening Shift</option>
+                        <option value="night">Night Shift</option>
                     </x-select.native>
                 </div>
             @endif
