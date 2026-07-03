@@ -537,7 +537,7 @@ class SidebarVisibilityService
         $user = $user ?? auth()->user();
         $level = self::getRoleLevel($user);
         $category = self::getDepartmentCategory($user);
-        $accountingRoles = ['Accounting Manager', 'Accountant', 'Cost Accountant'];
+        $accountingRoles = ['Accountant', 'Cost Accountant'];
         $blockedReportingRoles = ['Production Manager'];
 
         // Super admins can see reporting regardless of department
