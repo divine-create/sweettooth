@@ -491,9 +491,10 @@ class Products extends BaseComponent
             'price' => $this->price,
             // Cost is never hand-entered — it is derived from the product's
             // recipe (ingredient cost ÷ yield). New products have no recipe yet,
-            // so cost stays null until one is attached; existing products keep
-            // their current cost when no recipe is present.
-            'cost' => $this->resolveProductCost(),
+            // so cost defaults to 0 until one is attached; existing products keep
+            // their current cost when no recipe is present. The column is NOT NULL
+            // (default 0.00), so we must never write an explicit null here.
+            'cost' => $this->resolveProductCost() ?? 0,
             'shelf_life_days' => $this->shelf_life_days,
             'uom_id' => $this->uom_id,
             'sales_uom_id' => $this->sales_uom_id,
@@ -538,6 +539,7 @@ class Products extends BaseComponent
             // Refresh the component to show updated data
             $this->dispatch('refresh');
         } catch (\Exception $e) {
+            report($e);
             $this->toast()->error('Failed to save product: '.$e->getMessage())->send();
         }
     }
