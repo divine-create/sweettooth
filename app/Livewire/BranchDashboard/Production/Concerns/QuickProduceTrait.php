@@ -774,16 +774,20 @@ trait QuickProduceTrait
                 continue;
             }
 
-            // Only track true Raw Materials (Items), not intermediate WIP Products
             $itemType = $ing['item_type'] ?? \App\Models\Item::class;
             if ($itemType !== \App\Models\Item::class) {
+                continue;
+            }
+
+            $itemId = $ing['item_id'] ?? null;
+            if (empty($itemId) || !is_numeric($itemId)) {
                 continue;
             }
 
             $existing = \App\Models\RawMaterialUtilization::where([
                 'shift_id'  => $shift->id,
                 'recipe_id' => $this->selectedRecipe->id,
-                'item_id'   => $ing['item_id'],
+                'item_id'   => $itemId,
             ])->first();
 
             if ($existing) {
@@ -795,7 +799,7 @@ trait QuickProduceTrait
                 \App\Models\RawMaterialUtilization::create([
                     'shift_id'        => $shift->id,
                     'recipe_id'       => $this->selectedRecipe->id,
-                    'item_id'         => $ing['item_id'],
+                    'item_id'         => $itemId,
                     'quantity_required' => $consumed,
                     'quantity_used'   => $consumed,
                     'units_produced'  => $unitsProduced,
