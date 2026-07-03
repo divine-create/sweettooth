@@ -45,6 +45,10 @@ class ProductStock extends Model
         'closing_quantity',
         'amount',
         'notes',
+        'workflow_step',
+        'is_workflow_verified',
+        'verified_at',
+        'verified_by',
     ];
 
     protected $casts = [

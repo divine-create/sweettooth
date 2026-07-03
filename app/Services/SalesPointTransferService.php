@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\SalesPointTransfer;
-use App\Models\SalesShift;
+use App\Models\Shift;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -99,8 +99,8 @@ class SalesPointTransferService
                 $toStock->save();
             } else {
                 $toStock = ProductStock::create([
-                    'sales_shift_id' => $toShift->id,
-                    'shift_id' => null,
+                    'sales_shift_id' => null,
+                    'shift_id' => $toShift->id,
                     'department_id' => $toDepartmentId,
                     'product_id' => $productId,
                     'stock_date' => $toShift->shift_date,
@@ -206,9 +206,9 @@ class SalesPointTransferService
             - (float) ($stock->quantity_reserved ?? 0);
     }
 
-    protected function activeShift(int $departmentId): ?SalesShift
+    protected function activeShift(int $departmentId): ?Shift
     {
-        return SalesShift::where('department_id', $departmentId)
+        return Shift::where('department_id', $departmentId)
             ->where('status', 'active')
             ->orderByDesc('clock_in')
             ->first();
