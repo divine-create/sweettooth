@@ -192,6 +192,7 @@ abstract class ReportService
             'department_id' => $this->departmentId,
             'period_from' => $this->periodFrom,
             'period_to' => $this->periodTo,
+            'shift_type' => $this->shiftType,
             'actor' => $actor,
             'employee_id' => $employeeId,
         ];
@@ -227,13 +228,14 @@ abstract class ReportService
     protected function getCacheKey(): string
     {
         return sprintf(
-            'report:%s:%s:%s:%s:%s:%s',
+            'report:%s:%s:%s:%s:%s:%s:%s',
             $this->reportCategory,
             $this->reportType,
             $this->branchId,
             $this->departmentId,
             $this->periodFrom,
-            $this->periodTo
+            $this->periodTo,
+            $this->shiftType ?? 'all'
         );
     }
 

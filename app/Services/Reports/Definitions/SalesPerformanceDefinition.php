@@ -25,6 +25,7 @@ class SalesPerformanceDefinition implements ReportDefinition
         $departmentId = $context['department_id'] ?? null;
         $from = $context['period_from'] ?? null;
         $to = $context['period_to'] ?? null;
+        $shiftType = $context['shift_type'] ?? null;
 
         $fromDate = $from ? Carbon::parse($from)->startOfDay() : null;
         $toDate = $to ? Carbon::parse($to)->endOfDay() : null;
@@ -38,15 +39,17 @@ class SalesPerformanceDefinition implements ReportDefinition
             ->with(['department', 'salesShift', 'shift', 'saleItems.product', 'saleItems.salesUom', 'payments'])
             ->where('branch_id', $branchId)
             ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
+            ->when($shiftType, fn($q) => $q->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType)))
             ->when($fromDate && $toDate, fn($q) => $q->whereBetween('sale_time', [$fromDate, $toDate]))
             ->where('status', '!=', 'cancelled')
             ->get();
 
         $saleItems = SaleItem::query()
             ->with(['product', 'item', 'sale'])
-            ->whereHas('sale', function ($q) use ($branchId, $departmentId, $from, $to) {
+            ->whereHas('sale', function ($q) use ($branchId, $departmentId, $from, $to, $shiftType) {
                 $q->where('branch_id', $branchId)
                     ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
+                    ->when($shiftType, fn($q) => $q->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType)))
                     ->when($from && $to, function ($query) use ($from, $to) {
                         $query->whereBetween('sale_time', [
                             Carbon::parse($from)->startOfDay(),
