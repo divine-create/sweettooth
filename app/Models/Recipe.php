@@ -250,7 +250,9 @@ class Recipe extends Model
         $this->loadMissing('ingredients.item');
 
         foreach ($this->ingredients as $ingredient) {
-            $itemUnitPrice = (float) ($ingredient->item?->unit_price ?? 0);
+            $model = $ingredient->item;
+
+            $itemUnitPrice = (float) ($model?->unit_price ?? 0);
             if ($itemUnitPrice > 0) {
                 $ingredient->update([
                     'cost_per_unit' => $itemUnitPrice
@@ -258,8 +260,14 @@ class Recipe extends Model
                 continue;
             }
 
+            // Purchase history only exists for real inventory Items; a WIP
+            // sub-product resolves to a Product, which has no purchaseItems().
+            if (! $model instanceof Item) {
+                continue;
+            }
+
             // Fallback to purchase history if item default price is not set.
-            $averageCost = $ingredient->item?->purchaseItems()?->avg('cost_per_unit');
+            $averageCost = $model->purchaseItems()?->avg('cost_per_unit');
 
             if ($averageCost !== null && $averageCost > 0) {
                 $ingredient->update([
@@ -267,10 +275,10 @@ class Recipe extends Model
                 ]);
             } else {
                 // If no purchase history, try to get from the most recent purchase
-                $latestPurchaseItem = $ingredient->item?->purchaseItems()
+                $latestPurchaseItem = $model->purchaseItems()
                     ->orderBy('created_at', 'desc')
                     ->first();
-                    
+
                 if ($latestPurchaseItem && $latestPurchaseItem->cost_per_unit > 0) {
                     $ingredient->update([
                         'cost_per_unit' => $latestPurchaseItem->cost_per_unit

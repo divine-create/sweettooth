@@ -132,10 +132,7 @@ class SaleItem extends Model
                 return;
             }
 
-            $costPerSalesUnit = (float) ($product->cost ?? 0);
-            if ($costPerSalesUnit <= 0) {
-                $costPerSalesUnit = (float) ($product->estimated_cost ?? 0);
-            }
+            $costPerSalesUnit = $product->effectiveCost();
 
             if ($costPerSalesUnit > 0) {
                 $salesQty = (float) ($this->sales_quantity ?? $this->quantity ?? 0);

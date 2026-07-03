@@ -328,6 +328,16 @@ class Index extends BaseComponent
             return;
         }
 
+        // Block products with no selling price: a zero-price line collects no
+        // revenue and is almost always a data-entry mistake. The manager must set
+        // the product's selling price before it can be sold. (A zero COST is
+        // allowed — cost is an internal figure and may legitimately be unset.)
+        if ((float) ($product->price ?? 0) <= 0) {
+            $this->toast()->error($product->name.' has no selling price set and cannot be sold. Please set the price before selling.')->send();
+
+            return;
+        }
+
         $stock = $this->getTodayStockForProduct($productId);
         $available = $this->availableQuantity($stock);
 
@@ -648,6 +658,20 @@ class Index extends BaseComponent
                 'payments.*.method' => 'required|in:cash,transfer,pos',
                 'payments.*.amount' => 'required|numeric|min:0',
             ]);
+
+            // Block the sale if any line has no selling price. A zero-price line
+            // collects nothing and is almost always a mistake, so the whole sale
+            // is refused until a price is set. (Zero cost is allowed.)
+            $zeroPriceNames = collect($this->cart)
+                ->filter(fn ($line) => (float) ($line['price'] ?? 0) <= 0)
+                ->map(fn ($line) => $line['name'] ?? 'item')
+                ->values();
+
+            if ($zeroPriceNames->isNotEmpty()) {
+                $this->toast()->error('Sale blocked — no selling price for: '.$zeroPriceNames->implode(', ').'. Set the price before selling.')->send();
+
+                return;
+            }
 
             DB::transaction(function () {
                 $productIds = array_values(array_unique(array_map(
