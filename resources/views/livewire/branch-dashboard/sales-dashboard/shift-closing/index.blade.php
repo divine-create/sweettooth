@@ -161,6 +161,25 @@
                                     placeholder="Explain variance..." {{ $isVerified ? 'disabled' : '' }}></textarea>
                             </div>
                             @endif
+
+                            {{-- Inter-sales-point settlement (informational — does not affect the drawer variance above) --}}
+                            @if(($cashReconciliation['settlement_payable'] ?? 0) > 0 || ($cashReconciliation['settlement_receivable'] ?? 0) > 0)
+                                <div class="mt-2 pt-2 border-t dark:border-gray-700 space-y-1">
+                                    @if(($cashReconciliation['settlement_payable'] ?? 0) > 0)
+                                        <div class="flex justify-between text-xs text-amber-600 dark:text-amber-400">
+                                            <span>Holding for other sales points:</span>
+                                            <span>{{ \App\Helpers\LocalizationHelper::formatCurrency($cashReconciliation['settlement_payable']) }}</span>
+                                        </div>
+                                    @endif
+                                    @if(($cashReconciliation['settlement_receivable'] ?? 0) > 0)
+                                        <div class="flex justify-between text-xs text-blue-600 dark:text-blue-400">
+                                            <span>Sold via other points (owed to you):</span>
+                                            <span>{{ \App\Helpers\LocalizationHelper::formatCurrency($cashReconciliation['settlement_receivable']) }}</span>
+                                        </div>
+                                    @endif
+                                    <p class="text-[10px] text-gray-400 dark:text-gray-500">Settled in the books — the drawer count above is unaffected.</p>
+                                </div>
+                            @endif
                         </div>
                     </div>
 

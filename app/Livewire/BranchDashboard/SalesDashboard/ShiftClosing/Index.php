@@ -415,6 +415,26 @@ class Index extends BaseComponent
             'total_actual' => (float)$this->actualCash + (float)$this->actualPos + (float)$this->actualTransfer,
             'total_variance' => $cashVariance + $posVariance + $transferVariance,
         ];
+
+        // Inter-sales-point settlement position (SALES_POINT_TRANSFER_SPEC.md §4.7). This is
+        // informational and does NOT affect cash variance: with the transfer-backed model the
+        // drawer already reconciles (the collecting point recorded the payment, the home point
+        // did not). It surfaces how much this point is owed by / owes other points so a manager
+        // can see that e.g. the Till is holding another point's cash.
+        try {
+            $settlement = app(\App\Services\SalesPointSettlementService::class)
+                ->balancesForDepartment(
+                    (int) $this->departmentId,
+                    optional($shift->shift_date)->toDateString()
+                );
+            $this->cashReconciliation['settlement_receivable'] = $settlement['receivable'];
+            $this->cashReconciliation['settlement_payable'] = $settlement['payable'];
+            $this->cashReconciliation['settlement_net'] = $settlement['net'];
+        } catch (\Throwable $e) {
+            $this->cashReconciliation['settlement_receivable'] = 0.0;
+            $this->cashReconciliation['settlement_payable'] = 0.0;
+            $this->cashReconciliation['settlement_net'] = 0.0;
+        }
     }
 
     /**

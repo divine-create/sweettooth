@@ -149,6 +149,12 @@ Route::prefix('sales-dashboard')->name('sales-dashboard.')->middleware([
         Route::prefix('variance-resolution')->name('variance-resolution.')->middleware(['role.level:2'])->group(function () {
             Route::get('/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\VarianceResolution\Index::class)->name('index');
         });
+
+        // Sales-point transfers - move product stock between sales points (Phase 1).
+        // Cashiers may transfer directly (no manager approval) per SALES_POINT_TRANSFER_SPEC.md §8.2.
+        Route::prefix('transfers')->name('transfers.')->group(function () {
+            Route::get('/{salesDeptSlug?}', \App\Livewire\BranchDashboard\SalesDashboard\Transfers\Index::class)->name('index');
+        });
     };
 
     // Expiry Alerts - shown after clock-in

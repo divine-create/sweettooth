@@ -22,6 +22,7 @@ use App\Models\TaxPayment;
 use App\Models\FixedAsset;
 use App\Models\AssetDepreciation;
 use App\Models\User;
+use App\Support\CombinedSalesPoints;
 use App\Notifications\GlPostingFailedNotification;
 use App\Services\Accounting\Concerns\ResolvesAccountDefaults;
 use Illuminate\Support\Facades\Cache;
@@ -119,8 +120,8 @@ class GlPostingService
             $department = $this->getDepartmentForSale($sale);
 
             // Entry A: Record Sale Revenue
-            // Debit: Accounts Receivable, Credit: Sales Revenue
-            $revenueAccount = $this->getRevenueAccountForDepartment($department);
+            // Debit: Accounts Receivable (collecting department), Credit: Sales Revenue
+            // (split per HOME sales point — Phase 3b, SALES_POINT_TRANSFER_SPEC.md §4.5).
             $receivableAccount = $this->getReceivableAccountForDepartment($department);
 
             $this->createEntry([
@@ -138,21 +139,74 @@ class GlPostingService
                 'entered_by_id' => auth()->id(),
             ])->post(auth()->id());
 
-            // Credit to Revenue
-            $this->createEntry([
-                'gl_account_id' => $revenueAccount->id,
-                'accounting_period_id' => $period->id,
-                'entry_type' => 'sale',
-                'reference_type' => Sale::class,
-                'reference_id' => $sale->id,
-                'reference_number' => $sale->reference_number ?? "SAL-{$sale->id}",
-                'description' => "Sale Revenue - {$sale->reference_number}",
-                'debit' => 0,
-                'credit' => $sale->subtotal,
-                'entry_date' => $sale->sale_time,
-                'status' => 'draft',
-                'entered_by_id' => auth()->id(),
-            ])->post(auth()->id());
+            // Credit to Revenue, split by each line's HOME sales point. A line whose product
+            // is homed at a DIFFERENT sales point (and not part of the same combined point)
+            // credits that point's revenue account; own / combined / inventory-item lines
+            // credit the collecting department. The residual (discounts, rounding) is absorbed
+            // by the collecting department so the credits sum EXACTLY to $sale->subtotal.
+            $sale->loadMissing('saleItems.product:id,sales_department_id');
+            $collectingDeptId = (int) ($sale->department_id ?? ($department->id ?? 0));
+            $sameGroup = $this->sameSalesPointGroupIds($sale->branch_id, $collectingDeptId);
+
+            // Line amounts are gross (VAT-inclusive) but $sale->subtotal is net of VAT, so we
+            // allocate the NET subtotal to each home point PROPORTIONALLY to its gross share
+            // (the VAT itself is credited separately in Entry C). This keeps the revenue split
+            // correct regardless of the VAT-inclusive pricing.
+            $grossByDeptId = [];
+            foreach ($sale->saleItems as $item) {
+                $lineGross = (float) ($item->subtotal ?? $item->total ?? 0);
+                $deptId = $collectingDeptId;
+                if ($item->product_id && $item->product) {
+                    $home = (int) ($item->product->sales_department_id ?? 0);
+                    if ($home !== 0 && $home !== $collectingDeptId && ! in_array($home, $sameGroup, true)) {
+                        $deptId = $home;
+                    }
+                }
+                $grossByDeptId[$deptId] = ($grossByDeptId[$deptId] ?? 0) + $lineGross;
+            }
+
+            $netSubtotal = (float) $sale->subtotal;
+            $totalGross = array_sum($grossByDeptId);
+            $revenueByDeptId = [];
+            if ($totalGross <= 0) {
+                $revenueByDeptId[$collectingDeptId] = $netSubtotal;
+            } else {
+                foreach ($grossByDeptId as $deptId => $gross) {
+                    $revenueByDeptId[$deptId] = round($netSubtotal * $gross / $totalGross, 2);
+                }
+                // Absorb any rounding residual into the collecting department so the credits
+                // sum EXACTLY to $sale->subtotal.
+                $residual = round($netSubtotal - array_sum($revenueByDeptId), 2);
+                if (abs($residual) >= 0.01) {
+                    $revenueByDeptId[$collectingDeptId] = ($revenueByDeptId[$collectingDeptId] ?? 0) + $residual;
+                }
+            }
+
+            $deptCache = [];
+            foreach ($revenueByDeptId as $deptId => $amount) {
+                $amount = round((float) $amount, 2);
+                if ($amount == 0.0) {
+                    continue;
+                }
+                $revenueDept = ((int) $deptId === $collectingDeptId)
+                    ? $department
+                    : ($deptCache[$deptId] ??= Department::find($deptId)) ?? $department;
+
+                $this->createEntry([
+                    'gl_account_id' => $this->getRevenueAccountForDepartment($revenueDept)->id,
+                    'accounting_period_id' => $period->id,
+                    'entry_type' => 'sale',
+                    'reference_type' => Sale::class,
+                    'reference_id' => $sale->id,
+                    'reference_number' => $sale->reference_number ?? "SAL-{$sale->id}",
+                    'description' => "Sale Revenue - {$sale->reference_number}",
+                    'debit' => 0,
+                    'credit' => $amount,
+                    'entry_date' => $sale->sale_time,
+                    'status' => 'draft',
+                    'entered_by_id' => auth()->id(),
+                ])->post(auth()->id());
+            }
 
             // Entry B: Record COGS
             // Debit: COGS, Credit: Inventory
@@ -1960,6 +2014,26 @@ class GlPostingService
         }
 
         return $this->account('sales_revenue');
+    }
+
+    /**
+     * Department ids that roll up into the same combined sales point as $departmentId,
+     * so their lines are NOT treated as cross-point in the revenue split. Mirrors
+     * SalesPointSettlementService::sameGroupDepartmentIds.
+     *
+     * @return array<int, int>
+     */
+    protected function sameSalesPointGroupIds($branchId, int $departmentId): array
+    {
+        $dept = Department::find($departmentId);
+        if (! $dept) {
+            return [$departmentId];
+        }
+
+        $ids = CombinedSalesPoints::departmentIds($branchId, (string) $dept->slug);
+        $ids[] = $departmentId;
+
+        return array_values(array_unique(array_map('intval', $ids)));
     }
 
     /**

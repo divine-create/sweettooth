@@ -317,8 +317,14 @@ class Index extends BaseComponent
             ->whereKey($productId);
 
         $departmentIds = $this->scopedSalesDepartmentIds();
+        $transferredInIds = $this->transferredInProductIds();
         if (! empty($departmentIds)) {
-            $productQuery->whereIn('sales_department_id', $departmentIds);
+            $productQuery->where(function ($q) use ($departmentIds, $transferredInIds) {
+                $q->whereIn('sales_department_id', $departmentIds);
+                if (! empty($transferredInIds)) {
+                    $q->orWhereIn('id', $transferredInIds);
+                }
+            });
         }
 
         $product = $productQuery->first();
@@ -934,6 +940,21 @@ class Index extends BaseComponent
                 $this->convertingQuotationId = null;
             }
 
+            // Phase 3: record inter-sales-point settlements for any cross-point lines
+            // (product sold here but homed at another sales point). Guarded — a settlement
+            // failure must never affect an already-completed sale.
+            if ($this->currentSaleId) {
+                try {
+                    app(\App\Services\SalesPointSettlementService::class)
+                        ->recordForSale(Sale::find($this->currentSaleId));
+                } catch (\Throwable $e) {
+                    \Log::error('Sales-point settlement recording failed', [
+                        'sale_id' => $this->currentSaleId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             $this->clearCart();
             $this->discount = 0;
             $this->orderType = 'dine-in';
@@ -1124,6 +1145,27 @@ class Index extends BaseComponent
         }
 
         return array_values(array_unique(array_map(static fn ($id) => (int) $id, $departmentIds)));
+    }
+
+    /**
+     * Product ids transferred INTO this sales point via a completed sales-point transfer,
+     * so the POS can list and sell them even though their home is another point.
+     * See SALES_POINT_TRANSFER_SPEC.md Phase 2.
+     *
+     * @return array<int, string>
+     */
+    protected function transferredInProductIds(): array
+    {
+        if (! $this->departmentId) {
+            return [];
+        }
+
+        return \App\Models\SalesPointTransfer::query()
+            ->where('to_department_id', (int) $this->departmentId)
+            ->where('status', 'completed')
+            ->distinct()
+            ->pluck('product_id')
+            ->all();
     }
 
     protected function getTodayStockForProduct(string $productId, bool $forUpdate = false): ?ProductStock
@@ -1324,15 +1366,20 @@ class Index extends BaseComponent
 
         $wipTypeIds = \DB::table('product_types')->where('code', 'WIP')->pluck('id');
 
+        $transferredInIds = $this->transferredInProductIds();
+
         $q = Product::query()
             ->active()
             ->available()
             ->whereNotIn('product_type_id', $wipTypeIds)
-            ->where(function ($q) use ($departmentIds) {
+            ->where(function ($q) use ($departmentIds, $transferredInIds) {
                 $q->whereIn('sales_department_id', $departmentIds)
                     ->orWhereHas('departments', function ($dq) use ($departmentIds) {
                         $dq->whereIn('department_id', $departmentIds);
                     });
+                if (! empty($transferredInIds)) {
+                    $q->orWhereIn('products.id', $transferredInIds);
+                }
             })
             ->select(['products.id', 'products.name', 'products.price', 'products.sku', 'products.uom_id', 'products.sales_uom_id'])
             ->with(['unitOfMeasure:id,symbol', 'salesUom:id,symbol'])
