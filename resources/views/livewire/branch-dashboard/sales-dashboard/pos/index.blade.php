@@ -340,37 +340,46 @@
                         $available = $this->getAvailableForProduct($product->id);
                         $stockDisplay = $this->getPosStockDisplay($product);
                     @endphp
-                    <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 flex flex-col gap-2 bg-white dark:bg-zinc-900">
-                        <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $product->name }}</div>
-                        <div class="text-xs text-zinc-500">
-                            {{ $this->formatCurrency($product->price ?? 0) }}
-                            <span class="ml-2 text-[11px] text-zinc-400">/ {{ $product['sales_uom'] ?? $product['base_uom'] ?? 'unit' }}</span>
-                        </div>
-                        <div class="text-xs">
-                            @if($stockDisplay['sales_qty'] === 0.0)
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30">Out of Stock</span>
-                            @elseif($stockDisplay['sales_qty'] < 10)
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-orange-700 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30">
-                                    Low Stock ({{ number_format($stockDisplay['sales_qty'], 2) }} {{ $stockDisplay['sales_symbol'] }})
-                                </span>
-                            @else
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/30">
-                                    In Stock ({{ number_format($stockDisplay['sales_qty'], 2) }} {{ $stockDisplay['sales_symbol'] }})
-                                </span>
-                            @endif
-                            @if($stockDisplay['converted'] && $stockDisplay['base_symbol'])
-                                <div class="mt-1 text-[11px] text-zinc-400">
-                                    ({{ number_format($stockDisplay['base_qty'], 2) }} {{ $stockDisplay['base_symbol'] }})
+                        @php $fromDept = $transferredProductMap[(string) $product->id] ?? null; @endphp
+                        <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 flex flex-col gap-2 bg-white dark:bg-zinc-900 {{ $fromDept ? 'ring-2 ring-amber-400 dark:ring-amber-500' : '' }}">
+                            <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $product->name }}</div>
+                            @if($fromDept)
+                                <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 text-[11px] font-medium w-fit">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3 h-3 shrink-0">
+                                        <path fill-rule="evenodd" d="M3.5 2A1.5 1.5 0 0 0 2 3.5v9A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5h-4V3.5A1.5 1.5 0 0 0 7 2H3.5Zm6.56 5.22a.75.75 0 0 1 0 1.06l-1.5 1.5a.75.75 0 0 1-1.06-1.06l.22-.22H4.75a.75.75 0 0 1 0-1.5h2.97l-.22-.22a.75.75 0 0 1 1.06-1.06l1.5 1.5Z" clip-rule="evenodd" />
+                                    </svg>
+                                    Transferred · {{ $fromDept }}
                                 </div>
                             @endif
+                            <div class="text-xs text-zinc-500">
+                                {{ $this->formatCurrency($product->price ?? 0) }}
+                                <span class="ml-2 text-[11px] text-zinc-400">/ {{ $product['sales_uom'] ?? $product['base_uom'] ?? 'unit' }}</span>
+                            </div>
+                            <div class="text-xs">
+                                @if($stockDisplay['sales_qty'] === 0.0)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30">Out of Stock</span>
+                                @elseif($stockDisplay['sales_qty'] < 10)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-orange-700 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30">
+                                        Low Stock ({{ number_format($stockDisplay['sales_qty'], 2) }} {{ $stockDisplay['sales_symbol'] }})
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/30">
+                                        In Stock ({{ number_format($stockDisplay['sales_qty'], 2) }} {{ $stockDisplay['sales_symbol'] }})
+                                    </span>
+                                @endif
+                                @if($stockDisplay['converted'] && $stockDisplay['base_symbol'])
+                                    <div class="mt-1 text-[11px] text-zinc-400">
+                                        ({{ number_format($stockDisplay['base_qty'], 2) }} {{ $stockDisplay['base_symbol'] }})
+                                    </div>
+                                @endif
+                            </div>
+                            <button type="button" wire:click="addToCart('{{ $product->id }}')"
+                                @if($stockDisplay['sales_qty'] <= 0) disabled @endif
+                                class="mt-auto inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-zinc-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M12 4.5a.75.75 0 0 1 .75.75v6h6a.75.75 0 0 1 0 1.5h-6v6a.75.75 0 0 1-1.5 0v-6h-6a.75.75 0 0 1 0-1.5h6v-6A.75.75 0 0 1 12 4.5Z" clip-rule="evenodd"/></svg>
+                                Add
+                            </button>
                         </div>
-                        <button type="button" wire:click="addToCart('{{ $product->id }}')"
-                            @if($stockDisplay['sales_qty'] <= 0) disabled @endif
-                            class="mt-auto inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-zinc-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M12 4.5a.75.75 0 0 1 .75.75v6h6a.75.75 0 0 1 0 1.5h-6v6a.75.75 0 0 1-1.5 0v-6h-6a.75.75 0 0 1 0-1.5h6v-6A.75.75 0 0 1 12 4.5Z" clip-rule="evenodd"/></svg>
-                            Add
-                        </button>
-                    </div>
                 @empty
                     <div class="col-span-full text-center py-10 text-zinc-500 dark:text-zinc-400">
                         <div class="text-sm font-medium">No products found</div>
@@ -386,9 +395,20 @@
                         $available = $this->getAvailableForProduct($product->id);
                         $stockDisplay = $this->getPosStockDisplay($product);
                     @endphp
-                    <div class="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 flex items-center gap-4">
+                    @php $fromDept = $transferredProductMap[(string) $product->id] ?? null; @endphp
+                    <div class="rounded-lg border {{ $fromDept ? 'border-amber-300 dark:border-amber-600 ring-1 ring-amber-300 dark:ring-amber-600' : 'border-zinc-200 dark:border-zinc-800' }} bg-white dark:bg-zinc-900 p-3 flex items-center gap-4">
                         <div class="flex-1">
-                            <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $product->name }}</div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $product->name }}</div>
+                                @if($fromDept)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 text-[11px] font-medium">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3 h-3 shrink-0">
+                                            <path fill-rule="evenodd" d="M3.5 2A1.5 1.5 0 0 0 2 3.5v9A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5h-4V3.5A1.5 1.5 0 0 0 7 2H3.5Zm6.56 5.22a.75.75 0 0 1 0 1.06l-1.5 1.5a.75.75 0 0 1-1.06-1.06l.22-.22H4.75a.75.75 0 0 1 0-1.5h2.97l-.22-.22a.75.75 0 0 1 1.06-1.06l1.5 1.5Z" clip-rule="evenodd" />
+                                        </svg>
+                                        Transferred · {{ $fromDept }}
+                                    </span>
+                                @endif
+                            </div>
                             <div class="flex items-center gap-3 mt-1">
                                 <span class="text-sm text-zinc-500">
                                     {{ $this->formatCurrency($product->price ?? 0) }}

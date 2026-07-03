@@ -1168,6 +1168,37 @@ class Index extends BaseComponent
             ->all();
     }
 
+    /**
+     * Map of product_id => source department name for products that arrived via a
+     * completed sales-point transfer into THIS department today.
+     * Used by the POS view to show a "Transferred from X" badge.
+     *
+     * @return array<string, string>  keyed by (string) product_id
+     */
+    public function getTransferredInProductMap(): array
+    {
+        if (! $this->departmentId) {
+            return [];
+        }
+
+        $rows = \App\Models\SalesPointTransfer::query()
+            ->with('fromDepartment:id,name')
+            ->where('to_department_id', (int) $this->departmentId)
+            ->where('status', 'completed')
+            ->whereDate('created_at', \Illuminate\Support\Carbon::today())
+            ->get(['product_id', 'from_department_id']);
+
+        $map = [];
+        foreach ($rows as $row) {
+            $pid = (string) $row->product_id;
+            if (! isset($map[$pid])) {
+                $map[$pid] = $row->fromDepartment?->name ?? 'another point';
+            }
+        }
+
+        return $map;
+    }
+
     protected function getTodayStockForProduct(string $productId, bool $forUpdate = false): ?ProductStock
     {
         $hasDepartmentColumn = Schema::hasColumn('product_stocks', 'department_id');
@@ -2085,6 +2116,7 @@ class Index extends BaseComponent
             'currencyLocale' => Settings::currencyLocalization('default_language', 'en_US'),
             'defaultBankAccount' => $this->getDefaultDepartmentBankAccountId(),
             'defaultBankAccountLabel' => $this->getDefaultDepartmentBankAccountLabel(),
+            'transferredProductMap' => $this->getTransferredInProductMap(),
         ]);
     }
 
