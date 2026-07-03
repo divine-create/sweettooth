@@ -44,8 +44,8 @@
                 <x-select.native label="Shift Type" wire:model.live="shiftType">
                     <option value="">All Shifts</option>
                     <option value="morning">Morning Shift</option>
-                    <option value="afternoon">Evening Shift</option>
-                    <option value="night">Night Shift</option>
+                    <option value="afternoon">Afternoon Shift</option>
+                    <option value="night">Evening Shift</option>
                 </x-select.native>
             </div>
 
