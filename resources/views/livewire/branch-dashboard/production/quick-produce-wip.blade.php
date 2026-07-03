@@ -52,7 +52,7 @@
                                 <input type="number" wire:model.live="quantity" min="1" step="0.5"
                                        class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600"/>
                                 <p class="text-xs text-zinc-500 mt-1">
-                                    Total expected: <span class="font-semibold">{{ number_format($yieldOutput, 2) }}</span> {{ $selectedRecipe->uomSymbol }}
+                                    Total expected: <span class="font-semibold">{{ number_format((float) $yieldOutput, 2) }}</span> {{ $selectedRecipe->uomSymbol }}
                                 </p>
                             </div>
 
@@ -154,7 +154,7 @@
                 <div class="p-6">
                     <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100 mb-4">WIP Production Complete!</h3>
                     <p class="text-zinc-600 dark:text-zinc-300 mb-4">
-                        Produced {{ number_format($yieldOutput, 2) }} {{ $selectedRecipe?->uomSymbol }} of {{ $selectedRecipe?->product_name }}
+                        Produced {{ number_format((float) $yieldOutput, 2) }} {{ $selectedRecipe?->uomSymbol }} of {{ $selectedRecipe?->product_name }}
                     </p>
 
                     <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">

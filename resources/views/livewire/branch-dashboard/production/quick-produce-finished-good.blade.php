@@ -52,7 +52,7 @@
                                 <input type="number" wire:model.live="quantity" min="1" step="0.5"
                                        class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600"/>
                                 <p class="text-xs text-zinc-500 mt-1">
-                                    Total expected: <span class="font-semibold">{{ number_format($yieldOutput, 2) }}</span> {{ $selectedRecipe->uomSymbol }}
+                                    Total expected: <span class="font-semibold">{{ number_format((float) $yieldOutput, 2) }}</span> {{ $selectedRecipe->uomSymbol }}
                                 </p>
                             </div>
 
@@ -90,7 +90,7 @@
                                     {{ rtrim(rtrim(number_format($salesReceives['qty'], 2), '0'), '.') }} {{ $salesReceives['symbol'] }}
                                     @if($salesReceives['converted'])
                                         <span class="text-xs font-normal text-indigo-600 dark:text-indigo-300">
-                                            (from {{ rtrim(rtrim(number_format($approvedQuantity, 2), '0'), '.') }} {{ $selectedRecipe->uomSymbol }} produced)
+                                            (from {{ rtrim(rtrim(number_format((float) $approvedQuantity, 2), '0'), '.') }} {{ $selectedRecipe->uomSymbol }} produced)
                                         </span>
                                     @endif
                                 </span>
@@ -175,7 +175,7 @@
                         {{ $isRedispatch ? 'Dispatch Pending Batch' : 'Production Complete!' }}
                     </h3>
                     <p class="text-zinc-600 dark:text-zinc-300 mb-4">
-                        {{ $isRedispatch ? 'Dispatching' : 'Produced' }} {{ number_format($yieldOutput, 2) }} {{ $selectedRecipe?->uomSymbol }} of {{ $selectedRecipe?->product_name }}
+                        {{ $isRedispatch ? 'Dispatching' : 'Produced' }} {{ number_format((float) $yieldOutput, 2) }} {{ $selectedRecipe?->uomSymbol }} of {{ $selectedRecipe?->product_name }}
                     </p>
 
                     @if(!$selectedRecipe?->product_id)
@@ -289,7 +289,7 @@
                             <input type="number" step="0.01" min="0" max="{{ $yieldOutput }}" wire:model="dispatchQuantity"
                                    class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600" />
                             <p class="text-xs text-zinc-400 mt-1">
-                                Max {{ rtrim(rtrim(number_format($yieldOutput,2),'0'),'.') }} {{ $selectedRecipe->uomSymbol ?? '' }}. Any remainder stays in finished goods.
+                                Max {{ rtrim(rtrim(number_format((float) $yieldOutput, 2),'0'),'.') }} {{ $selectedRecipe->uomSymbol ?? '' }}. Any remainder stays in finished goods.
                             </p>
                         </div>
                         <div class="flex justify-end">
