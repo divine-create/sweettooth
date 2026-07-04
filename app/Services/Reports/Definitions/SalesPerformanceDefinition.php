@@ -47,7 +47,7 @@ class SalesPerformanceDefinition implements ReportDefinition
             ->get();
 
         $saleItems = SaleItem::query()
-            ->with(['product', 'item', 'sale'])
+            ->with(['product.salesDepartment', 'item', 'sale'])
             ->whereHas('sale', function ($q) use ($branchId, $departmentId, $from, $to, $shiftType) {
                 $q->where('branch_id', $branchId)
                     ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
@@ -68,6 +68,7 @@ class SalesPerformanceDefinition implements ReportDefinition
             'revenue_overview' => $this->generateRevenueOverview($sales),
             'daily_sales' => $this->generateDailySales($sales),
             'product_performance' => $this->generateProductPerformance($saleItems),
+            'revenue_by_sales_point' => $this->generateSalesPointBreakdown($saleItems, $departmentId),
             'staff_performance' => $this->generateStaffPerformance($sales),
             'order_type_analysis' => $this->generateOrderTypeAnalysis($sales),
             'payment_analysis' => $this->generatePaymentAnalysis($sales),
@@ -94,6 +95,11 @@ class SalesPerformanceDefinition implements ReportDefinition
         $staff = collect($data['staff_performance'] ?? []);
         $topStaff = $staff->first();
 
+        // Cross-point position: revenue this point collected on behalf of OTHER
+        // home sales points (e.g. Till holding Concession's cash on a combined point).
+        $salesPoints = collect($data['revenue_by_sales_point'] ?? []);
+        $crossPointRevenue = $salesPoints->where('is_home', false)->sum('revenue');
+
         return [
             'total_revenue' => $overview['total_revenue'] ?? 0,
             'total_orders' => $overview['total_orders'] ?? 0,
@@ -109,6 +115,8 @@ class SalesPerformanceDefinition implements ReportDefinition
             'active_sales_staff' => $staff->count(),
             'top_sales_staff' => $topStaff['staff_name'] ?? 'N/A',
             'top_sales_staff_revenue' => $topStaff['revenue'] ?? 0,
+            'sales_points_count' => $salesPoints->count(),
+            'cross_point_revenue' => $crossPointRevenue,
         ];
     }
 
@@ -187,7 +195,31 @@ class SalesPerformanceDefinition implements ReportDefinition
 
     public function tables(array $data, array $summary, array $context): array
     {
-        return [
+        // Revenue by home sales point. Differentiates a combined point (e.g. Till
+        // Sales that also collects Concession) whose sales all post under the one
+        // collecting department: each line is attributed to its product's own home
+        // sales point. Only shown when more than one home point is represented, so
+        // standalone sales points are unaffected.
+        $salesPointTable = [];
+        $salesPointBreakdown = $data['revenue_by_sales_point'] ?? [];
+        if (count($salesPointBreakdown) > 1) {
+            $salesPointTable['revenue_by_sales_point'] = [
+                'headers' => ['Sales Point', 'Type', 'Products', 'Quantity', 'Revenue', 'Discount', 'Orders'],
+                'rows' => array_map(function ($row) {
+                    return [
+                        $row['sales_point'],
+                        $row['is_home'] ? 'This point' : 'Held for',
+                        $row['products'],
+                        $row['quantity_sold'],
+                        $row['revenue'],
+                        $row['discount_given'],
+                        $row['orders_count'],
+                    ];
+                }, $salesPointBreakdown),
+            ];
+        }
+
+        return $salesPointTable + [
             'sales_details' => [
                 'headers' => ['Sale #', 'Time', 'Shift', 'Sold By', 'Items', 'Subtotal', 'Discount', 'Tax', 'Total', 'Cash', 'Transfer', 'POS', 'Other', 'Status'],
                 'rows' => array_map(function ($row) {
@@ -379,6 +411,43 @@ class SalesPerformanceDefinition implements ReportDefinition
                 'orders_count' => $items->pluck('sale_id')->unique()->count(),
             ];
         })->sortByDesc('revenue')->values()->toArray();
+    }
+
+    /**
+     * Break sale-line revenue down by each product's HOME sales point
+     * (products.sales_department_id). On a combined point the collecting
+     * department (e.g. Till) posts every sale, but each line still carries its
+     * product's own home point, so this separates e.g. Till vs Concession
+     * revenue. $reportDeptId is the department the report is scoped to (the
+     * collecting point); rows for other points are cash held on their behalf.
+     */
+    private function generateSalesPointBreakdown($saleItems, $reportDeptId): array
+    {
+        $reportDeptId = (int) $reportDeptId;
+
+        return $saleItems->groupBy(fn ($item) => (int) ($item->product->sales_department_id ?? 0))
+            ->map(function ($items, $deptId) use ($reportDeptId) {
+                $deptId = (int) $deptId;
+                $first = $items->first();
+                $name = $first->product?->salesDepartment?->name
+                    ?? ($deptId === 0 ? 'Unassigned' : 'Department #' . $deptId);
+
+                return [
+                    'department_id' => $deptId,
+                    'sales_point' => $name,
+                    'is_home' => $deptId === $reportDeptId,
+                    'products' => $items
+                        ->map(fn ($i) => $i->product_id ? 'p_' . $i->product_id : 'i_' . $i->item_id)
+                        ->unique()->count(),
+                    'quantity_sold' => $items->sum('quantity'),
+                    'revenue' => $items->sum('total'),
+                    'discount_given' => $items->sum('discount'),
+                    'orders_count' => $items->pluck('sale_id')->unique()->count(),
+                ];
+            })
+            ->sortByDesc('revenue')
+            ->values()
+            ->toArray();
     }
 
     private function generateOrderTypeAnalysis($sales): array
