@@ -140,7 +140,12 @@ trait QuickProduceTrait
 
     public function updatedQuantity()
     {
-        if ($this->quantity < 0) {
+        // Only coerce a genuinely-negative NUMBER back to 1. An empty field (while
+        // the user clears/retypes) or 0 is left as-is so the input can actually be
+        // cleared — produce() validates a positive quantity before recording.
+        // NB: the old `$this->quantity < 0` reset broke clearing, because in PHP 8
+        // the empty string "" compares as < 0, snapping the field back to 1.
+        if (is_numeric($this->quantity) && (float) $this->quantity < 0) {
             $this->quantity = 1;
         }
 
@@ -278,6 +283,12 @@ trait QuickProduceTrait
     {
         if (! $this->selectedRecipe) {
             $this->toast()->error('Please select a recipe first.')->send();
+
+            return;
+        }
+
+        if (! is_numeric($this->quantity) || (float) $this->quantity <= 0) {
+            $this->toast()->error('Please enter a quantity to produce.')->send();
 
             return;
         }
