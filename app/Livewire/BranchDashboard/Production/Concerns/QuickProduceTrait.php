@@ -25,6 +25,13 @@ trait QuickProduceTrait
 
     public $quantity = 1;
 
+    // Desired OUTPUT amount in the recipe's yield unit. A second way to enter how
+    // much to make: type the amount you actually want (e.g. 4) and the batches
+    // box becomes a readout of what fraction of the recipe that is (4 / yield).
+    // Editing either field keeps the other in sync. Drives the exact quantity of
+    // ingredients consumed, so you can make less than a full batch.
+    public $targetOutput = 0;
+
     public $yieldOutput = 0;
 
     // Quantity to dispatch from the just-produced batch (defaults to the full
@@ -133,6 +140,7 @@ trait QuickProduceTrait
 
         $this->quantity = 1;
         $this->calculateYield();
+        $this->targetOutput = round((float) $this->yieldOutput, 2);
         $this->resolveIngredients();
         $this->checkStock();
         $this->loadPendingOrders();
@@ -150,6 +158,35 @@ trait QuickProduceTrait
         }
 
         $this->calculateYield();
+        // Batches drive here; keep the target-amount readout in sync.
+        $this->targetOutput = round((float) $this->yieldOutput, 2);
+        $this->resolveIngredients();
+        $this->checkStock();
+    }
+
+    /**
+     * The operator typed a desired OUTPUT amount instead of a batch count. Derive
+     * the equivalent batch fraction (amount ÷ recipe yield) for the readout, and
+     * drive yield + ingredient scaling from the EXACT amount typed — so producing
+     * e.g. 4 of a recipe that yields 6 consumes exactly 4/6 of the ingredients,
+     * not the rounded batch value. An empty field (while retyping) is left alone.
+     */
+    public function updatedTargetOutput()
+    {
+        if (is_numeric($this->targetOutput) && (float) $this->targetOutput < 0) {
+            $this->targetOutput = 0;
+        }
+
+        $yield = (float) ($this->selectedRecipe?->yield_quantity ?? 0);
+        $units = is_numeric($this->targetOutput) ? (float) $this->targetOutput : 0.0;
+
+        // Batches becomes a readout of how much of the recipe this amount is.
+        $this->quantity = $yield > 0 ? round($units / $yield, 4) : 0;
+
+        // Exact target drives produced output + ingredient consumption.
+        $this->yieldOutput = round($units, 2);
+        $this->approvedQuantity = (float) $this->yieldOutput - (float) $this->rejectedQuantity;
+
         $this->resolveIngredients();
         $this->checkStock();
     }
@@ -207,13 +244,13 @@ trait QuickProduceTrait
 
         $wipService = app(\App\Services\WipRecipeService::class);
 
-        // `$this->quantity` is the number of BATCHES (see the "Quantity to Produce
-        // (batches)" field). WipRecipeService::resolveIngredients() expects the
-        // total OUTPUT quantity in units and internally divides by the recipe
-        // yield to get the batch factor. Passing batches here scaled every
-        // ingredient down by the yield (e.g. 40g onions -> 1g for a yield of 40),
-        // so pass the produced unit total instead.
-        $outputQty = (float) $this->quantity * (float) $this->selectedRecipe->yield_quantity;
+        // Scale ingredients to the exact OUTPUT being produced. `yieldOutput` is
+        // the produced unit total, kept in sync by both entry fields (batches ×
+        // yield, or the typed target amount). WipRecipeService::resolveIngredients()
+        // expects the total OUTPUT quantity in units and divides by the recipe
+        // yield internally to get the batch factor — so a target of 4 against a
+        // yield of 6 correctly consumes 4/6 of every ingredient.
+        $outputQty = (float) $this->yieldOutput;
         $resolved = $wipService->resolveIngredients($this->selectedRecipe, $outputQty, false);
 
         $this->ingredients = $resolved->map(function ($ing) {
@@ -287,7 +324,10 @@ trait QuickProduceTrait
             return;
         }
 
-        if (! is_numeric($this->quantity) || (float) $this->quantity <= 0) {
+        // Guard on the actual output to be produced (kept in sync by both the
+        // batches and amount fields), not the batch count — a large recipe yield
+        // can round the batch readout to 0 while a valid amount was entered.
+        if (! is_numeric($this->yieldOutput) || (float) $this->yieldOutput <= 0) {
             $this->toast()->error('Please enter a quantity to produce.')->send();
 
             return;
@@ -757,6 +797,7 @@ trait QuickProduceTrait
         $this->selectedOrderId = null;
         $this->lastProductionRecordId = null;
         $this->quantity = 1;
+        $this->targetOutput = 0;
         $this->yieldOutput = 0;
         $this->dispatchQuantity = 0;
         $this->dispatchSalesQuantity = 0;

@@ -49,9 +49,17 @@
                                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                                     Quantity to Produce (batches)
                                 </label>
-                                <input type="number" wire:model.live="quantity" min="1" step="0.5"
+                                <input type="number" wire:model.live="quantity" min="0" step="0.5"
                                        class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600"/>
+
+                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mt-3 mb-1">
+                                    or Amount to Produce ({{ $selectedRecipe->uomSymbol }})
+                                </label>
+                                <input type="number" wire:model.live="targetOutput" min="0" step="0.01"
+                                       class="w-full rounded border p-2 dark:bg-zinc-700 dark:border-zinc-600"/>
+
                                 <p class="text-xs text-zinc-500 mt-1">
+                                    Recipe yields <span class="font-semibold">{{ number_format((float) $selectedRecipe->yield_quantity, 2) }}</span> {{ $selectedRecipe->uomSymbol }} per batch.
                                     Total expected: <span class="font-semibold">{{ number_format((float) $yieldOutput, 2) }}</span> {{ $selectedRecipe->uomSymbol }}
                                 </p>
                             </div>
