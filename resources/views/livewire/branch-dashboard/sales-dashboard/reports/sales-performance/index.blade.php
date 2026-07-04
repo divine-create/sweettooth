@@ -68,6 +68,16 @@
     </div>
 
     @if($reportData)
+        @php($scopeNote = data_get($reportData, 'report_data.scope_note'))
+        @if($scopeNote)
+            <div class="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700/60 dark:bg-amber-900/20">
+                <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-sm text-amber-800 dark:text-amber-200">{{ $scopeNote }}</p>
+            </div>
+        @endif
+
         {{-- Summary Metrics --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="bg-white dark:bg-zinc-800 rounded-lg shadow p-6">

@@ -2,8 +2,10 @@
 
 namespace App\Services\Reports\Definitions;
 
+use App\Models\Department;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Support\CombinedSalesPoints;
 use Carbon\Carbon;
 
 class SalesPerformanceDefinition implements ReportDefinition
@@ -30,41 +32,90 @@ class SalesPerformanceDefinition implements ReportDefinition
         $fromDate = $from ? Carbon::parse($from)->startOfDay() : null;
         $toDate = $to ? Carbon::parse($to)->endOfDay() : null;
 
+        // Is the selected department a NON-primary member of a combined sales
+        // point (e.g. Concession under Till)? Members never collect their own
+        // sales — everything posts under the primary/collecting department — so
+        // filtering by sales.department_id returns nothing. In that case scope by
+        // each product's HOME sales point (products.sales_department_id) and
+        // reduce every parent sale to just that member's lines, so the report
+        // shows the member's OWN product sales. The cash drawer / payments stay
+        // with the collecting point (surfaced as a note, not attributed here).
+        $slug = $departmentId ? (string) Department::whereKey($departmentId)->value('slug') : '';
+        $isCombinedMember = $slug !== '' && CombinedSalesPoints::isMember($slug);
+
         // NOTE: 'soldBy' is intentionally NOT eager-loaded. Eager-loading this
         // morphTo returns a null name here (Laravel morphTo/eager quirk with the
         // UUID-keyed User/Employee models), which made every row show "System".
         // Lazy access (used in buildSalesDetails/staff performance) resolves the
         // real cashier name correctly.
-        $sales = Sale::query()
-            ->with(['department', 'salesShift', 'shift', 'saleItems.product', 'saleItems.salesUom', 'payments'])
-            ->where('branch_id', $branchId)
-            ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
-            ->when($shiftType, fn($q) => $q->where(fn($w) => $w
-                ->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType))
-                ->orWhereHas('shift', fn($sq) => $sq->where('shift_type', $shiftType))))
-            ->when($fromDate && $toDate, fn($q) => $q->whereBetween('sale_time', [$fromDate, $toDate]))
-            ->where('status', '!=', 'cancelled')
-            ->get();
+        $relations = ['department', 'salesShift', 'shift', 'saleItems.product.salesDepartment', 'saleItems.item', 'saleItems.salesUom', 'payments'];
 
-        $saleItems = SaleItem::query()
-            ->with(['product.salesDepartment', 'item', 'sale'])
-            ->whereHas('sale', function ($q) use ($branchId, $departmentId, $from, $to, $shiftType) {
-                $q->where('branch_id', $branchId)
-                    ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
-                    ->when($shiftType, fn($q) => $q->where(fn($w) => $w
-                        ->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType))
-                        ->orWhereHas('shift', fn($sq) => $sq->where('shift_type', $shiftType))))
-                    ->when($from && $to, function ($query) use ($from, $to) {
-                        $query->whereBetween('sale_time', [
-                            Carbon::parse($from)->startOfDay(),
-                            Carbon::parse($to)->endOfDay(),
-                        ]);
-                    })
-                    ->where('status', '!=', 'cancelled');
-            })
-            ->get();
+        if ($isCombinedMember) {
+            $memberId = (int) $departmentId;
 
-        return [
+            $sales = Sale::query()
+                ->with($relations)
+                ->where('branch_id', $branchId)
+                ->when($shiftType, fn($q) => $q->where(fn($w) => $w
+                    ->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType))
+                    ->orWhereHas('shift', fn($sq) => $sq->where('shift_type', $shiftType))))
+                ->when($fromDate && $toDate, fn($q) => $q->whereBetween('sale_time', [$fromDate, $toDate]))
+                ->where('status', '!=', 'cancelled')
+                ->whereHas('saleItems.product', fn($q) => $q->where('sales_department_id', $memberId))
+                ->get()
+                ->map(function ($sale) use ($memberId) {
+                    $memberItems = $sale->saleItems
+                        ->filter(fn($i) => (int) ($i->product->sales_department_id ?? 0) === $memberId)
+                        ->values();
+
+                    // Reduce sale-level money to just this member's lines. Tax is a
+                    // sale-level charge not attributable per line, so it is 0 here.
+                    $sale->setRelation('saleItems', $memberItems);
+                    $sale->subtotal = $memberItems->sum('subtotal');
+                    $sale->discount = $memberItems->sum('discount');
+                    $sale->tax = 0;
+                    $sale->total = $memberItems->sum('total');
+                    // Drawer belongs to the collecting point, not this member.
+                    $sale->setRelation('payments', collect());
+
+                    return $sale;
+                })
+                ->filter(fn($sale) => $sale->saleItems->isNotEmpty())
+                ->values();
+
+            $saleItems = $sales->flatMap->saleItems->values();
+        } else {
+            $sales = Sale::query()
+                ->with($relations)
+                ->where('branch_id', $branchId)
+                ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
+                ->when($shiftType, fn($q) => $q->where(fn($w) => $w
+                    ->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType))
+                    ->orWhereHas('shift', fn($sq) => $sq->where('shift_type', $shiftType))))
+                ->when($fromDate && $toDate, fn($q) => $q->whereBetween('sale_time', [$fromDate, $toDate]))
+                ->where('status', '!=', 'cancelled')
+                ->get();
+
+            $saleItems = SaleItem::query()
+                ->with(['product.salesDepartment', 'item', 'sale'])
+                ->whereHas('sale', function ($q) use ($branchId, $departmentId, $from, $to, $shiftType) {
+                    $q->where('branch_id', $branchId)
+                        ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
+                        ->when($shiftType, fn($q) => $q->where(fn($w) => $w
+                            ->whereHas('salesShift', fn($sq) => $sq->where('shift_type', $shiftType))
+                            ->orWhereHas('shift', fn($sq) => $sq->where('shift_type', $shiftType))))
+                        ->when($from && $to, function ($query) use ($from, $to) {
+                            $query->whereBetween('sale_time', [
+                                Carbon::parse($from)->startOfDay(),
+                                Carbon::parse($to)->endOfDay(),
+                            ]);
+                        })
+                        ->where('status', '!=', 'cancelled');
+                })
+                ->get();
+        }
+
+        $data = [
             'revenue_overview' => $this->generateRevenueOverview($sales),
             'daily_sales' => $this->generateDailySales($sales),
             'product_performance' => $this->generateProductPerformance($saleItems),
@@ -81,6 +132,18 @@ class SalesPerformanceDefinition implements ReportDefinition
                 'total_days' => Carbon::parse($from)->diffInDays(Carbon::parse($to)) + 1,
             ],
         ];
+
+        if ($isCombinedMember) {
+            $memberName = Department::whereKey($departmentId)->value('name') ?: 'this sales point';
+            $primaryName = Department::where('slug', CombinedSalesPoints::primarySlug($slug))
+                ->orderByRaw('branch_id is null')
+                ->value('name') ?: 'the collecting point';
+
+            $data['scope'] = 'combined_member';
+            $data['scope_note'] = "Item-scoped view: showing {$memberName}'s own product sales, collected at {$primaryName} (one shared till). Payment and cash-drawer figures belong to {$primaryName} and are shown as 0 here.";
+        }
+
+        return $data;
     }
 
     public function summary(array $data, array $context): array
