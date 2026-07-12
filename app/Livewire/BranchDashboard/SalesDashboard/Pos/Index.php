@@ -62,6 +62,8 @@ class Index extends BaseComponent
 
     public ?int $activeShiftId = null;
 
+    public ?int $activeSalesShiftId = null;
+
     public float $cashReceived = 0.0;
 
     public float $changeDue = 0.0;
@@ -256,7 +258,41 @@ class Index extends BaseComponent
             $this->shiftType = (string) ($shift->shift_type ?: 'morning');
         } else {
             $this->activeShiftId = null;
+            $this->shiftType = 'morning';
         }
+
+        // Resolve the SalesShift for the department so sales are properly linked
+        // to the shift-type session used by reports.
+        $this->activeSalesShiftId = $this->resolveActiveSalesShiftId();
+    }
+
+    protected function resolveActiveSalesShiftId(): ?int
+    {
+        if (! $this->departmentId) {
+            return null;
+        }
+
+        $shiftType = $this->shiftType ?: 'morning';
+
+        // Try to find an active SalesShift for this department, date, and shift type.
+        $salesShift = SalesShift::where('department_id', $this->departmentId)
+            ->whereDate('shift_date', Carbon::today())
+            ->where('shift_type', $shiftType)
+            ->whereIn('status', ['active', 'open'])
+            ->latest()
+            ->first();
+
+        if ($salesShift) {
+            return $salesShift->id;
+        }
+
+        // Fallback: any SalesShift for this department today regardless of type or status
+        $fallback = SalesShift::where('department_id', $this->departmentId)
+            ->whereDate('shift_date', Carbon::today())
+            ->latest()
+            ->first();
+
+        return $fallback?->id;
     }
 
     #[Computed]
@@ -770,7 +806,7 @@ class Index extends BaseComponent
                 }
 
                 $sale = Sale::create([
-                    'sales_shift_id' => null, // Nullable - using general shifts table instead
+                    'sales_shift_id' => $this->activeSalesShiftId ?? $this->resolveActiveSalesShiftId(),
                     'shift_id' => $this->activeShiftId,
                     'branch_id' => $this->branchId,
                     'department_id' => $this->departmentId,
@@ -1786,7 +1822,7 @@ class Index extends BaseComponent
             } else {
                 // Create new sale
                 $sale = Sale::create([
-                    'sales_shift_id' => null, // Nullable - using general shifts table instead
+                    'sales_shift_id' => $this->activeSalesShiftId ?? $this->resolveActiveSalesShiftId(),
                     'shift_id' => $this->activeShiftId,
                     'branch_id' => $this->branchId,
                     'department_id' => $this->departmentId,
