@@ -68,7 +68,9 @@
     </div>
 
     @if($reportData)
-        @php($scopeNote = data_get($reportData, 'scope_note') ?? data_get($reportData, 'report_data.scope_note'))
+        @php
+            $scopeNote = data_get($reportData, 'scope_note') ?? data_get($reportData, 'report_data.scope_note');
+        @endphp
         @if($scopeNote)
             <div class="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700/60 dark:bg-amber-900/20">
                 <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
