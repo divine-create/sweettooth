@@ -474,7 +474,7 @@
                                 </thead>
                                 <tbody>
                                     @forelse($purchaseItems as $index => $item)
-                                    <tr class="border-t border-zinc-200 dark:border-zinc-700">
+                                    <tr class="border-t border-zinc-200 dark:border-zinc-700" wire:key="purchase-item-{{ $item['id'] ?? $index }}">
                                         <td class="px-4 py-2">
                                             <select wire:model.live="purchaseItems.{{ $index }}.item_id"
                                                 wire:change="updateItemUom({{ $index }}, $event.target.value)"

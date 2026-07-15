@@ -606,7 +606,7 @@
 
                             <div class="space-y-2">
                                  @foreach ($purchaseItems as $index => $item)
-                                     <div class="grid grid-cols-12 gap-2 items-start border p-2 rounded bg-gray-50" x-data="{ qty: parseFloat(@json($item['quantity'] ?? 0)) || 0, price: parseFloat(@json($item['unit_price'] ?? 0)) || 0 }">
+                                     <div class="grid grid-cols-12 gap-2 items-start border p-2 rounded bg-gray-50" wire:key="purchase-item-{{ $item['id'] ?? $index }}" x-data="{ qty: parseFloat(@json($item['quantity'] ?? 0)) || 0, price: parseFloat(@json($item['unit_price'] ?? 0)) || 0 }">
                                          <div class="col-span-3">
                                              <select wire:model="purchaseItems.{{ $index }}.item_id"
                                                  class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md">
