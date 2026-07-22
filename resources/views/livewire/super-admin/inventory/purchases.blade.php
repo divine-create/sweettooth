@@ -604,18 +604,19 @@
                                 </button>
                             </div>
 
+                            @php
+                                $itemOptions = collect($items)->map(fn($i) => ['label' => $i->name, 'value' => $i->id])->toArray();
+                            @endphp
                             <div class="space-y-2">
                                  @foreach ($purchaseItems as $index => $item)
                                      <div class="grid grid-cols-12 gap-2 items-start border p-2 rounded bg-gray-50" wire:key="purchase-item-{{ $item['id'] ?? $index }}" x-data="{ qty: parseFloat(@json($item['quantity'] ?? 0)) || 0, price: parseFloat(@json($item['unit_price'] ?? 0)) || 0 }">
                                          <div class="col-span-3">
-                                             <select wire:model="purchaseItems.{{ $index }}.item_id"
-                                                 class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md">
-                                                 <option value="">Select Item</option>
-                                                 @foreach ($items as $itemOption)
-                                                     <option value="{{ $itemOption->id }}">{{ $itemOption->name }}
-                                                     </option>
-                                                 @endforeach
-                                             </select>
+                                             <x-select.styled wire:model="purchaseItems.{{ $index }}.item_id"
+                                                 :options="$itemOptions"
+                                                 select="label:label|value:value"
+                                                 searchable
+                                                 placeholder="Select Item"
+                                                 class="w-full" />
                                              @error('purchaseItems.' . $index . '.item_id')
                                                  <span class="text-xs text-red-600">{{ $message }}</span>
                                              @enderror
