@@ -161,12 +161,9 @@ class Purchases extends Component
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'phone', 'email']);
 
-        $itemOptions = $items->map(fn($item) => ['label' => $item->name . ' (' . $item->uomSymbol . ')', 'value' => $item->id])->toArray();
-
         return view('livewire.branch-dashboard.inventory.purchases', [
             'purchases'      => $purchases,
             'items'          => $items,
-            'itemOptions'    => $itemOptions,
             'uoms'           => $uoms,
             'suppliersList'  => $suppliersList,
             'summary'        => $this->getPurchaseSummary(),
@@ -745,14 +742,6 @@ class Purchases extends Component
     /**
      * Update UOM when item is selected
      */
-    public function updatedPurchaseItems($value, $key)
-    {
-        if (str_ends_with($key, '.item_id')) {
-            $index = explode('.', $key)[0];
-            $this->updateItemUom($index, $value);
-        }
-    }
-
     public function updateItemUom($index, $itemId)
     {
         if (empty($itemId)) {

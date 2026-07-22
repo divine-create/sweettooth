@@ -476,12 +476,14 @@
                                     @forelse($purchaseItems as $index => $item)
                                     <tr class="border-t border-zinc-200 dark:border-zinc-700" wire:key="purchase-item-{{ $item['id'] ?? $index }}">
                                         <td class="px-4 py-2">
-                                            <x-select.styled wire:model.live="purchaseItems.{{ $index }}.item_id"
-                                                :options="$itemOptions"
-                                                select="label:label|value:value"
-                                                searchable
-                                                placeholder="Select Item"
-                                                class="w-full min-w-[26rem]" />
+                                            <select wire:model.live="purchaseItems.{{ $index }}.item_id"
+                                                wire:change="updateItemUom({{ $index }}, $event.target.value)"
+                                                class="w-full min-w-[26rem] px-2 py-1 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500">
+                                                <option value="">Select Item</option>
+                                                 @foreach($items as $availableItem)
+                                                     <option value="{{ $availableItem->id }}">{{ $availableItem->name }} ({{ $availableItem->uomSymbol }})</option>
+                                                 @endforeach
+                                            </select>
                                             @error('purchaseItems.'.$index.'.item_id')
                                                 <span class="text-red-500 text-xs">{{ $message }}</span>
                                             @enderror
