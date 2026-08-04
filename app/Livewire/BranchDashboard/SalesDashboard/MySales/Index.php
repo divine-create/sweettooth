@@ -311,7 +311,6 @@ class Index extends BaseComponent
 
             return $products->concat($items)
                 ->sortByDesc('total_revenue')
-                ->take(10)
                 ->values();
         });
     }
