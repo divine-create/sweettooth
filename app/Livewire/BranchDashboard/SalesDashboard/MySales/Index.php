@@ -195,7 +195,7 @@ class Index extends BaseComponent
 
     public function printSummary()
     {
-        $overview = $this->overview;
+        $overview = $this->salesOverview;
         
         $employeeName = auth()->user()->name ?? 'Cashier';
         $period = strtoupper(str_replace('_', ' ', $this->selectedPeriod));
