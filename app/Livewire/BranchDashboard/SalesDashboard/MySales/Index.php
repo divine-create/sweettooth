@@ -209,6 +209,27 @@ class Index extends BaseComponent
         $totalOrders = number_format($overview['total_orders'] ?? 0);
         $avgOrderValue = $symbol . number_format($overview['avg_order_value'] ?? 0, 2);
         
+        $productsHtml = "";
+        $products = $this->topSellingProducts;
+        
+        if ($products && count($products) > 0) {
+            $productsHtml .= "<h3 style='margin: 15px 0 5px 0; font-size: 15px; border-bottom: 1px dashed #000; padding-bottom: 5px;'>ITEMS SOLD</h3>";
+            $productsHtml .= "<table style='width: 100%; text-align: left; border-collapse: collapse; font-size: 13px; margin-bottom: 15px;'>";
+            $productsHtml .= "<tr><th style='padding: 3px 0;'>Item</th><th style='text-align: right; padding: 3px 0;'>Qty</th><th style='text-align: right; padding: 3px 0;'>Total</th></tr>";
+            
+            foreach ($products as $product) {
+                $name = $product->product->name ?? $product->item->name ?? 'Unknown';
+                $qty = number_format($product->total_quantity);
+                $rev = number_format($product->total_revenue, 2);
+                $productsHtml .= "<tr>
+                    <td style='padding: 3px 0;'>{$name}</td>
+                    <td style='text-align: right; padding: 3px 0;'>{$qty}</td>
+                    <td style='text-align: right; padding: 3px 0;'>{$symbol}{$rev}</td>
+                </tr>";
+            }
+            $productsHtml .= "</table>";
+        }
+
         $html = "
             <div style='font-family: monospace; font-size: 14px; text-align: center; max-width: 300px; margin: 0 auto; color: #000; background: #fff;'>
                 <h2 style='margin-bottom: 5px; font-size: 18px;'>MY SALES SUMMARY</h2>
@@ -216,6 +237,8 @@ class Index extends BaseComponent
                 <p style='margin: 0;'><strong>Period:</strong> {$period}</p>
                 <p style='margin: 0;'><strong>From:</strong> {$dateFrom}</p>
                 <p style='margin: 0 0 15px 0;'><strong>To:</strong> {$dateTo}</p>
+                
+                {$productsHtml}
                 
                 <table style='width: 100%; text-align: left; border-collapse: collapse; font-size: 14px;'>
                     <tr style='border-top: 1px dashed #000; border-bottom: 1px dashed #000;'>
