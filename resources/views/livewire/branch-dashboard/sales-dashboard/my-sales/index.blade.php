@@ -11,6 +11,9 @@
                     <button wire:click="refreshData" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                         <i class="fas fa-sync-alt mr-2"></i>Refresh
                     </button>
+                    <button wire:click="printSummary" class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition">
+                        <i class="fas fa-print mr-2"></i>Print Summary
+                    </button>
                 </div>
             </div>
 

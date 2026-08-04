@@ -193,6 +193,52 @@ class Index extends BaseComponent
         }
     }
 
+    public function printSummary()
+    {
+        $overview = $this->overview;
+        
+        $employeeName = auth()->user()->name ?? 'Cashier';
+        $period = strtoupper(str_replace('_', ' ', $this->selectedPeriod));
+        $dateFrom = \Carbon\Carbon::parse($this->dateFrom)->format('d M Y h:i A');
+        $dateTo = \Carbon\Carbon::parse($this->dateTo)->format('d M Y h:i A');
+        
+        $currency = \App\Helpers\Settings::currencyLocalization('primary_currency', 'NGN');
+        $symbol = (new \App\Services\CurrencyFormattingService())->getSymbol($currency);
+        
+        $totalSales = $symbol . number_format($overview['total_sales'] ?? 0, 2);
+        $totalOrders = number_format($overview['total_orders'] ?? 0);
+        $avgOrderValue = $symbol . number_format($overview['avg_order_value'] ?? 0, 2);
+        
+        $html = "
+            <div style='font-family: monospace; font-size: 14px; text-align: center; max-width: 300px; margin: 0 auto; color: #000; background: #fff;'>
+                <h2 style='margin-bottom: 5px; font-size: 18px;'>MY SALES SUMMARY</h2>
+                <p style='margin: 0;'><strong>Cashier:</strong> {$employeeName}</p>
+                <p style='margin: 0;'><strong>Period:</strong> {$period}</p>
+                <p style='margin: 0;'><strong>From:</strong> {$dateFrom}</p>
+                <p style='margin: 0 0 15px 0;'><strong>To:</strong> {$dateTo}</p>
+                
+                <table style='width: 100%; text-align: left; border-collapse: collapse; font-size: 14px;'>
+                    <tr style='border-top: 1px dashed #000; border-bottom: 1px dashed #000;'>
+                        <th style='padding: 8px 0; font-weight: normal;'>Total Orders:</th>
+                        <td style='text-align: right; padding: 8px 0; font-weight: bold;'>{$totalOrders}</td>
+                    </tr>
+                    <tr style='border-bottom: 1px dashed #000;'>
+                        <th style='padding: 8px 0; font-weight: normal;'>Total Sales:</th>
+                        <td style='text-align: right; padding: 8px 0; font-weight: bold;'>{$totalSales}</td>
+                    </tr>
+                    <tr style='border-bottom: 1px dashed #000;'>
+                        <th style='padding: 8px 0; font-weight: normal;'>Avg Order:</th>
+                        <td style='text-align: right; padding: 8px 0; font-weight: bold;'>{$avgOrderValue}</td>
+                    </tr>
+                </table>
+                <p style='margin-top: 20px; font-size: 12px;'>Printed on " . now()->format('d M Y h:i A') . "</p>
+                <p style='margin-top: 5px; font-size: 12px; font-weight: bold;'>End of Report</p>
+            </div>
+        ";
+        
+        $this->dispatch('print-receipt', html: $html);
+    }
+
     #[Computed]
     public function salesOverview()
     {
