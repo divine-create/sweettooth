@@ -303,8 +303,8 @@ class Index extends BaseComponent
 
             $updateData = [
                 'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
-                'opening_quantity' => $entry['actual_opening'],
-                'addition_quantity' => $entry['today_additions'] ?? 0,
+                'opening_quantity' => (float)($entry['actual_opening'] ?? 0),
+                'addition_quantity' => (float)($entry['today_additions'] ?? 0),
                 'production_date' => ! empty($entry['production_date']) ? Carbon::parse($entry['production_date']) : null,
                 'expiry_date' => ! empty($entry['expiry_date']) ? Carbon::parse($entry['expiry_date']) : null,
                 'notes' => $entry['notes'] ?? '',
@@ -356,7 +356,6 @@ class Index extends BaseComponent
                 $createData = array_merge($updateData, [
                     'sales_shift_id' => null,
                     'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
-                    'branch_id' => $this->b_id,
                     'department_id' => $deptId,
                     'product_id' => $entry['product_id'],
                     'stock_date' => $stockDate,
