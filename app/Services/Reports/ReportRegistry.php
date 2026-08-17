@@ -407,6 +407,8 @@ class ReportRegistry
             'Production Manager'  => ['production'],
             'Sales Manager'       => ['sales'],
             'Inventory Manager'   => ['inventory'],
+            'Inventory Team Lead' => ['inventory'],
+            'Inventory Staff'     => ['inventory'],
             'Accounting Manager'  => ['accounting'],
             'Operations Manager'  => ['production', 'sales'],
         ];

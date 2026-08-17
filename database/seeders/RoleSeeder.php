@@ -298,7 +298,7 @@ class RoleSeeder extends Seeder
             'level' => 2,
         ]);
         $inventoryTeamLead->syncPermissions([
-            'view-inventory', 'manage-inventory', 'view-inventory-reports', 'manage-employees',
+            'view-inventory', 'manage-inventory', 'view-inventory-reports', 'manage-employees', 'view-reports',
         ]);
 
         $procurementOfficer = Role::create([
@@ -387,7 +387,7 @@ class RoleSeeder extends Seeder
             'level' => 1,
         ]);
         $inventoryStaff->syncPermissions([
-            'view-inventory',
+            'view-inventory', 'view-reports',
         ]);
 
         $kitchenAssistant = Role::create([
