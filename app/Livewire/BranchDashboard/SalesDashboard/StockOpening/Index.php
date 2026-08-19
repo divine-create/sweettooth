@@ -183,11 +183,19 @@ class Index extends BaseComponent
         }
 
         // Get shifts from last 30 days for the sales department
-        $this->availableShifts = Shift::query()
+        $query = Shift::query()
             ->where('branch_id', $this->getBranchId())
             ->whereIn('department_id', $salesDepartmentIds)
-            ->where('shift_date', '>=', Carbon::today()->subDays(30))
-            ->orderBy('shift_date', 'desc')
+            ->where('shift_date', '>=', Carbon::today()->subDays(30));
+
+        if (!is_super_admin() && !can_access_all_branches()) {
+            $query->where('employee_id', auth()->id());
+        } else {
+            // For admins, eager load the employee to show their name in the dropdown
+            $query->with('employee:id,name');
+        }
+
+        $this->availableShifts = $query->orderBy('shift_date', 'desc')
             ->orderBy('shift_type', 'desc')
             ->get();
     }

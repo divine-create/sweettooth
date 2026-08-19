@@ -109,7 +109,8 @@
                 <option value="">-- Current Shift --</option>
                 @foreach($availableShifts as $shift)
                     <option value="{{ $shift->id }}">
-                        {{ $shift->shift_date->format('M d, Y') }} - {{ ucfirst($shift->shift_type) }} Shift
+                        {{ $shift->shift_date->format('M d, Y') }} - {{ ucfirst($shift->shift_type) }} Shift 
+                        @if($shift->relationLoaded('employee') && $shift->employee) ({{ $shift->employee->name }}) @endif
                         @if($shift->id == $currentShiftId) (Current) @endif
                     </option>
                 @endforeach
