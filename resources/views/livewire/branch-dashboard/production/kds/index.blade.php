@@ -11,7 +11,7 @@
 
     @if($items->isEmpty())
         <div class="flex flex-col items-center justify-center h-64 bg-white dark:bg-zinc-800 rounded-xl border border-dashed border-gray-300 dark:border-zinc-700">
-            <x-heroicon-o-check-circle class="w-16 h-16 text-gray-400 mb-4" />
+            <x-icon name="check-circle" class="w-16 h-16 text-gray-400 mb-4" />
             <h3 class="text-xl font-medium text-gray-900 dark:text-gray-100">All Caught Up!</h3>
             <p class="text-gray-500 mt-2">No pending production requests at the moment.</p>
         </div>
@@ -65,7 +65,7 @@
                                     class="p-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1"
                                     title="Mark as Approved/Started"
                                 >
-                                    <x-heroicon-o-check class="w-5 h-5" />
+                                    <x-icon name="check" class="w-5 h-5" />
                                 </button>
                             </div>
                         @endforeach
