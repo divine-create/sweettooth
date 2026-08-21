@@ -1,4 +1,4 @@
-<div wire:poll.5s class="p-2 md:p-4">
+<div wire:poll.5s class="p-2 md:p-4 bg-gray-50 dark:bg-zinc-950 min-h-screen overflow-y-auto" id="kds-container" x-data="{ isFullscreen: false }" @fullscreenchange.window="isFullscreen = !!document.fullscreenElement">
     <!-- Header -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800">
         <div>
@@ -8,11 +8,30 @@
             </h2>
             <p class="text-sm text-gray-500 dark:text-zinc-400 mt-1">Live Production Orders</p>
         </div>
-        <div class="flex items-center space-x-3 mt-4 md:mt-0 bg-gray-50 dark:bg-zinc-800 px-4 py-2 rounded-lg border border-gray-100 dark:border-zinc-700">
-            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30">
-                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+        <div class="flex items-center space-x-3 mt-4 md:mt-0">
+            <div class="flex items-center space-x-3 bg-gray-50 dark:bg-zinc-800 px-4 py-2 rounded-lg border border-gray-100 dark:border-zinc-700">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30">
+                    <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+                <span class="text-sm font-medium text-gray-700 dark:text-zinc-300">Auto-sync Active</span>
             </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-zinc-300">Auto-sync Active</span>
+            
+            <button 
+                @click="
+                    if (!document.fullscreenElement) {
+                        document.getElementById('kds-container').requestFullscreen().catch(err => {
+                            alert('Error attempting to enable fullscreen mode.');
+                        });
+                    } else {
+                        document.exitFullscreen();
+                    }
+                "
+                class="p-2.5 bg-white dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-zinc-600 shadow-sm transition-colors focus:outline-none"
+                title="Toggle Fullscreen"
+            >
+                <x-icon name="arrows-pointing-out" x-show="!isFullscreen" class="w-6 h-6" />
+                <x-icon name="arrows-pointing-in" x-show="isFullscreen" x-cloak class="w-6 h-6" />
+            </button>
         </div>
     </div>
 
