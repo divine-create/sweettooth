@@ -268,10 +268,9 @@ class Purchases extends Component
             }
 
             $branchId = $this->getBranchId();
-            $branch = is_super_admin() ? Branch::where('id', $branchId)->First() :
-                Auth::guard('web')->user()->branch;
+            $branch = \App\Models\Branch::find($branchId);
 
-            $purchaseNumber = Purchase::generatePurchaseNumber($branch->code);
+            $purchaseNumber = Purchase::generatePurchaseNumber($branch ? $branch->code : 'UNK');
 
             $totalCost = 0;
 
@@ -413,7 +412,7 @@ class Purchases extends Component
             $this->toast()->success('Purchase created successfully.')->send();
             $this->closeModal();
             $this->resetFields();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             $this->toast()->error('Error creating purchase: '.$e->getMessage())->send();
         }
@@ -466,9 +465,10 @@ class Purchases extends Component
             }
 
             $branchId = $this->getBranchId();
+            $branch = \App\Models\Branch::find($branchId);
 
             $purchaseNumber = Purchase::generatePurchaseNumber(
-                Auth::guard('web')->user()->branch->code
+                $branch ? $branch->code : 'UNK'
             );
 
             $totalFobFc = 0;
@@ -534,7 +534,7 @@ class Purchases extends Component
             $this->requestNotes = '';
             $this->showModal = false;
             $this->showRequestModal = true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             $this->toast()->error('Error saving purchase: '.$e->getMessage())->send();
         }
