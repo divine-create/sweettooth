@@ -31,8 +31,8 @@
                     $request = $groupedItems->first()->request; 
                     $isUrgent = $request->priority === 'urgent' || $request->priority === 'high';
                     
-                    // Calculate wait time in minutes
-                    $waitTime = $request->created_at->diffInMinutes(now());
+                    // Calculate wait time in minutes and ensure it's an integer
+                    $waitTime = (int) $request->created_at->diffInMinutes(now());
                     $isWarning = $waitTime > 15 && !$isUrgent;
                     $isDanger = $waitTime > 30 || $isUrgent;
                     
