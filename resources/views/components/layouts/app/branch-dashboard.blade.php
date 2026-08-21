@@ -738,10 +738,22 @@
                                 'dept_slug' => $dept->slug,
                                 'page' => 'Sales Requests Review' . '_' . $dept->slug
                             ])"
-                            :current="request()->routeIs('branch-dashboard.production.sales-requests.*')
+                            :current="request()->routeIs('branch-dashboard.production.sales-requests.workflow')
                                 && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)"
                             wire:navigate>
                             {{ __('Sales Requests Review') }}
+                        </flux:navlist.item>
+
+                        <flux:navlist.item icon="computer-desktop"
+                            :href="branch_route('branch-dashboard.production.sales-requests.kds', [
+                                'deptSlug' => $dept->slug,
+                                'dept_slug' => $dept->slug,
+                                'page' => 'Kitchen Display (KDS)' . '_' . $dept->slug
+                            ])"
+                            :current="request()->routeIs('branch-dashboard.production.sales-requests.kds')
+                                && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)"
+                            wire:navigate>
+                            {{ __('Kitchen Display (KDS)') }}
                         </flux:navlist.item>
 
                         <flux:navlist.item icon="document-chart-bar"

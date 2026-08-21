@@ -15,6 +15,7 @@ Route::prefix('production')->name('production.')->middleware(['department.scope'
         // Sales Request Review (dedicated production page)
         Route::prefix('sales-requests')->name('sales-requests.')->group(function () {
             Route::get('/workflow/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Request\SalesRequests::class)->name('workflow');
+            Route::get('/kds/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Kds\Index::class)->name('kds');
             Route::get('/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Request\SalesRequests::class)->name('index');
         });
 
