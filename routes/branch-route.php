@@ -258,6 +258,8 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             Route::prefix('cost-accounting')->name('cost-accounting.')->group(function () {
                 Route::get('/dashboard', \App\Livewire\BranchDashboard\Accounting\CostAccounting\Dashboard::class)->name('dashboard');
                 Route::get('/sales-analysis', \App\Livewire\BranchDashboard\Accounting\CostAccounting\SalesAnalysis::class)->name('sales-analysis');
+                Route::get('/production-analysis', \App\Livewire\BranchDashboard\Accounting\CostAccounting\ProductionAnalysis::class)->name('production-analysis');
+                Route::get('/inventory-analysis', \App\Livewire\BranchDashboard\Accounting\CostAccounting\InventoryAnalysis::class)->name('inventory-analysis');
                 Route::get('/wastage-analysis', \App\Livewire\BranchDashboard\Accounting\CostAccounting\WastageAnalysis::class)->name('wastage-analysis');
             });
 

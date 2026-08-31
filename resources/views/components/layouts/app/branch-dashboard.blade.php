@@ -357,6 +357,14 @@
                         :current="request()->routeIs('branch-dashboard.accounting.cost-accounting.sales-analysis')" wire:navigate>
                         {{ __('Sales Analysis') }}
                     </flux:navlist.item>
+                    <flux:navlist.item icon="cog" :href="branch_route('branch-dashboard.accounting.cost-accounting.production-analysis')"
+                        :current="request()->routeIs('branch-dashboard.accounting.cost-accounting.production-analysis')" wire:navigate>
+                        {{ __('Production Analysis') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="cube" :href="branch_route('branch-dashboard.accounting.cost-accounting.inventory-analysis')"
+                        :current="request()->routeIs('branch-dashboard.accounting.cost-accounting.inventory-analysis')" wire:navigate>
+                        {{ __('Inventory Analysis') }}
+                    </flux:navlist.item>
                     <flux:navlist.item icon="trash" :href="branch_route('branch-dashboard.accounting.cost-accounting.wastage-analysis')"
                         :current="request()->routeIs('branch-dashboard.accounting.cost-accounting.wastage-analysis')" wire:navigate>
                         {{ __('Wastage & Spoilage') }}
