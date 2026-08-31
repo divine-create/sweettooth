@@ -346,11 +346,22 @@
                     {{ __('Dashboard') }}
                 </flux:navlist.item>
 
-                @if ($currentUser->hasAnyRole(['Super Admin', 'MD', 'Managing Director', 'Cost Accountant']) || $sidebarService::isSuperAdmin())
-                <flux:navlist.item icon="calculator" :href="branch_route('branch-dashboard.accounting.cost-accountant-dashboard')"
-                    :current="request()->routeIs('branch-dashboard.accounting.cost-accountant-dashboard')" wire:navigate>
-                    {{ __('Cost Accounting') }}
-                </flux:navlist.item>
+                @if ($currentUser->hasAnyRole(['Super Admin', 'MD', 'Managing Director', 'Cost Accountant', 'Accountant', 'Accounting Manager']) || $sidebarService::isSuperAdmin())
+                <flux:navlist.group :heading="__('Cost Accounting')" icon="calculator" expandable
+                    :expanded="request()->routeIs('branch-dashboard.accounting.cost-accounting.*')" class="grid">
+                    <flux:navlist.item icon="chart-pie" :href="branch_route('branch-dashboard.accounting.cost-accounting.dashboard')"
+                        :current="request()->routeIs('branch-dashboard.accounting.cost-accounting.dashboard')" wire:navigate>
+                        {{ __('Overview') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="presentation-chart-line" :href="branch_route('branch-dashboard.accounting.cost-accounting.sales-analysis')"
+                        :current="request()->routeIs('branch-dashboard.accounting.cost-accounting.sales-analysis')" wire:navigate>
+                        {{ __('Sales Analysis') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="trash" :href="branch_route('branch-dashboard.accounting.cost-accounting.wastage-analysis')"
+                        :current="request()->routeIs('branch-dashboard.accounting.cost-accounting.wastage-analysis')" wire:navigate>
+                        {{ __('Wastage & Spoilage') }}
+                    </flux:navlist.item>
+                </flux:navlist.group>
                 @endif
 
                 <flux:navlist.item icon="eye" :href="branch_route('branch-dashboard.accounting.overview')"

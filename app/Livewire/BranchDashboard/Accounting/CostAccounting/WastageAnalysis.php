@@ -1,18 +1,16 @@
 <?php
 
-namespace App\Livewire\BranchDashboard\Accounting;
+namespace App\Livewire\BranchDashboard\Accounting\CostAccounting;
 
 use App\Models\Branch;
-use App\Models\SaleItem;
 use App\Models\StockMovement;
 use App\Models\ProductionRecord;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 
 #[Layout('components.layouts.app.branch-dashboard')]
-class CostAccountantDashboard extends Component
+class WastageAnalysis extends Component
 {
     public $dateFilter = 'monthly'; // daily, weekly, monthly
     public $selectedBranch = 'all';
@@ -28,29 +26,19 @@ class CostAccountantDashboard extends Component
 
         $branches = Branch::all();
 
-        // 1. Top Selling Items & Profitability
-        $salesQuery = SaleItem::with('product')
-            ->select('product_id', 
-                DB::raw('SUM(quantity) as total_quantity'), 
-                DB::raw('SUM(subtotal) as total_revenue'), 
-                DB::raw('SUM(line_cost) as total_cogs')
-            )
-            ->whereHas('sale', function($q) use ($startDate) {
-                $q->where('created_at', '>=', $startDate);
-                if ($this->selectedBranch !== 'all') {
-                    $q->where('branch_id', $this->selectedBranch);
-                }
-            })
-            ->groupBy('product_id')
-            ->orderBy('total_quantity', 'desc')
-            ->take(10)
-            ->get();
-
-        // 2. Production Wastage
+        // 2. Production Wastage & Rejections
         $productionQuery = ProductionRecord::with('recipe.product')
             ->where('created_at', '>=', $startDate)
             ->where('quantity_rejected', '>', 0);
             
+        if ($this->selectedBranch !== 'all') {
+            // Check if ProductionRecord has branch_id or relates to a branch.
+            // Assuming ProductionRecord has branch_id or we filter out at display if needed.
+            if (\Illuminate\Support\Facades\Schema::hasColumn('production_records', 'branch_id')) {
+                $productionQuery->where('branch_id', $this->selectedBranch);
+            }
+        }
+
         $productionWastage = $productionQuery->get()->map(function($record) {
             return [
                 'item' => optional(optional($record->recipe)->product)->name ?? 'Unknown',
@@ -61,29 +49,30 @@ class CostAccountantDashboard extends Component
             ];
         });
 
-        // 3. Inventory Shortages
+        // 3. Inventory Shortages & Damages
         $stockQuery = StockMovement::with('stock.item')
             ->where('movement_date', '>=', $startDate)
             ->where('type', 'out')
-            ->whereIn('adjustment_reason', ['wastage', 'shortage', 'spoilage', 'expired', 'loss']);
+            ->whereIn('movement_type', ['adjustment_out', 'spoilage', 'damage', 'expired']);
             
         if ($this->selectedBranch !== 'all') {
-            $stockQuery->where('branch_id', $this->selectedBranch);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'branch_id')) {
+                $stockQuery->where('branch_id', $this->selectedBranch);
+            }
         }
-            
+
         $inventoryShortages = $stockQuery->get()->map(function($movement) {
             return [
                 'item' => optional(optional($movement->stock)->item)->name ?? 'Unknown',
                 'quantity' => abs($movement->quantity),
-                'reason' => $movement->adjustment_reason,
+                'reason' => $movement->adjustment_reason ?? $movement->movement_type,
                 'cost' => abs($movement->cost_impact),
                 'date' => Carbon::parse($movement->movement_date)->format('Y-m-d')
             ];
         });
 
-        return view('livewire.branch-dashboard.accounting.cost-accountant-dashboard', [
+        return view('livewire.branch-dashboard.accounting.cost-accounting.wastage-analysis', [
             'branches' => $branches,
-            'topSales' => $salesQuery,
             'productionWastage' => $productionWastage,
             'inventoryShortages' => $inventoryShortages,
         ]);

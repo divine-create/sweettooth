@@ -254,8 +254,12 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             // Accounting Home
             Route::get('/dashboard', \App\Livewire\BranchDashboard\Accounting\Simple\Home::class)->name('dashboard');
             
-            // Cost Accountant
-            Route::get('/cost-accountant-dashboard', \App\Livewire\BranchDashboard\Accounting\CostAccountantDashboard::class)->name('cost-accountant-dashboard');
+            // Cost Accounting Group
+            Route::prefix('cost-accounting')->name('cost-accounting.')->group(function () {
+                Route::get('/dashboard', \App\Livewire\BranchDashboard\Accounting\CostAccounting\Dashboard::class)->name('dashboard');
+                Route::get('/sales-analysis', \App\Livewire\BranchDashboard\Accounting\CostAccounting\SalesAnalysis::class)->name('sales-analysis');
+                Route::get('/wastage-analysis', \App\Livewire\BranchDashboard\Accounting\CostAccounting\WastageAnalysis::class)->name('wastage-analysis');
+            });
 
             // Accounting Overview (now home)
             Route::get('/overview', \App\Livewire\BranchDashboard\Accounting\Simple\Home::class)->name('overview');
