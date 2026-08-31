@@ -52,8 +52,10 @@ class WastageAnalysis extends Component
         // 3. Inventory Shortages & Damages
         $stockQuery = StockMovement::with('stock.item')
             ->where('movement_date', '>=', $startDate)
-            ->where('type', 'out')
-            ->whereIn('movement_type', ['adjustment_out', 'spoilage', 'damage', 'expired']);
+            ->where(function($q) {
+                $q->whereIn('type', ['adjustment', 'damaged'])
+                  ->orWhereNotNull('adjustment_reason');
+            });
             
         if ($this->selectedBranch !== 'all') {
             if (\Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'branch_id')) {
@@ -65,7 +67,7 @@ class WastageAnalysis extends Component
             return [
                 'item' => optional(optional($movement->stock)->item)->name ?? 'Unknown',
                 'quantity' => abs($movement->quantity),
-                'reason' => $movement->adjustment_reason ?? $movement->movement_type,
+                'reason' => $movement->adjustment_reason ?? $movement->type,
                 'cost' => abs($movement->cost_impact),
                 'date' => Carbon::parse($movement->movement_date)->format('Y-m-d')
             ];

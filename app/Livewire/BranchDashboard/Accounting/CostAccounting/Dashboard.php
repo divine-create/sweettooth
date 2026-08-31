@@ -55,8 +55,10 @@ class Dashboard extends Component
             });
 
         $inventoryDamagesTotal = StockMovement::where('movement_date', '>=', $startDate)
-            ->where('type', 'out')
-            ->whereIn('movement_type', ['adjustment_out', 'spoilage', 'damage', 'expired'])
+            ->where(function($q) {
+                $q->whereIn('type', ['adjustment', 'damaged'])
+                  ->orWhereNotNull('adjustment_reason');
+            })
             ->when($this->selectedBranch !== 'all' && \Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'branch_id'), function ($q) {
                 $q->where('branch_id', $this->selectedBranch);
             })
