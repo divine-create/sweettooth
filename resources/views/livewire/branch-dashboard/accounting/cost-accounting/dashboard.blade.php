@@ -28,7 +28,7 @@
     </div>
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
             <p class="text-sm font-medium text-gray-500">Total Revenue (Sales)</p>
             <p class="mt-2 text-3xl font-bold text-gray-900">₦{{ number_format($totalRevenue, 2) }}</p>
@@ -47,9 +47,16 @@
         </div>
 
         <div class="bg-white p-6 rounded-lg shadow border border-red-200 bg-red-50">
-            <p class="text-sm font-medium text-red-600">Total Material Lost (Wastage)</p>
+            <p class="text-sm font-medium text-red-600">Production Wastage</p>
             <p class="mt-2 text-3xl font-bold text-red-700">
-                ₦{{ number_format($productionWastageTotal + $inventoryDamagesTotal, 2) }}
+                ₦{{ number_format($productionWastageTotal, 2) }}
+            </p>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow border border-gray-200 bg-gray-50">
+            <p class="text-sm font-medium text-gray-600">Inventory Adjustments</p>
+            <p class="mt-2 text-3xl font-bold text-gray-800">
+                ₦{{ number_format($inventoryDamagesTotal, 2) }}
             </p>
         </div>
     </div>

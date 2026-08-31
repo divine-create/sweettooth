@@ -1,8 +1,8 @@
 <div class="p-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Wastage & Spoilage Analysis</h1>
-            <p class="text-gray-500 mt-1">Monitor cost impact of production rejections and inventory losses.</p>
+            <h1 class="text-2xl font-semibold text-gray-900">Wastage & Adjustments Analysis</h1>
+            <p class="text-gray-500 mt-1">Monitor cost impact of production rejections and inventory adjustments.</p>
         </div>
 
         <div class="flex flex-wrap gap-4 mt-4 sm:mt-0">
@@ -67,9 +67,9 @@
         <!-- Inventory Damages & Shortages -->
         <div class="bg-white rounded-lg shadow border border-gray-200">
             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 class="text-lg font-medium text-gray-800">Inventory Damages & Shortages</h2>
-                <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-sm font-medium">
-                    ₦{{ number_format($inventoryShortages->sum('cost'), 2) }} Loss
+                <h2 class="text-lg font-medium text-gray-800">Inventory Adjustments</h2>
+                <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium">
+                    ₦{{ number_format($inventoryShortages->sum('cost'), 2) }}
                 </span>
             </div>
             <div class="overflow-x-auto max-h-96">
@@ -77,7 +77,7 @@
                     <thead class="sticky top-0 bg-gray-50">
                         <tr class="border-b border-gray-200 text-sm text-gray-600">
                             <th class="px-6 py-3 font-medium">Inventory Item</th>
-                            <th class="px-6 py-3 font-medium text-center">Qty Lost</th>
+                            <th class="px-6 py-3 font-medium text-center">Qty Adjusted</th>
                             <th class="px-6 py-3 font-medium">Reason</th>
                             <th class="px-6 py-3 font-medium text-right">Cost Impact</th>
                         </tr>
@@ -88,11 +88,11 @@
                                 <td class="px-6 py-4 font-medium">{{ $shortage['item'] }}</td>
                                 <td class="px-6 py-4 text-center">{{ number_format($shortage['quantity']) }}</td>
                                 <td class="px-6 py-4 text-gray-500">{{ $shortage['reason'] }}</td>
-                                <td class="px-6 py-4 text-right text-red-600 font-medium">₦{{ number_format($shortage['cost'], 2) }}</td>
+                                <td class="px-6 py-4 text-right text-gray-800 font-medium">₦{{ number_format($shortage['cost'], 2) }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-6 py-8 text-center text-gray-500">No inventory shortages recorded.</td>
+                                <td colspan="4" class="px-6 py-8 text-center text-gray-500">No inventory adjustments recorded.</td>
                             </tr>
                         @endforelse
                     </tbody>
