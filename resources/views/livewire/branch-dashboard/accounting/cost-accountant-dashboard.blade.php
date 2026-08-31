@@ -6,22 +6,24 @@
         </div>
 
         <div class="flex gap-4">
-            <x-select.styled wire:model.live="selectedBranch" label="Unit / Branch">
-                <x-slot:options>
+            <div class="w-full sm:w-auto">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Unit / Branch</label>
+                <select wire:model.live="selectedBranch" class="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500">
                     <option value="all">All Units (Global)</option>
                     @foreach($branches as $branch)
                         <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                     @endforeach
-                </x-slot:options>
-            </x-select.styled>
+                </select>
+            </div>
 
-            <x-select.styled wire:model.live="dateFilter" label="Timeframe">
-                <x-slot:options>
+            <div class="w-full sm:w-auto">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Timeframe</label>
+                <select wire:model.live="dateFilter" class="w-full sm:w-48 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500">
                     <option value="daily">Today (Daily)</option>
                     <option value="weekly">This Week</option>
                     <option value="monthly">This Month</option>
-                </x-slot:options>
-            </x-select.styled>
+                </select>
+            </div>
         </div>
     </div>
 
