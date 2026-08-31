@@ -346,6 +346,13 @@
                     {{ __('Dashboard') }}
                 </flux:navlist.item>
 
+                @if ($currentUser->hasAnyRole(['Super Admin', 'MD', 'Managing Director', 'Cost Accountant']) || $sidebarService::isSuperAdmin())
+                <flux:navlist.item icon="calculator" :href="branch_route('branch-dashboard.accounting.cost-accountant-dashboard')"
+                    :current="request()->routeIs('branch-dashboard.accounting.cost-accountant-dashboard')" wire:navigate>
+                    {{ __('Cost Accounting') }}
+                </flux:navlist.item>
+                @endif
+
                 <flux:navlist.item icon="eye" :href="branch_route('branch-dashboard.accounting.overview')"
                     :current="request()->routeIs('branch-dashboard.accounting.overview')" wire:navigate>
                     {{ __('Overview') }}

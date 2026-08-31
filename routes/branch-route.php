@@ -253,6 +253,9 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
         Route::prefix('accounting')->name('accounting.')->middleware('role_or_permission:view-accounting|view-financial-reports|manage-accounting|Accounting Manager|Accounting Staff|MD')->group(function () {
             // Accounting Home
             Route::get('/dashboard', \App\Livewire\BranchDashboard\Accounting\Simple\Home::class)->name('dashboard');
+            
+            // Cost Accountant
+            Route::get('/cost-accountant-dashboard', \App\Livewire\BranchDashboard\Accounting\CostAccountantDashboard::class)->name('cost-accountant-dashboard');
 
             // Accounting Overview (now home)
             Route::get('/overview', \App\Livewire\BranchDashboard\Accounting\Simple\Home::class)->name('overview');
