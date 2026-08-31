@@ -27,8 +27,9 @@
         </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <!-- Financial Summary Cards -->
+    <h2 class="text-lg font-medium text-gray-800 mb-3">Financial Performance</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
             <p class="text-sm font-medium text-gray-500">Total Revenue (Sales)</p>
             <p class="mt-2 text-3xl font-bold text-gray-900">₦{{ number_format($totalRevenue, 2) }}</p>
@@ -45,7 +46,11 @@
                 ₦{{ number_format($grossProfit, 2) }}
             </p>
         </div>
+    </div>
 
+    <!-- Wastage & Adjustments Cards -->
+    <h2 class="text-lg font-medium text-gray-800 mb-3">Material Tracking</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div class="bg-white p-6 rounded-lg shadow border border-red-200 bg-red-50">
             <p class="text-sm font-medium text-red-600">Production Wastage</p>
             <p class="mt-2 text-3xl font-bold text-red-700">
