@@ -346,7 +346,7 @@
                     {{ __('Dashboard') }}
                 </flux:navlist.item>
 
-                @if ($currentUser->hasAnyRole(['Super Admin', 'MD', 'Managing Director', 'Cost Accountant', 'Accountant', 'Accounting Manager']) || $sidebarService::isSuperAdmin())
+                @if ($currentUser->hasAnyRole(['Super Admin', 'MD', 'Managing Director', 'Cost Accountant']) || $sidebarService::isSuperAdmin())
                 <flux:navlist.group :heading="__('Cost Accounting')" icon="calculator" expandable
                     :expanded="request()->routeIs('branch-dashboard.accounting.cost-accounting.*')" class="grid">
                     <flux:navlist.item icon="chart-pie" :href="branch_route('branch-dashboard.accounting.cost-accounting.dashboard')"
