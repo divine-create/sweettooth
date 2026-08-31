@@ -2,7 +2,7 @@
 
 namespace App\Livewire\BranchDashboard\Accounting\CostAccounting;
 
-use App\Models\Branch;
+use App\Models\Department;
 use App\Models\SaleItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +13,7 @@ use Livewire\Attributes\Layout;
 class SalesAnalysis extends Component
 {
     public $dateFilter = 'monthly'; // daily, weekly, monthly
-    public $selectedBranch = 'all';
+    public $selectedDepartment = 'all';
     public $limit = 10; // Top 10, 20, 30
 
     public function render()
@@ -25,7 +25,8 @@ class SalesAnalysis extends Component
             default => Carbon::now()->startOfMonth(),
         };
 
-        $branches = Branch::all();
+        // Fetch departments (units)
+        $departments = Department::all();
 
         $salesQuery = SaleItem::with('product')
             ->select('product_id', 
@@ -35,8 +36,8 @@ class SalesAnalysis extends Component
             )
             ->whereHas('sale', function($q) use ($startDate) {
                 $q->where('created_at', '>=', $startDate);
-                if ($this->selectedBranch !== 'all') {
-                    $q->where('branch_id', $this->selectedBranch);
+                if ($this->selectedDepartment !== 'all') {
+                    $q->where('department_id', $this->selectedDepartment);
                 }
             })
             ->groupBy('product_id')
@@ -61,7 +62,7 @@ class SalesAnalysis extends Component
         });
 
         return view('livewire.branch-dashboard.accounting.cost-accounting.sales-analysis', [
-            'branches' => $branches,
+            'departments' => $departments,
             'topItems' => $topItems,
         ]);
     }

@@ -18,11 +18,11 @@
             </div>
 
             <div class="w-full sm:w-auto">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Unit / Branch</label>
-                <select wire:model.live="selectedBranch" class="w-full sm:w-48 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500">
-                    <option value="all">All Units (Global)</option>
-                    @foreach($branches as $branch)
-                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sales Department (Unit)</label>
+                <select wire:model.live="selectedDepartment" class="w-full sm:w-48 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500">
+                    <option value="all">All Departments (Global)</option>
+                    @foreach($departments as $dept)
+                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                     @endforeach
                 </select>
             </div>
