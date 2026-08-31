@@ -63,6 +63,7 @@
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200 text-sm text-gray-600">
                         <th class="px-6 py-3 font-medium">Product Name</th>
+                        <th class="px-6 py-3 font-medium text-right">Orders</th>
                         <th class="px-6 py-3 font-medium text-right">Qty Sold</th>
                         <th class="px-6 py-3 font-medium text-right">Revenue (Subtotal)</th>
                         <th class="px-6 py-3 font-medium text-right">COGS (Cost)</th>
@@ -74,7 +75,8 @@
                     @forelse($topItems as $item)
                         <tr class="hover:bg-gray-50 text-sm">
                             <td class="px-6 py-4 font-medium text-gray-800">{{ $item['name'] }}</td>
-                            <td class="px-6 py-4 text-right">{{ number_format($item['quantity']) }}</td>
+                            <td class="px-6 py-4 text-right font-medium text-blue-600">{{ number_format($item['orders']) }}</td>
+                            <td class="px-6 py-4 text-right">{{ number_format($item['quantity']) }} <span class="text-xs text-gray-500">{{ $item['uom'] }}</span></td>
                             <td class="px-6 py-4 text-right">₦{{ number_format($item['revenue'], 2) }}</td>
                             <td class="px-6 py-4 text-right">₦{{ number_format($item['cogs'], 2) }}</td>
                             <td class="px-6 py-4 text-right font-medium {{ $item['gross_profit'] > 0 ? 'text-green-600' : 'text-red-600' }}">
@@ -88,7 +90,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-8 text-center text-gray-500">No sales data found for this period.</td>
+                            <td colspan="7" class="px-6 py-8 text-center text-gray-500">No sales data found for this period.</td>
                         </tr>
                     @endforelse
                 </tbody>

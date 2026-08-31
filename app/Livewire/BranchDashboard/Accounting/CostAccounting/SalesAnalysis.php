@@ -48,6 +48,7 @@ class SalesAnalysis extends Component
         $salesQuery = SaleItem::with('product')
             ->select('product_id', 
                 DB::raw('SUM(quantity) as total_quantity'), 
+                DB::raw('COUNT(DISTINCT sale_id) as total_orders'),
                 DB::raw('SUM(subtotal) as total_revenue'), 
                 DB::raw('SUM(line_cost) as total_cogs')
             )
@@ -58,7 +59,7 @@ class SalesAnalysis extends Component
                 }
             })
             ->groupBy('product_id')
-            ->orderBy('total_quantity', 'desc')
+            ->orderBy('total_revenue', 'desc') // Best to sort by revenue to see top items rather than pure weight/quantity which varies by uom
             ->take($this->limit)
             ->get();
 
@@ -68,9 +69,15 @@ class SalesAnalysis extends Component
                 ? ($grossProfit / $saleItem->total_revenue) * 100 
                 : 0;
 
+            $uom = optional($saleItem->product)->uom ?? 'units';
+            // Simple mapping for display purposes if uom is standard
+            if ($uom === 'pcs') $uom = 'pcs';
+
             return [
                 'name' => optional($saleItem->product)->name ?? 'Unknown Product',
                 'quantity' => $saleItem->total_quantity,
+                'orders' => $saleItem->total_orders,
+                'uom' => $uom,
                 'revenue' => $saleItem->total_revenue,
                 'cogs' => $saleItem->total_cogs,
                 'gross_profit' => $grossProfit,
