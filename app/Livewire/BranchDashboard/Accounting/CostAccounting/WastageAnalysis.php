@@ -49,21 +49,38 @@ class WastageAnalysis extends Component
             ];
         });
 
-        // 3. Inventory Shortages & Damages
+        // 3. Inventory Damages
+        $inventoryWastageQuery = StockMovement::with('stock.item')
+            ->where('movement_date', '>=', $startDate)
+            ->where('type', 'damaged');
+            
+        if ($this->selectedBranch !== 'all' && \Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'branch_id')) {
+            $inventoryWastageQuery->where('branch_id', $this->selectedBranch);
+        }
+
+        $inventoryWastage = $inventoryWastageQuery->get()->map(function($movement) {
+            return [
+                'item' => optional(optional($movement->stock)->item)->name ?? 'Unknown',
+                'quantity' => abs($movement->quantity),
+                'reason' => $movement->adjustment_reason ?? $movement->type,
+                'cost' => abs($movement->cost_impact),
+                'date' => Carbon::parse($movement->movement_date)->format('Y-m-d')
+            ];
+        });
+
+        // 4. Inventory Adjustments
         $stockQuery = StockMovement::with('stock.item')
             ->where('movement_date', '>=', $startDate)
             ->where(function($q) {
-                $q->whereIn('type', ['adjustment', 'damaged'])
+                $q->where('type', 'adjustment')
                   ->orWhereNotNull('adjustment_reason');
-            });
+            })->where('type', '!=', 'damaged');
             
-        if ($this->selectedBranch !== 'all') {
-            if (\Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'branch_id')) {
-                $stockQuery->where('branch_id', $this->selectedBranch);
-            }
+        if ($this->selectedBranch !== 'all' && \Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'branch_id')) {
+            $stockQuery->where('branch_id', $this->selectedBranch);
         }
 
-        $inventoryShortages = $stockQuery->get()->map(function($movement) {
+        $inventoryAdjustments = $stockQuery->get()->map(function($movement) {
             return [
                 'item' => optional(optional($movement->stock)->item)->name ?? 'Unknown',
                 'quantity' => abs($movement->quantity),
@@ -76,7 +93,8 @@ class WastageAnalysis extends Component
         return view('livewire.branch-dashboard.accounting.cost-accounting.wastage-analysis', [
             'branches' => $branches,
             'productionWastage' => $productionWastage,
-            'inventoryShortages' => $inventoryShortages,
+            'inventoryWastage' => $inventoryWastage,
+            'inventoryAdjustments' => $inventoryAdjustments,
         ]);
     }
 }

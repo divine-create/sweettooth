@@ -55,10 +55,18 @@ class Dashboard extends Component
             });
 
         $inventoryDamagesTotal = StockMovement::where('movement_date', '>=', $startDate)
+            ->where('type', 'damaged')
+            ->when($this->selectedBranch !== 'all' && \Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'branch_id'), function ($q) {
+                $q->where('branch_id', $this->selectedBranch);
+            })
+            ->sum('cost_impact');
+
+        $inventoryAdjustmentsTotal = StockMovement::where('movement_date', '>=', $startDate)
             ->where(function($q) {
-                $q->whereIn('type', ['adjustment', 'damaged'])
+                $q->where('type', 'adjustment')
                   ->orWhereNotNull('adjustment_reason');
             })
+            ->where('type', '!=', 'damaged')
             ->when($this->selectedBranch !== 'all' && \Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'branch_id'), function ($q) {
                 $q->where('branch_id', $this->selectedBranch);
             })
@@ -71,6 +79,7 @@ class Dashboard extends Component
             'grossProfit' => $grossProfit,
             'productionWastageTotal' => $productionWastageTotal,
             'inventoryDamagesTotal' => abs($inventoryDamagesTotal),
+            'inventoryAdjustmentsTotal' => abs($inventoryAdjustmentsTotal),
         ]);
     }
 }

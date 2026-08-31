@@ -50,7 +50,7 @@
 
     <!-- Wastage & Adjustments Cards -->
     <h2 class="text-lg font-medium text-gray-800 mb-3">Material Tracking</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white p-6 rounded-lg shadow border border-red-200 bg-red-50">
             <p class="text-sm font-medium text-red-600">Production Wastage</p>
             <p class="mt-2 text-3xl font-bold text-red-700">
@@ -58,10 +58,17 @@
             </p>
         </div>
 
+        <div class="bg-white p-6 rounded-lg shadow border border-orange-200 bg-orange-50">
+            <p class="text-sm font-medium text-orange-600">Inventory Wastage</p>
+            <p class="mt-2 text-3xl font-bold text-orange-700">
+                ₦{{ number_format($inventoryDamagesTotal, 2) }}
+            </p>
+        </div>
+
         <div class="bg-white p-6 rounded-lg shadow border border-gray-200 bg-gray-50">
             <p class="text-sm font-medium text-gray-600">Inventory Adjustments</p>
             <p class="mt-2 text-3xl font-bold text-gray-800">
-                ₦{{ number_format($inventoryDamagesTotal, 2) }}
+                ₦{{ number_format($inventoryAdjustmentsTotal, 2) }}
             </p>
         </div>
     </div>
