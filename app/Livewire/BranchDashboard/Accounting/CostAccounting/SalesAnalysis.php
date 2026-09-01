@@ -33,12 +33,16 @@ class SalesAnalysis extends Component
             default => Carbon::now()->endOfDay(),
         };
 
-        // Fetch departments that are likely sales departments
+        // Fetch departments that are likely sales departments and have actual sales data
         $departments = Department::whereHas('category', function($q) {
             $q->where('name', 'like', '%Sale%')
               ->orWhere('name', 'like', '%Store%')
               ->orWhere('name', 'like', '%Front%');
-        })->get();
+        })
+        ->whereIn('id', function($query) {
+            $query->select('department_id')->from('sales')->whereNotNull('department_id');
+        })
+        ->get();
 
         // If no departments match the above, fallback to all (just in case)
         if ($departments->isEmpty()) {
