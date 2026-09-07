@@ -125,6 +125,11 @@
                     {{ __('Managing Director Reports') }}
                 </flux:navlist.item>
 
+                <flux:navlist.item icon="clipboard-document-check" :href="branch_route('branch-dashboard.md-reports.opening-stock-status')"
+                    :current="request()->routeIs('branch-dashboard.md-reports.opening-stock-status')" wire:navigate>
+                    {{ __('Global Opening Stock Status') }}
+                </flux:navlist.item>
+
                 <flux:navlist.item icon="cog" :href="branch_route('branch-dashboard.settings.index')"
                     :current="request()->routeIs('branch-dashboard.settings.index')" wire:navigate>
                     {{ __('System Settings') }}

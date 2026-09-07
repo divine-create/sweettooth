@@ -143,6 +143,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
     // MD REPORTS (Super Admin Only)
     Route::middleware('role_or_permission:view-reports')->prefix('md-reports')->name('md-reports.')->group(function () {
         Route::get('dashboard', \App\Livewire\BranchDashboard\MDReports\Dashboard\Index::class)->name('dashboard');
+        Route::get('opening-stock-status', \App\Livewire\BranchDashboard\MDReports\OpeningStockStatus::class)->name('opening-stock-status');
         Route::get('view/{id}', \App\Livewire\BranchDashboard\MDReports\ViewReport\Index::class)->name('view');
     });
 
