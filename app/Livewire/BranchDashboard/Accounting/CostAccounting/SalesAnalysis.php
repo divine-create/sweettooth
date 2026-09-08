@@ -49,12 +49,13 @@ class SalesAnalysis extends Component
             $departments = Department::all();
         }
 
-        $salesQuery = SaleItem::with('product')
-            ->select('product_id', 
-                DB::raw('SUM(quantity) as total_quantity'), 
+        $salesQuery = SaleItem::with(['product', 'salesUom'])
+            ->select('product_id',
+                DB::raw('SUM(CASE WHEN sales_quantity IS NOT NULL AND sales_quantity > 0 THEN sales_quantity ELSE quantity END) as total_quantity'),
                 DB::raw('COUNT(DISTINCT sale_id) as total_orders'),
-                DB::raw('SUM(subtotal) as total_revenue'), 
-                DB::raw('SUM(line_cost) as total_cogs')
+                DB::raw('SUM(subtotal) as total_revenue'),
+                DB::raw('SUM(line_cost) as total_cogs'),
+                DB::raw('MIN(sales_uom_id) as sales_uom_id')
             )
             ->whereHas('sale', function($q) use ($startDate, $endDate) {
                 $q->whereBetween('created_at', [$startDate, $endDate]);
@@ -63,29 +64,31 @@ class SalesAnalysis extends Component
                 }
             })
             ->groupBy('product_id')
-            ->orderBy('total_revenue', 'desc') // Best to sort by revenue to see top items rather than pure weight/quantity which varies by uom
+            ->orderBy('total_revenue', 'desc')
             ->take($this->limit)
             ->get();
 
         $topItems = $salesQuery->map(function($saleItem) {
             $grossProfit = $saleItem->total_revenue - $saleItem->total_cogs;
-            $margin = $saleItem->total_revenue > 0 
-                ? ($grossProfit / $saleItem->total_revenue) * 100 
+            $margin = $saleItem->total_revenue > 0
+                ? ($grossProfit / $saleItem->total_revenue) * 100
                 : 0;
 
-            $uom = optional($saleItem->product)->uom ?? 'units';
-            // Simple mapping for display purposes if uom is standard
-            if ($uom === 'pcs') $uom = 'pcs';
+            // Use the sales UOM (e.g. Scoops, Pcs) if available, otherwise fall back to product base UOM
+            $uom = $saleItem->salesUom?->symbol
+                ?? $saleItem->salesUom?->name
+                ?? optional($saleItem->product)->uomUnit?->symbol
+                ?? 'units';
 
             return [
-                'name' => optional($saleItem->product)->name ?? 'Unknown Product',
-                'quantity' => $saleItem->total_quantity,
-                'orders' => $saleItem->total_orders,
-                'uom' => $uom,
-                'revenue' => $saleItem->total_revenue,
-                'cogs' => $saleItem->total_cogs,
+                'name'         => optional($saleItem->product)->name ?? 'Unknown Product',
+                'quantity'     => $saleItem->total_quantity,
+                'orders'       => $saleItem->total_orders,
+                'uom'          => $uom,
+                'revenue'      => $saleItem->total_revenue,
+                'cogs'         => $saleItem->total_cogs,
                 'gross_profit' => $grossProfit,
-                'margin' => round($margin, 2),
+                'margin'       => round($margin, 2),
             ];
         });
 
