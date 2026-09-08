@@ -115,10 +115,32 @@ trait QuickProduceTrait
             return null;
         }
 
+        // If we know which production department this Quick Produce page is for,
+        // prefer an active shift for that department on today's date.
+        // This ensures cross-department Operations Managers (who may have an active
+        // Sales shift) still get their production attributed to the correct
+        // production department shift instead of their sales shift.
+        if ($this->department) {
+            $productionShift = Shift::where('department_id', $this->department->id)
+                ->where('branch_id', $this->getBranchId() ?? current_branch_id())
+                ->where('status', 'active')
+                ->whereDate('shift_date', now()->toDateString())
+                ->latest('id')
+                ->first();
+
+            if ($productionShift) {
+                return $productionShift;
+            }
+
+            // No active production shift today — fall back to the current user's shift.
+            // This handles dedicated production staff who open their own shift.
+        }
+
         return Shift::where('employee_id', $actor->id)
             ->where('status', 'active')
             ->first();
     }
+
 
     public function updatedSelectedRecipeId(): void
     {
