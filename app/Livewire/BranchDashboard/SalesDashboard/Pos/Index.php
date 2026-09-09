@@ -1581,6 +1581,7 @@ class Index extends BaseComponent
         $stockQuery = ProductStock::query()
             ->whereDate('stock_date', Carbon::today())
             ->whereIn('product_id', $productIds)
+            ->where('shift_type', $this->getProductStockShiftType())
             ->select([
                 'id',
                 'product_id',

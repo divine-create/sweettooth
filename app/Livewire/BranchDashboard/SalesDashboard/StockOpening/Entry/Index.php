@@ -116,11 +116,18 @@ class Index extends BaseComponent
             ->where('shift_date', $this->stockDate)
             ->whereIn('department_id', $salesDepartmentIds)
             ->orderBy('clock_in', 'desc')
-            ->get(['id', 'shift_number', 'shift_type', 'status', 'clock_in']);
+            ->get(['id', 'shift_number', 'shift_type', 'status', 'clock_in', 'employee_id']);
 
         $this->availableShifts = $shifts->toArray();
 
-        $activeShift = $shifts->firstWhere('status', 'active');
+        // Ensure we pick the active shift for the CURRENT user
+        $activeShift = $shifts->where('status', 'active')->where('employee_id', auth()->id())->first();
+        
+        if (! $activeShift) {
+            // Fallback just in case, though they shouldn't reach here without their own active shift
+            $activeShift = $shifts->firstWhere('status', 'active');
+        }
+
         if ($activeShift) {
             $this->currentShiftId = $activeShift->id;
             $this->shiftType = $activeShift->shift_type ?? 'morning';
