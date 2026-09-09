@@ -201,7 +201,13 @@ class Index extends Component
             ['quantity' => 'required|numeric|min:0']
         )->validate();
 
+        $product = Product::find($productId);
         $qty = (float) $data['quantity'];
+        
+        // GoLive UI displays sales_uom, so we must convert back to base UOM for DB
+        $baseQty = $product && $product->hasSalesUomConversion() 
+            ? $product->convertSalesToBaseQuantity($qty) 
+            : $qty;
 
         ProductStock::updateOrCreate(
             [
@@ -211,11 +217,11 @@ class Index extends Component
                 'shift_type' => 'morning',
             ],
             [
-                'opening_quantity' => $qty,
+                'opening_quantity' => $baseQty,
                 'addition_quantity' => 0,
                 'quantity_sold' => 0,
-                'total_available' => $qty,
-                'closing_quantity' => $qty,
+                'total_available' => $baseQty,
+                'closing_quantity' => $baseQty,
             ]
         );
 
