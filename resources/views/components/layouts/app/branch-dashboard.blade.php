@@ -100,6 +100,16 @@
                 </flux:navlist.item>
             @endif
 
+            {{-- ==================== MY DEPARTMENT ==================== --}}
+            @if ($currentUser?->department_id)
+            <flux:navlist.group :heading="__('My Department')" icon="briefcase">
+                <flux:navlist.item icon="clipboard-document-list" :href="branch_route('branch-dashboard.department.material-requests')"
+                    :current="request()->routeIs('branch-dashboard.department.material-requests')" wire:navigate>
+                    {{ __('Material Requests') }}
+                </flux:navlist.item>
+            </flux:navlist.group>
+            @endif
+
             {{-- ==================== ADMINISTRATION (SUPER ADMIN ONLY) ==================== --}}
             @if (($sidebarService::canSeeAdministration($currentUser) || $sidebarService::isSuperAdmin()) && !$isHrOnly)
             <flux:navlist.group :heading="__('Administration')" icon="cog-6-tooth">

@@ -389,6 +389,11 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
                 Route::get('/{payroll}', \App\Livewire\BranchDashboard\Payroll\PayslipView::class)->name('payslip.view');
             });
 
+        // Department Routes (Generic for any department to make requests)
+        Route::prefix('department')->name('department.')->group(function () {
+            Route::get('material-requests', \App\Livewire\BranchDashboard\Department\MaterialRequests::class)->name('material-requests');
+        });
+
         // Sales Dashboard routes - Modular System
         // Protected by department.scope + workflow middleware for proper step validation
         require __DIR__.'/production-sales-route.php';
