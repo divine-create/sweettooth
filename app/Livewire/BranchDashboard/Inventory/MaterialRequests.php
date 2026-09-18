@@ -41,6 +41,8 @@ class MaterialRequests extends Component
     public string $newNotes = '';
 
     public ?int $targetDepartmentId = null;
+    
+    public ?int $requestedById = null;
 
     public function mount()
     {
@@ -58,7 +60,7 @@ class MaterialRequests extends Component
         $branchId = $this->getBranchId();
 
         $query = MaterialRequest::forBranch($branchId)
-            ->with('department', 'details.item', 'details.unitOfMeasure')
+            ->with(['department', 'details.item', 'details.unitOfMeasure', 'requester'])
             ->orderBy('created_at', 'desc');
 
         if ($this->statusFilter !== 'all') {
@@ -70,9 +72,17 @@ class MaterialRequests extends Component
         }
 
         $requests = $query->get();
+        
+        $departmentUsers = [];
+        if ($this->targetDepartmentId) {
+            $departmentUsers = \App\Models\User::where('department_id', $this->targetDepartmentId)
+                ->orderBy('name')
+                ->get();
+        }
 
         return view('livewire.branch-dashboard.inventory.material-requests', [
             'requests' => $requests,
+            'departmentUsers' => $departmentUsers,
         ]);
     }
 
@@ -83,6 +93,7 @@ class MaterialRequests extends Component
         $this->newShift = 'morning';
         $this->newNotes = '';
         $this->targetDepartmentId = null;
+        $this->requestedById = null;
         $this->showCreateModal = true;
     }
 
@@ -117,6 +128,7 @@ class MaterialRequests extends Component
     {
         $this->validate([
             'targetDepartmentId' => 'required|integer|exists:departments,id',
+            'requestedById' => 'required|integer|exists:users,id',
             'newRequestDate' => 'required|date',
             'newShift' => 'required|in:morning,afternoon',
             'newItems' => 'required|array|min:1',
@@ -145,8 +157,8 @@ class MaterialRequests extends Component
             'branch_id' => $branchId,
             'department_id' => $this->targetDepartmentId,
             'department_code' => $deptCode,
-            'requested_by_id' => $actor?->id,
-            'requested_by_type' => get_class($actor),
+            'requested_by_id' => $this->requestedById,
+            'requested_by_type' => \App\Models\User::class,
             'request_date' => $this->newRequestDate,
             'shift' => $this->newShift,
             'notes' => $this->newNotes,

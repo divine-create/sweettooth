@@ -42,6 +42,7 @@
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Request #</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Target Dept</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Requester</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Date</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Items</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase">Status</th>
@@ -53,6 +54,13 @@
                         <tr>
                             <td class="px-4 py-3 font-medium">{{ $request->request_number }}</td>
                             <td class="px-4 py-3">{{ $request->department?->name ?? 'N/A' }}</td>
+                            <td class="px-4 py-3">
+                                @if($request->requester)
+                                    {{ $request->requester->name ?? 'N/A' }}
+                                @else
+                                    N/A
+                                @endif
+                            </td>
                             <td class="px-4 py-3">{{ $request->request_date->format('M d, Y') }}</td>
                             <td class="px-4 py-3">{{ $request->details->count() }} items</td>
                             <td class="px-4 py-3">
@@ -82,14 +90,29 @@
                 <h3 class="text-lg font-semibold mb-4">New Material Request</h3>
                 
                 <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Request To Department *</label>
-                        <select wire:model="targetDepartmentId" class="w-full rounded border p-2">
-                            <option value="">Select Department</option>
-                            @foreach(\App\Models\Department::where('branch_id', current_branch_id())->orderBy('name')->get() as $dept)
-                                <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                            @endforeach
-                        </select>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Request To Department *</label>
+                            <select wire:model.live="targetDepartmentId" class="w-full rounded border p-2">
+                                <option value="">Select Department</option>
+                                @foreach(\App\Models\Department::where('branch_id', current_branch_id())->orderBy('name')->get() as $dept)
+                                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Requested By *</label>
+                            <select wire:model="requestedById" class="w-full rounded border p-2" {{ !$targetDepartmentId ? 'disabled' : '' }}>
+                                <option value="">Select Employee</option>
+                                @foreach($departmentUsers as $user)
+                                    <option value="{{ $user->id }}">{{ $user->name }}</option>
+                                @endforeach
+                            </select>
+                            @if(!$targetDepartmentId)
+                                <p class="text-xs text-zinc-500 mt-1">Select a department first</p>
+                            @endif
+                        </div>
                     </div>
                     
                     <div class="grid grid-cols-2 gap-4">
