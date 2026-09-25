@@ -145,6 +145,11 @@
                     {{ __('Opening Stock Report') }}
                 </flux:navlist.item>
 
+                <flux:navlist.item icon="table-cells" :href="branch_route('branch-dashboard.md-reports.closing-stock-report')"
+                    :current="request()->routeIs('branch-dashboard.md-reports.closing-stock-report')" wire:navigate>
+                    {{ __('Closing Stock Report') }}
+                </flux:navlist.item>
+
                 <flux:navlist.item icon="cog" :href="branch_route('branch-dashboard.settings.index')"
                     :current="request()->routeIs('branch-dashboard.settings.index')" wire:navigate>
                     {{ __('System Settings') }}

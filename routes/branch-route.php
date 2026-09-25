@@ -145,6 +145,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
         Route::get('dashboard', \App\Livewire\BranchDashboard\MDReports\Dashboard\Index::class)->name('dashboard');
         Route::get('opening-stock-status', \App\Livewire\BranchDashboard\MDReports\OpeningStockStatus::class)->name('opening-stock-status');
         Route::get('opening-stock-report', \App\Livewire\BranchDashboard\MDReports\OpeningStockReport::class)->name('opening-stock-report');
+        Route::get('closing-stock-report', \App\Livewire\BranchDashboard\MDReports\ClosingStockReport::class)->name('closing-stock-report');
         Route::get('view/{id}', \App\Livewire\BranchDashboard\MDReports\ViewReport\Index::class)->name('view');
     });
 
