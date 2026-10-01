@@ -531,11 +531,15 @@ class Index extends BaseComponent
                     ->first();
 
                 if ($productStock) {
+                    $actualClosing = $stockData['actual_closing'] === '' ? 0 : (float) ($stockData['actual_closing'] ?? 0);
+                    $soldQuantity = $stockData['sold_quantity'] === '' ? 0 : (float) ($stockData['sold_quantity'] ?? 0);
+                    $expectedClosing = (float) ($stockData['expected_closing'] ?? 0);
+
                     // Use direct DB update to preserve the manually entered closing_quantity
                     // without triggering the saving hook (which would recalculate and overwrite it)
                     DB::table('product_stocks')->where('id', $productStock->id)->update([
-                        'closing_quantity' => $stockData['actual_closing'],
-                        'quantity_sold'    => $stockData['sold_quantity'],
+                        'closing_quantity' => $actualClosing,
+                        'quantity_sold'    => $soldQuantity,
                         'notes'            => $stockData['notes'],
                         'workflow_step'    => 'closing_completed',
                         'is_workflow_verified' => true,
@@ -544,10 +548,10 @@ class Index extends BaseComponent
                         'updated_at'       => now(),
                     ]);
 
-                    // Recalculate variance at save time — the pre-loaded 'variance' field
+                    // Recalculate variance at save time - the pre-loaded 'variance' field
                     // defaults to 0 at page load (actualClosing = expectedClosing before staff edits)
                     // and is never updated when staff types a different actual_closing value.
-                    $liveVariance = (float) $stockData['actual_closing'] - (float) $stockData['expected_closing'];
+                    $liveVariance = $actualClosing - $expectedClosing;
                     if (abs($liveVariance) > 0.001) {
                         StockVariance::updateOrCreate(
                             [
@@ -562,7 +566,7 @@ class Index extends BaseComponent
                                 'department_id'     => $productStock->department_id ?? $this->departmentId,
                                 'product_id'        => $stockData['product_id'],
                                 'quantity'          => abs($liveVariance),
-                                'expected_quantity' => $stockData['expected_closing'],
+                                'expected_quantity' => $expectedClosing,
                                 'reason'            => $liveVariance < 0 ? 'shortage' : 'excess',
                                 'notes'             => $stockData['notes'] . ' | Shift closing variance',
                                 'status'            => 'pending',
@@ -577,7 +581,7 @@ class Index extends BaseComponent
                             'branch_id' => $this->branchId,
                             'department_id' => $productStock->department_id ?? $this->departmentId,
                             'product_id' => $stockData['product_id'],
-                            'quantity' => $stockData['actual_closing'],
+                            'quantity' => $actualClosing,
                             'reason' => 'expired',
                             'callback_date' => $this->shiftDate,
                             'shift_type' => $this->getProductStockShiftType(),
@@ -586,6 +590,7 @@ class Index extends BaseComponent
                         ]);
                     }
                 }
+
             }
 
             // 2. UPDATE SHIFT WITH CASH RECONCILIATION

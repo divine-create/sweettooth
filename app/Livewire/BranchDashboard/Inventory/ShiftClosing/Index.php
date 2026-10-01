@@ -197,8 +197,8 @@ class Index extends BaseComponent
                 ->first();
 
             if ($stock) {
-                $expectedClosing = $stockData['expected_closing'] ?? $stock->quantity;
-                $actualClosing = $stockData['actual_closing'];
+                $expectedClosing = (float)($stockData['expected_closing'] ?? $stock->quantity);
+                $actualClosing = $stockData['actual_closing'] === '' ? 0 : (float)($stockData['actual_closing'] ?? 0);
                 $variance = $actualClosing - $expectedClosing;
 
                 // Update stock quantity
@@ -219,7 +219,9 @@ class Index extends BaseComponent
     protected function createStockMovements(Shift $shift): void
     {
         foreach ($this->closingStocks as $stockData) {
-            $variance = ($stockData['actual_closing'] ?? 0) - ($stockData['expected_closing'] ?? 0);
+            $actualClosing = $stockData['actual_closing'] === '' ? 0 : (float)($stockData['actual_closing'] ?? 0);
+            $expectedClosing = (float)($stockData['expected_closing'] ?? 0);
+            $variance = $actualClosing - $expectedClosing;
 
             // Only create movement if there's a variance
             if (abs($variance) > 0.01) {
@@ -246,7 +248,9 @@ class Index extends BaseComponent
     {
         $totalItems = count($this->closingStocks);
         $itemsWithVariance = collect($this->closingStocks)->filter(function ($item) {
-            $variance = ($item['actual_closing'] ?? 0) - ($item['expected_closing'] ?? 0);
+            $actualClosing = $item['actual_closing'] === '' ? 0 : (float)($item['actual_closing'] ?? 0);
+            $expectedClosing = (float)($item['expected_closing'] ?? 0);
+            $variance = $actualClosing - $expectedClosing;
             return abs($variance) > 0.01;
         })->count();
 
