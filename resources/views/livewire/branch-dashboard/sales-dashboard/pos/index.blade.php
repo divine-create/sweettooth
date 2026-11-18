@@ -737,7 +737,7 @@
             <div class="p-6">
                 @if($currentSaleId)
                     @php
-                        $sale = \App\Models\Sale::with('saleItems.product')->find($currentSaleId);
+                        $sale = \App\Models\Sale::with(['saleItems.product', 'saleItems.item'])->find($currentSaleId);
                         $receipt = \App\Models\Receipt::where('sale_id', $currentSaleId)->latest()->first();
                     @endphp
                     @if($sale)
@@ -761,7 +761,7 @@
                                 <tbody>
                                     @foreach($sale->saleItems as $item)
                                         <tr>
-                                            <td class="py-1">{{ $item->product->name ?? 'Product' }}</td>
+                                            <td class="py-1">{{ $item->name }}</td>
                                             <td class="text-center">{{ number_format($item->quantity, 0) }}</td>
                                             <td class="text-right">{{ number_format($item->unit_price, 2) }}</td>
                                             <td class="text-right font-semibold">{{ number_format($item->total, 2) }}</td>

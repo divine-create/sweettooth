@@ -269,7 +269,8 @@ class Index extends BaseComponent
     {
         return view('livewire.branch-dashboard.sales-dashboard.stock-opening.select.index', [
             'products' => $this->getProductsPaginator(),
-            'selectedCount' => count($this->selectedProductIds),
+            'selectedProductIds' => $this->selectedProductIds ?? [],
+            'selectedCount' => count($this->selectedProductIds ?? []),
             'salesDeptSlug' => $this->salesDeptSlug,
         ]);
     }

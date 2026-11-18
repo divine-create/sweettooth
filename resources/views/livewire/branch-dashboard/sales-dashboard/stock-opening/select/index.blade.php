@@ -17,7 +17,7 @@
             </div>
             <div class="text-right">
                 <div class="bg-white/20 px-4 py-2 rounded-lg">
-                    <span class="font-semibold">{{ count($selectedProductIds) }}</span> products selected
+                    <span class="font-semibold">{{ count($selectedProductIds ?? []) }}</span> products selected
                 </div>
             </div>
         </div>
@@ -29,14 +29,14 @@
             <div class="flex flex-wrap items-center gap-2">
                 <button wire:click="proceedToEntry" 
                     class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                    {{ count($selectedProductIds) == 0 ? 'disabled' : '' }}>
+                    {{ count($selectedProductIds ?? []) == 0 ? 'disabled' : '' }}>
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
-                    Proceed to Entry ({{ count($selectedProductIds) }})
+                    Proceed to Entry ({{ count($selectedProductIds ?? []) }})
                 </button>
                 
-                @if(count($selectedProductIds) > 0)
+                @if(count($selectedProductIds ?? []) > 0)
                     <button wire:click="clearSelection" 
                         class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors">
                         Clear Selection
@@ -90,13 +90,13 @@
     <!-- Product Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         @foreach($products as $product)
-            <div class="bg-white dark:bg-zinc-800 rounded-lg border-2 {{ in_array($product->id, $selectedProductIds) ? 'border-blue-500' : 'border-zinc-200 dark:border-zinc-700' }} 
+            <div class="bg-white dark:bg-zinc-800 rounded-lg border-2 {{ in_array($product->id, $selectedProductIds ?? []) ? 'border-blue-500' : 'border-zinc-200 dark:border-zinc-700' }} 
                         hover:border-blue-400 transition-all cursor-pointer p-4"
                 wire:click="toggleProductSelection('{{ $product->id }}')">
                 <div class="flex items-start justify-between">
                     <div class="flex-1">
                         <div class="flex items-center gap-2 mb-1">
-                            @if(in_array($product->id, $selectedProductIds))
+                            @if(in_array($product->id, $selectedProductIds ?? []))
                                 <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                                 </svg>

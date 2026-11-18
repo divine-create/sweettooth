@@ -93,11 +93,26 @@ class MaterialRequest extends Model
         return $this->status === 'pending' && $this->details()->exists();
     }
 
+    public function canBeDeleted(): bool
+    {
+        if (in_array($this->status, ['approved', 'completed'], true)) {
+            return false;
+        }
+
+        return ! $this->details()
+            ->where(function ($query) {
+                $query->where('quantity_approved', '>', 0)
+                      ->orWhere('quantity_dispatched', '>', 0);
+            })
+            ->exists();
+    }
+
     public function isFullyDispatched(): bool
     {
-        return $this->details()
-            ->get()
-            ->every(fn ($detail) => $detail->quantity_dispatched >= $detail->quantity_approved);
+        $details = $this->details()->get();
+
+        return $details->isNotEmpty()
+            && $details->every(fn ($detail) => $detail->isFullyDispatched());
     }
 
     public static function generateRequestNumber($branchCode, $departmentCode): string

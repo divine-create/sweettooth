@@ -215,7 +215,7 @@ trait SalesDepartmentContext
      */
     protected function redirectToClockIn(): void
     {
-        $this->redirectRoute('branch-dashboard.clock-in-board.today', [
+        $this->redirectRoute('branch-dashboard.select_shift', [
             'b_id' => $this->getBranchId()
         ]);
     }

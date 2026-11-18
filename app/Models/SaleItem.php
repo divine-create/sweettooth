@@ -70,6 +70,14 @@ class SaleItem extends Model
     }
 
     /**
+     * Get the display name of the item/product.
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->product?->name ?? $this->item?->name ?? 'Product';
+    }
+
+    /**
      * Get the effective UOM symbol (sales UOM or fall back to product's UOM)
      */
     public function getSalesUomSymbolAttribute(): string

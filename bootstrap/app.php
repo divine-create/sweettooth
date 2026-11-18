@@ -13,6 +13,7 @@ use App\Http\Middleware\RedirectSuperAdminToDashboard;
 use App\Http\Middleware\RequireRole;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\ValidateSalesWorkflow;
+use App\Http\Middleware\ValidateProductionWorkflow;
 use App\Http\Middleware\ValidateSalesDepartmentContext;
 use App\Http\Middleware\RecoverAuthUser;
 use App\Http\Middleware\RequireActiveShift;
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'protect-roles' => ProtectCoreRoles::class,
             'redirect-super-admin' => RedirectSuperAdminToDashboard::class,
             'validate-sales-workflow' => ValidateSalesWorkflow::class,
+            'validate-production-workflow' => ValidateProductionWorkflow::class,
             'validate-sales-department-context' => ValidateSalesDepartmentContext::class,
             'recover-auth' => RecoverAuthUser::class,
             'require_active_shift' => RequireActiveShift::class,

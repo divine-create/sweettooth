@@ -276,7 +276,7 @@ class ProductionApprovalService
                                 RecipeIngredient::create([
                                     'recipe_id' => $recipe->id,
                                     'item_id' => $ingredient['item_id'],
-                                    'quantity' => $ingredient['quantity'],
+                                    'quantity' => (float) ($ingredient['quantity'] ?? 0),
                                     'uom_id' => $ingredient['uom_id'],
                                     'cost_per_unit' => (float)($ingredient['cost_per_unit'] ?? 0),
                                     'waste_percentage' => (float)($ingredient['waste_percentage'] ?? 0),
@@ -390,7 +390,7 @@ class ProductionApprovalService
                             $ingredientData = [
                                 'recipe_id' => $recipe->id,
                                 'item_id' => $ingredient['item_id'],
-                                'quantity' => $ingredient['quantity'],
+                                'quantity' => (float) ($ingredient['quantity'] ?? 0),
                                 'uom_id' => $ingredient['uom_id'],
                                 'cost_per_unit' => (float)($ingredient['cost_per_unit'] ?? 0),
                                 'waste_percentage' => (float)($ingredient['waste_percentage'] ?? 0),

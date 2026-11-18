@@ -431,11 +431,25 @@ class UomConversionService
             throw new InvalidArgumentException('UOM value cannot be empty.');
         }
 
+        $lower = strtolower($value);
         $unit = UnitOfMeasure::query()
-            ->whereRaw('LOWER(code) = ?', [strtolower($value)])
-            ->orWhereRaw('LOWER(symbol) = ?', [strtolower($value)])
-            ->orWhereRaw('LOWER(name) = ?', [strtolower($value)])
+            ->where('is_active', true)
+            ->where(function ($query) use ($lower) {
+                $query->whereRaw('LOWER(code) = ?', [$lower])
+                    ->orWhereRaw('LOWER(symbol) = ?', [$lower])
+                    ->orWhereRaw('LOWER(name) = ?', [$lower]);
+            })
+            ->orderByRaw('CASE WHEN LOWER(code) = ? THEN 1 WHEN LOWER(symbol) = ? THEN 2 ELSE 3 END', [$lower, $lower])
             ->first();
+
+        if (! $unit) {
+            // Fallback without is_active in case an inactive unit is referenced
+            $unit = UnitOfMeasure::query()
+                ->whereRaw('LOWER(code) = ?', [$lower])
+                ->orWhereRaw('LOWER(symbol) = ?', [$lower])
+                ->orWhereRaw('LOWER(name) = ?', [$lower])
+                ->first();
+        }
 
         if (! $unit) {
             throw new InvalidArgumentException("Unknown UOM value: {$value}");

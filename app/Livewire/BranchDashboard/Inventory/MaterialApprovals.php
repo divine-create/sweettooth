@@ -354,17 +354,41 @@ class MaterialApprovals extends Component
     protected function updateRequestStatus()
     {
         $details = $this->selectedRequest->details()->get();
-        $allApproved = $details->every(fn ($d) => $d->quantity_approved > 0);
-        $allDispatched = $details->every(fn ($d) => $d->quantity_dispatched >= $d->quantity_approved);
+        if ($details->isEmpty()) {
+            return;
+        }
+
+        $hasAnyApproved = $details->some(fn ($d) => (float) $d->quantity_approved > 0);
+        $allApproved = $details->every(fn ($d) => (float) $d->quantity_approved > 0);
+        $allDispatched = $hasAnyApproved && $details->every(fn ($d) => $d->isFullyDispatched());
 
         $newStatus = 'pending';
         if ($allDispatched) {
             $newStatus = 'completed';
-        } elseif ($allApproved) {
+        } elseif ($allApproved || $hasAnyApproved) {
             $newStatus = 'approved';
         }
 
         $this->selectedRequest->update(['status' => $newStatus]);
+    }
+
+    public function deleteRequest(int $requestId)
+    {
+        try {
+            $request = MaterialRequest::where('branch_id', $this->getBranchId())
+                ->findOrFail($requestId);
+
+            $service = app(MaterialRequestService::class);
+            $service->deleteRequest($request);
+
+            if ($this->selectedRequest?->id === $requestId) {
+                $this->closeModal();
+            }
+
+            $this->toast()->success('Material request deleted successfully')->send();
+        } catch (\Exception $e) {
+            $this->toast()->error($e->getMessage())->send();
+        }
     }
 
     public function closeModal()

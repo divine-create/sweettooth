@@ -92,17 +92,55 @@ class MaterialRequestService
         $request->update(['status' => 'cancelled']);
     }
 
+    public function deleteRequest(MaterialRequest $request): void
+    {
+        if (!$request->canBeDeleted()) {
+            throw new \InvalidArgumentException('Cannot delete a material request that has already been approved or dispatched.');
+        }
+
+        DB::transaction(function () use ($request) {
+            $request->details()->delete();
+            $request->delete();
+        });
+    }
+
+    public function deleteRequestItem(MaterialRequestDetail $detail): void
+    {
+        if (!$detail->canBeDeleted()) {
+            throw new \InvalidArgumentException('Cannot delete an item that has already been approved or dispatched.');
+        }
+
+        $request = $detail->request;
+
+        DB::transaction(function () use ($detail, $request) {
+            $detail->delete();
+
+            if ($request->details()->count() === 0) {
+                $request->delete();
+            } else {
+                $this->updateRequestStatus($request);
+            }
+        });
+    }
+
     protected function updateRequestStatus(MaterialRequest $request): void
     {
         $details = $request->details()->get();
 
-        $allApproved = $details->every(fn ($d) => $d->quantity_approved > 0);
-        $allDispatched = $details->every(fn ($d) => $d->isFullyDispatched());
+        if ($details->isEmpty()) {
+            return;
+        }
+
+        $hasAnyApproved = $details->some(fn ($d) => (float) $d->quantity_approved > 0);
+        $allApproved = $details->every(fn ($d) => (float) $d->quantity_approved > 0);
+        $allDispatched = $hasAnyApproved && $details->every(fn ($d) => $d->isFullyDispatched());
 
         if ($allDispatched) {
             $request->update(['status' => 'completed']);
-        } elseif ($allApproved) {
+        } elseif ($allApproved || $hasAnyApproved) {
             $request->update(['status' => 'approved']);
+        } else {
+            $request->update(['status' => 'pending']);
         }
     }
 

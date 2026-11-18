@@ -28,7 +28,13 @@ class PurchaseObserver
         if ($purchase->status === 'approved') {
             $this->postToGL($purchase);
         }
+
+        if ($purchase->supplier_id) {
+            $this->syncSupplierBalance($purchase->supplier_id);
+        }
     }
+
+
 
     /**
      * Handle the Purchase "updated" event.
@@ -41,6 +47,44 @@ class PurchaseObserver
             $purchase->status === 'approved' && 
             $purchase->gl_posting_status === 'pending') {
             $this->postToGL($purchase);
+        }
+
+        if ($purchase->supplier_id) {
+            $this->syncSupplierBalance($purchase->supplier_id);
+        }
+    }
+
+    /**
+     * Handle the Purchase "deleted" event.
+     */
+    public function deleted(Purchase $purchase): void
+    {
+        if ($purchase->supplier_id) {
+            $this->syncSupplierBalance($purchase->supplier_id);
+        }
+    }
+
+
+
+    /**
+     * Recompute and sync supplier outstanding balance
+     */
+    private function syncSupplierBalance(?int $supplierId): void
+    {
+        if (!$supplierId) {
+            return;
+        }
+
+        try {
+            $pendingTotal = Purchase::where('supplier_id', $supplierId)
+                ->where('payment_status', '!=', 'paid')
+                ->sum(\Illuminate\Support\Facades\DB::raw('COALESCE(landing_cost, total_cost, 0)'));
+
+            \App\Models\Supplier::where('id', $supplierId)->update([
+                'outstanding_balance' => $pendingTotal,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to sync supplier outstanding balance: ' . $e->getMessage());
         }
     }
 

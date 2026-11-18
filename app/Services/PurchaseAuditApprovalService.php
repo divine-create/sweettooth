@@ -455,6 +455,15 @@ class PurchaseAuditApprovalService
             return 0.0;
         }
 
+        $baseSymbol = $item->unitOfMeasure?->symbol;
+        $baseCode = $item->unitOfMeasure?->code;
+        if (
+            ($baseSymbol && strcasecmp($purchaseUom, $baseSymbol) === 0) ||
+            ($baseCode && strcasecmp($purchaseUom, $baseCode) === 0)
+        ) {
+            return $quantity;
+        }
+
         $converted = $item->convertToBaseUom($quantity, $purchaseUom);
         if ($converted === null) {
             $baseUom = $item->unitOfMeasure?->symbol ?? 'item base UOM';

@@ -30,12 +30,29 @@ class InventoryItemUsageDefinition implements ReportDefinition
         $fromDate = Carbon::parse($from)->startOfDay();
         $toDate = Carbon::parse($to)->endOfDay();
 
-        $stockMovements = StockMovement::with(['stock.item', 'stock.item.category'])
+        $stockMovementsQuery = StockMovement::with(['stock.item', 'stock.item.category'])
             ->where('branch_id', $branchId)
             ->whereBetween('movement_date', [$fromDate, $toDate])
-            ->whereIn('type', ['out', 'adjustment', 'damaged'])
-            ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
-            ->get();
+            ->whereIn('type', ['out', 'adjustment', 'damaged']);
+
+        if ($departmentId) {
+            $isStore = \App\Models\Department::where('id', $departmentId)
+                ->where(function ($q) {
+                    $q->where('name', 'like', '%inventory%')
+                      ->orWhere('name', 'like', '%store%')
+                      ->orWhere('name', 'like', '%warehouse%');
+                })->exists();
+
+            if ($isStore) {
+                $stockMovementsQuery->where(function ($q) use ($departmentId) {
+                    $q->whereNull('department_id')
+                      ->orWhere('department_id', $departmentId);
+                });
+            } else {
+                $stockMovementsQuery->where('department_id', $departmentId);
+            }
+        }
+        $stockMovements = $stockMovementsQuery->get();
 
         $dispatches = ItemDispatch::with(['item', 'item.category', 'itemRequest.department'])
             ->where('branch_id', $branchId)

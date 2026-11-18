@@ -52,7 +52,8 @@ class CreateProductionRequest extends Component
         }
 
         // Get recipes for this production department
-        $recipes = Recipe::where('department_id', $this->productionDepartmentId)
+        $recipes = Recipe::whereHas('product')
+            ->where('department_id', $this->productionDepartmentId)
             ->where('status', 'active')
             ->with(['product', 'unitOfMeasure'])
             ->get();

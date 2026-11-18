@@ -97,7 +97,7 @@
             @if($requiresDepartment || count($availableDepartments ?? []) > 0)
                 <div>
                     <x-select.native :label="$departmentLabel" wire:model.live="departmentId">
-                        <option value="">Select Department</option>
+                        <option value="">{{ $requiresDepartment ? 'Select Department' : 'All Departments / Store' }}</option>
                         @foreach($availableDepartments as $dept)
                             <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                         @endforeach
@@ -116,7 +116,7 @@
                 </div>
             @endif
 
-            <div class="col-span-full flex gap-2 pt-2">
+            <div class="col-span-full flex flex-wrap gap-2 pt-2">
             <x-button color="primary" wire:click="generatePreview" :loading="$isLoading">
                 <x-icon name="arrow-path" class="w-4 h-4 mr-2" />
                 Generate Preview
@@ -127,11 +127,42 @@
                     <x-icon name="document-check" class="w-4 h-4 mr-2" />
                     Save Report
                 </x-button>
+
+                <x-button color="zinc" type="button" onclick="window.print()">
+                    <x-icon name="printer" class="w-4 h-4 mr-2" />
+                    Print Report
+                </x-button>
+
+                @if($generatedReport)
+                    <x-button color="zinc" variant="outline" type="button"
+                        onclick="window.open('{{ branch_route('branch-dashboard.prints.department-report', ['reportId' => $generatedReport->id]) }}', '_blank')">
+                        <x-icon name="arrow-top-right-on-square" class="w-4 h-4 mr-2" />
+                        Print Layout
+                    </x-button>
+                @endif
             @endif
         </div>
     </div>
 
     @if($reportData)
+        {{-- Printable Header (Visible only when printing) --}}
+        <div class="print-header hidden print:block mb-6 pb-3 border-b-2 border-zinc-800">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-2xl font-bold text-zinc-900">{{ $selectedReport['meta']['name'] ?? 'Department Report' }}</h1>
+                    <p class="text-xs text-zinc-600 mt-1">
+                        Category: {{ ucfirst($reportCategory ?? '') }} &bull;
+                        Period: {{ $customDateFrom }} to {{ $customDateTo }}
+                        @if($shiftType) &bull; Shift: {{ ucfirst($shiftType) }} @endif
+                    </p>
+                </div>
+                <div class="text-right text-xs text-zinc-500">
+                    <p>Generated: {{ now()->format('M d, Y h:i A') }}</p>
+                    <p>{{ auth()->user()->name ?? 'System' }}</p>
+                </div>
+            </div>
+        </div>
+
         {{-- Summary Metrics --}}
         @if(!empty($summaryMetrics))
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -256,8 +287,9 @@
                                                 Submit
                                             </x-button>
                                         @endif
-                                        <x-button size="sm" color="secondary" :href="branch_route('branch-dashboard.prints.department-report', ['reportId' => $report->id])">
-                                            Export
+                                        <x-button size="sm" color="zinc" target="_blank" :href="branch_route('branch-dashboard.prints.department-report', ['reportId' => $report->id])">
+                                            <x-icon name="printer" class="w-3.5 h-3.5 mr-1" />
+                                            Print / PDF
                                         </x-button>
                                     </div>
                                 </td>
@@ -274,4 +306,48 @@
             </div>
         </div>
     </div>
+
+    <style>
+    @media print {
+        header, nav, aside, [role="navigation"],
+        flux-sidebar, .flux-header,
+        button, input, select, form,
+        .no-print, .breadcrumb-container {
+            display: none !important;
+        }
+
+        body, main {
+            background: #ffffff !important;
+            color: #000000 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .bg-white, .dark\:bg-zinc-800 {
+            box-shadow: none !important;
+            border: 1px solid #d1d5db !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            page-break-inside: avoid;
+            margin-bottom: 1rem;
+        }
+
+        table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+        }
+
+        th, td {
+            border: 1px solid #d1d5db !important;
+            padding: 6px 8px !important;
+            color: #000000 !important;
+            background: #ffffff !important;
+        }
+
+        th {
+            background: #f3f4f6 !important;
+            font-weight: bold !important;
+        }
+    }
+    </style>
 </div>

@@ -308,16 +308,18 @@ class WipProductRecipe extends Component
             }
 
             $isWip = $ing['is_wip'] ?? false;
+            $uomId = isset($ing['uom']) ? UnitOfMeasure::where('symbol', $ing['uom'])->first()?->id : null;
 
             RecipeIngredient::create([
                 'recipe_id' => $recipe->id,
                 'item_id' => $ing['item_id'],
-                'item_name' => $ing['item_name'],
-                'quantity' => $ing['quantity'],
-                'uom' => $ing['uom'],
-                'cost_per_unit' => $ing['cost_per_unit'] ?? 0,
-                'waste_percentage' => $ing['waste_percentage'] ?? 0,
-                'is_wip' => $isWip,
+                'quantity' => (float) ($ing['quantity'] ?? 0),
+                'uom_id' => $uomId,
+                'cost_per_unit' => (float) ($ing['cost_per_unit'] ?? 0),
+                'waste_percentage' => (float) ($ing['waste_percentage'] ?? 0),
+                'notes' => !empty($ing['notes']) ? $ing['notes'] : null,
+                'preparation_notes' => !empty($ing['preparation_notes']) ? $ing['preparation_notes'] : null,
+                'is_wip' => $isWip ? 1 : 0,
             ]);
         }
     }

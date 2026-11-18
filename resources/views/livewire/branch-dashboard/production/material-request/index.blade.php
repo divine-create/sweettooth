@@ -63,7 +63,16 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3">
-                                <button wire:click="viewDetail({{ $request->id }})" class="text-blue-600 hover:underline">View</button>
+                                <div class="flex items-center gap-3">
+                                    <button wire:click="viewDetail({{ $request->id }})" class="text-blue-600 hover:underline">View</button>
+                                    @if($request->canBeDeleted())
+                                        <button wire:click="deleteRequest({{ $request->id }})" 
+                                                wire:confirm="Are you sure you want to delete this material request? This cannot be undone."
+                                                class="text-red-600 hover:underline">
+                                            Delete
+                                        </button>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -104,27 +113,34 @@
                             <button type="button" wire:click="addItem" class="text-sm text-blue-600 hover:underline">+ Add Item</button>
                         </div>
                         
+                        @php
+                            $availableItems = \App\Models\Item::query()
+                                ->when($this->getBranchId(), fn($q) => $q->where('branch_id', $this->getBranchId()))
+                                ->orderBy('name')
+                                ->get();
+                        @endphp
+
                         @forelse($newItems as $index => $item)
                             <div class="grid grid-cols-4 gap-2 mb-2 items-end">
                                 <div class="col-span-2">
-                                    <select wire:model="newItems.{{ $index }}.item_id" 
+                                    <select wire:model.live="newItems.{{ $index }}.item_id" 
                                         wire:change="fillUom({{ $index }})"
                                         class="w-full rounded border p-2">
                                         <option value="">Select Item</option>
-                                        @foreach(\App\Models\Item::forBranch(current_branch_id())->orderBy('name')->get() as $i)
+                                        @foreach($availableItems as $i)
                                             <option value="{{ $i->id }}">{{ $i->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                                <input type="number" wire:model="newItems.{{ $index }}.quantity" placeholder="Qty" class="rounded border p-2"/>
+                                <input type="number" step="any" min="0.01" wire:model="newItems.{{ $index }}.quantity" placeholder="Qty" class="rounded border p-2"/>
                                 <div class="flex gap-1">
-                                    <div class="rounded border p-2 text-sm w-20 flex items-center bg-zinc-100 dark:bg-zinc-700">
+                                    <div class="rounded border p-2 text-sm w-20 flex items-center justify-center bg-zinc-100 dark:bg-zinc-700 font-mono text-zinc-700 dark:text-zinc-300">
                                         @php
-                                            $uom = \App\Models\UnitOfMeasure::find($item['uom_id']);
+                                            $uom = !empty($item['uom_id']) ? \App\Models\UnitOfMeasure::find($item['uom_id']) : null;
                                         @endphp
                                         {{ $uom?->symbol ?? '-' }}
                                     </div>
-                                    <button type="button" wire:click="removeItem({{ $index }})" class="text-red-600">×</button>
+                                    <button type="button" wire:click="removeItem({{ $index }})" class="text-red-600 font-bold px-2">×</button>
                                 </div>
                             </div>
                         @empty
@@ -157,6 +173,7 @@
                             <th class="px-2 py-2 text-right">Requested</th>
                             <th class="px-2 py-2 text-right">Approved</th>
                             <th class="px-2 py-2 text-right">Dispatched</th>
+                            <th class="px-2 py-2 text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -166,13 +183,37 @@
                                 <td class="px-2 py-2 text-right">{{ $detail['quantity_requested'] }}</td>
                                 <td class="px-2 py-2 text-right">{{ $detail['quantity_approved'] }}</td>
                                 <td class="px-2 py-2 text-right">{{ $detail['quantity_dispatched'] }}</td>
+                                <td class="px-2 py-2 text-center">
+                                    @if(!empty($detail['can_be_deleted']))
+                                        <button type="button" 
+                                                wire:click="deleteItem({{ $detail['id'] }})"
+                                                wire:confirm="Are you sure you want to remove this item from the request?"
+                                                class="text-xs text-red-600 hover:text-red-800 font-medium hover:underline">
+                                            Delete
+                                        </button>
+                                    @else
+                                        <span class="text-xs text-zinc-400">Approved</span>
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
                 
-                <div class="flex justify-end mt-4">
-                    <button type="button" wire:click="closeModal" class="px-4 py-2 border rounded">Close</button>
+                <div class="flex justify-between items-center mt-4">
+                    <div>
+                        @if($selectedRequest->canBeDeleted())
+                            <button type="button" 
+                                    wire:click="deleteRequest({{ $selectedRequest->id }})" 
+                                    wire:confirm="Are you sure you want to delete this material request? This cannot be undone."
+                                    class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded">
+                                Delete Request
+                            </button>
+                        @endif
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" wire:click="closeModal" class="px-4 py-2 border rounded">Close</button>
+                    </div>
                 </div>
             </div>
         </div>

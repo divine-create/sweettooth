@@ -560,13 +560,18 @@ class SidebarVisibilityService
             return false;
         }
 
+        // Inventory managers and operations managers can see reporting module
+        if ($user && $user->hasAnyRole(['Inventory Manager', 'Inventory Team Lead', 'Operations Manager'])) {
+            return true;
+        }
+
         // Managers can only see reporting if they are in relevant departments
-        if ($level >= self::LEVEL_MANAGER && in_array($category, ['Support', 'HR', 'Production', 'Sales', 'Accounting'])) {
+        if ($level >= self::LEVEL_MANAGER && in_array($category, ['Support', 'HR', 'Production', 'Sales', 'Accounting', 'Inventory'])) {
             return true;
         }
 
         // Others need specific permissions
-        return self::hasAnyPermission($user, ['view-reports', 'export-reports']);
+        return self::hasAnyPermission($user, ['view-reports', 'export-reports', 'view-inventory-reports']);
     }
 
     public static function canSeeAccounting($user = null): bool
@@ -624,7 +629,8 @@ class SidebarVisibilityService
     {
         $user = $user ?? auth()->user();
         return self::getRoleLevel($user) >= self::LEVEL_ADMIN
-            || self::hasAnyPermission($user, ['view-reports', 'export-reports']);
+            || ($user && $user->hasAnyRole(['Inventory Manager', 'Operations Manager']))
+            || self::hasAnyPermission($user, ['view-reports', 'export-reports', 'view-inventory-reports']);
     }
 
     public static function canSeeSettings($user = null): bool

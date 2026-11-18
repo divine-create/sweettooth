@@ -55,11 +55,20 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3">
-                                @if($request->status === 'pending')
-                                    <button wire:click="openApprovalModal({{ $request->id }})" class="text-blue-600 hover:underline">Approve & Dispatch</button>
-                                @else
-                                    <button wire:click="openApprovalModal({{ $request->id }})" class="text-blue-600 hover:underline">View</button>
-                                @endif
+                                <div class="flex items-center gap-3">
+                                    @if($request->status === 'pending')
+                                        <button wire:click="openApprovalModal({{ $request->id }})" class="text-blue-600 hover:underline">Approve & Dispatch</button>
+                                    @else
+                                        <button wire:click="openApprovalModal({{ $request->id }})" class="text-blue-600 hover:underline">View</button>
+                                    @endif
+                                    @if($request->canBeDeleted())
+                                        <button wire:click="deleteRequest({{ $request->id }})" 
+                                                wire:confirm="Are you sure you want to delete this pending material request? This cannot be undone."
+                                                class="text-red-600 hover:underline">
+                                            Delete
+                                        </button>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -132,20 +141,32 @@
                     </tbody>
                 </table>
 
-                <div class="flex justify-end gap-2 mt-6">
-                    <button type="button" wire:click="closeModal" class="px-4 py-2 border rounded">Close</button>
-                    @if(!$isCompleted)
-                        <button type="button" wire:click="approveAndDispatch" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
-                            Approve & Dispatch
-                        </button>
-                    @else
-                        <span class="px-4 py-2 bg-zinc-100 dark:bg-zinc-700 text-zinc-400 dark:text-zinc-500 rounded cursor-not-allowed text-sm font-medium flex items-center gap-1">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            Fully Dispatched
-                        </span>
-                    @endif
+                <div class="flex justify-between items-center mt-6">
+                    <div>
+                        @if($selectedRequest->canBeDeleted())
+                            <button type="button" 
+                                    wire:click="deleteRequest({{ $selectedRequest->id }})" 
+                                    wire:confirm="Are you sure you want to delete this pending material request? This cannot be undone."
+                                    class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded">
+                                Delete Request
+                            </button>
+                        @endif
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" wire:click="closeModal" class="px-4 py-2 border rounded">Close</button>
+                        @if(!$isCompleted)
+                            <button type="button" wire:click="approveAndDispatch" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
+                                Approve & Dispatch
+                            </button>
+                        @else
+                            <span class="px-4 py-2 bg-zinc-100 dark:bg-zinc-700 text-zinc-400 dark:text-zinc-500 rounded cursor-not-allowed text-sm font-medium flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Fully Dispatched
+                            </span>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>

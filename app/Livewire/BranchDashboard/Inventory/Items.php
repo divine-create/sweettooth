@@ -140,7 +140,7 @@ class Items extends BaseComponent
             'max_stock_level' => $this->max_stock_level ?? 0,
             'unit_price' => $this->unit_price ?? 0,
             'last_unit_price' => $this->unit_price ?? 0,
-            'sell_price' => $this->sell_price ?: null,
+            'sell_price' => (is_numeric($this->sell_price) && (float) $this->sell_price >= 0) ? (float) $this->sell_price : null,
             'status' => $this->status,
             'requires_request' => (bool) $this->requires_request,
         ];
@@ -361,7 +361,7 @@ class Items extends BaseComponent
         $this->reorder_level = $item->reorder_level;
         $this->max_stock_level = $item->max_stock_level;
         $this->unit_price = (float) ($item->unit_price ?? 0);
-        $this->sell_price = $item->sell_price ? (float) $item->sell_price : null;
+        $this->sell_price = $item->sell_price !== null ? (float) $item->sell_price : null;
         $this->status = $item->status;
         $this->requires_request = (bool) $item->requires_request;
         $this->isEditing = true;

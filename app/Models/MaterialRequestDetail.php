@@ -52,11 +52,22 @@ class MaterialRequestDetail extends Model
 
     public function isFullyApproved(): bool
     {
-        return $this->quantity_approved >= $this->quantity_requested;
+        return (float) $this->quantity_approved > 0
+            && (float) $this->quantity_approved >= (float) $this->quantity_requested;
     }
 
     public function isFullyDispatched(): bool
     {
-        return $this->quantity_dispatched >= $this->quantity_approved;
+        return (float) $this->quantity_approved > 0
+            && (float) $this->quantity_dispatched >= (float) $this->quantity_approved;
+    }
+
+    public function canBeDeleted(): bool
+    {
+        if ((float) $this->quantity_approved > 0 || (float) $this->quantity_dispatched > 0) {
+            return false;
+        }
+
+        return ! in_array($this->request?->status, ['approved', 'completed'], true);
     }
 }

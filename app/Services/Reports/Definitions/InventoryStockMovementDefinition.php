@@ -34,7 +34,21 @@ class InventoryStockMovementDefinition implements ReportDefinition
             ]);
 
         if ($departmentId) {
-            $query->where('department_id', $departmentId);
+            $isStore = \App\Models\Department::where('id', $departmentId)
+                ->where(function ($q) {
+                    $q->where('name', 'like', '%inventory%')
+                      ->orWhere('name', 'like', '%store%')
+                      ->orWhere('name', 'like', '%warehouse%');
+                })->exists();
+
+            if ($isStore) {
+                $query->where(function ($q) use ($departmentId) {
+                    $q->whereNull('department_id')
+                      ->orWhere('department_id', $departmentId);
+                });
+            } else {
+                $query->where('department_id', $departmentId);
+            }
         }
 
         $movements = $query->orderBy('movement_date', 'desc')->get();
@@ -144,7 +158,7 @@ class InventoryStockMovementDefinition implements ReportDefinition
                 'headers' => ['Date', 'Item', 'Type', 'Qty', 'Reference', 'Notes'],
                 'rows' => array_map(function ($item) {
                     return [
-                        Carbon::parse($item['date'])->format('M d, H:i'),
+                        !empty($item['date']) ? Carbon::parse($item['date'])->format('M d, H:i') : '-',
                         $item['item_name'],
                         ucfirst($item['type']),
                         number_format($item['quantity'], 2),

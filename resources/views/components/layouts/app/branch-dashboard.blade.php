@@ -150,6 +150,12 @@
                     {{ __('Closing Stock Report') }}
                 </flux:navlist.item>
 
+                <flux:navlist.item icon="truck" :href="branch_route('branch-dashboard.md-reports.supply-and-purchase')"
+                    :current="request()->routeIs('branch-dashboard.md-reports.supply-and-purchase*')
+                        || request()->routeIs('branch-dashboard.inventory.supply-and-purchase*')" wire:navigate>
+                    {{ __('Supply & Purchase Report') }}
+                </flux:navlist.item>
+
                 <flux:navlist.item icon="cog" :href="branch_route('branch-dashboard.settings.index')"
                     :current="request()->routeIs('branch-dashboard.settings.index')" wire:navigate>
                     {{ __('System Settings') }}
@@ -586,6 +592,11 @@
                         :current="request()->routeIs('branch-dashboard.inventory.purchases')" wire:navigate>
                         {{ __('Purchases') }}
                     </flux:navlist.item>
+                    <flux:navlist.item icon="document-chart-bar" :href="branch_route('branch-dashboard.inventory.supply-and-purchase')"
+                        :current="request()->routeIs('branch-dashboard.inventory.supply-and-purchase*')
+                            || request()->routeIs('branch-dashboard.md-reports.supply-and-purchase*')" wire:navigate>
+                        {{ __('Supply & Purchase Report') }}
+                    </flux:navlist.item>
                     <flux:navlist.item icon="cube-transparent"
                         :href="branch_route('branch-dashboard.inventory.stocks')"
                         :current="request()->routeIs('branch-dashboard.inventory.stocks')" wire:navigate>
@@ -625,7 +636,46 @@
                  </flux:navlist.group>
                 @endif
 
-                {{-- Inventory Reports removed as requested --}}
+                @if($sidebarService::canSeeInventory($currentUser))
+                 <flux:navlist.group :heading="__('Inventory Reports')" class="grid" expandable
+                     :expanded="request()->routeIs('branch-dashboard.inventory.reports*')
+                         || request()->routeIs('branch-dashboard.inventory.supply-and-purchase*')
+                         || request()->routeIs('branch-dashboard.md-reports.supply-and-purchase*')
+                         || request()->routeIs('branch-dashboard.md-reports.opening-stock-report*')
+                         || request()->routeIs('branch-dashboard.md-reports.closing-stock-report*')">
+                    <flux:navlist.item icon="document-chart-bar"
+                        :href="branch_route('branch-dashboard.inventory.supply-and-purchase')"
+                        :current="request()->routeIs('branch-dashboard.inventory.supply-and-purchase*')
+                            || request()->routeIs('branch-dashboard.md-reports.supply-and-purchase*')" wire:navigate>
+                        {{ __('Supply & Purchase Report') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="table-cells"
+                        :href="branch_route('branch-dashboard.md-reports.opening-stock-report')"
+                        :current="request()->routeIs('branch-dashboard.md-reports.opening-stock-report')" wire:navigate>
+                        {{ __('Opening Stock Report') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="table-cells"
+                        :href="branch_route('branch-dashboard.md-reports.closing-stock-report')"
+                        :current="request()->routeIs('branch-dashboard.md-reports.closing-stock-report')" wire:navigate>
+                        {{ __('Closing Stock Report') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="arrows-right-left"
+                        :href="branch_route('branch-dashboard.analytics.stock-movement')"
+                        :current="request()->routeIs('branch-dashboard.analytics.stock-movement')" wire:navigate>
+                        {{ __('Stock Movement') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="document-plus"
+                        :href="branch_route('branch-dashboard.reporting.generate')"
+                        :current="request()->routeIs('branch-dashboard.reporting.generate')" wire:navigate>
+                        {{ __('Generate Reports') }}
+                    </flux:navlist.item>
+                    <flux:navlist.item icon="archive-box"
+                        :href="branch_route('branch-dashboard.inventory.reports')"
+                        :current="request()->routeIs('branch-dashboard.inventory.reports*')" wire:navigate>
+                        {{ __('Reports Library') }}
+                    </flux:navlist.item>
+                </flux:navlist.group>
+                @endif
 
                 @if($sidebarService::canSeeInventory($currentUser))
                  <flux:navlist.group :heading="__('Material Returns')" class="grid" expandable
@@ -783,6 +833,18 @@
                             || request()->route('deptSlug') == $dept->slug
                             || request()->route('dept_slug') == $dept->slug
                             || str_ends_with((string) request()->get('page'), '_' . $dept->slug)" class="grid">
+                        <flux:navlist.item icon="sun"
+                            :href="branch_route('branch-dashboard.production.stock-opening.index', [
+                                'deptSlug' => $dept->slug,
+                                'dept_slug' => $dept->slug,
+                                'page' => 'Shift Opening Stock' . '_' . $dept->slug
+                            ])"
+                            :current="request()->routeIs('branch-dashboard.production.stock-opening.*')
+                                && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)"
+                            wire:navigate>
+                            {{ __('Shift Opening Stock') }}
+                        </flux:navlist.item>
+
                         <flux:navlist.item icon="clipboard-document-check"
                             :href="branch_route('branch-dashboard.production.sales-requests.workflow', [
                                 'deptSlug' => $dept->slug,
@@ -819,7 +881,7 @@
                             {{ __('Production Records') }}
                         </flux:navlist.item>
 
-@forelse($dept->pages as $page)
+                        @forelse($dept->pages->filter(fn($p) => \Illuminate\Support\Facades\Route::has($p->route_name)) as $page)
                             <flux:navlist.item icon="{{ $page->icon ?? 'o-beaker' }}"
                                 :href="branch_route($page->route_name, [
                                     'deptSlug' => $dept->slug,
@@ -865,12 +927,6 @@
                             {{ __('Material Request') }}
                         </flux:navlist.item>
 
-                        <flux:navlist.item icon="arrow-left-end-on-rectangle"
-                            :href="branch_route('branch-dashboard.inventory.material-requests', ['b_id' => request()->query('b_id')])"
-                            :current="request()->routeIs('branch-dashboard.inventory.material-requests')" wire:navigate>
-                            {{ __('Request from Inventory') }}
-                        </flux:navlist.item>
-
                         <flux:navlist.group :heading="__('Material Returns')" class="grid" expandable
                             :expanded="request()->routeIs('branch-dashboard.production.material-returns.*') && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)">
                             <flux:navlist.item icon="arrow-path"
@@ -891,6 +947,18 @@
                             :href="branch_route('branch-dashboard.production.store-transfers.index', ['deptSlug' => $dept->slug])"
                             :current="request()->routeIs('branch-dashboard.production.store-transfers.*') && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)" wire:navigate>
                             {{ __('Store Transfers') }}
+                        </flux:navlist.item>
+
+                        <flux:navlist.item icon="moon"
+                            :href="branch_route('branch-dashboard.production.shift-closing.index', [
+                                'deptSlug' => $dept->slug,
+                                'dept_slug' => $dept->slug,
+                                'page' => 'Shift Closing Stock' . '_' . $dept->slug
+                            ])"
+                            :current="request()->routeIs('branch-dashboard.production.shift-closing.*')
+                                && ((request()->route('deptSlug') ?? request()->get('deptSlug')) == $dept->slug)"
+                            wire:navigate>
+                            {{ __('Shift Closing Stock') }}
                         </flux:navlist.item>
                     </flux:navlist.group>
                 @empty

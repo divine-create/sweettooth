@@ -91,7 +91,7 @@ class Index extends BaseComponent
 
     protected ?array $productsPayloadForView = null;
 
-    public int $productsPerPage = 50;
+    public int $productsPerPage = 100;
 
     public function __set(string $name, mixed $value): void
     {
@@ -356,7 +356,10 @@ class Index extends BaseComponent
         $transferredInIds = $this->transferredInProductIds();
         if (! empty($departmentIds)) {
             $productQuery->where(function ($q) use ($departmentIds, $transferredInIds) {
-                $q->whereIn('sales_department_id', $departmentIds);
+                $q->whereIn('sales_department_id', $departmentIds)
+                  ->orWhereHas('departments', function ($dq) use ($departmentIds) {
+                      $dq->whereIn('department_id', $departmentIds);
+                  });
                 if (! empty($transferredInIds)) {
                     $q->orWhereIn('id', $transferredInIds);
                 }
@@ -701,11 +704,16 @@ class Index extends BaseComponent
                 'payments.*.amount' => 'required|numeric|min:0',
             ]);
 
-            // Block the sale if any line has no selling price. A zero-price line
-            // collects nothing and is almost always a mistake, so the whole sale
-            // is refused until a price is set. (Zero cost is allowed.)
+            // Block the sale if any production product line has no selling price.
+            // (Inventory items with configured sell_price = 0 are allowed as promotional/free items).
             $zeroPriceNames = collect($this->cart)
-                ->filter(fn ($line) => (float) ($line['price'] ?? 0) <= 0)
+                ->filter(function ($line) {
+                    if (isset($line['item_id']) || ($line['type'] ?? '') === 'inventory_item') {
+                        return !isset($line['price']) || (float) $line['price'] < 0;
+                    }
+
+                    return (float) ($line['price'] ?? 0) <= 0;
+                })
                 ->map(fn ($line) => $line['name'] ?? 'item')
                 ->values();
 
@@ -1265,7 +1273,29 @@ class Index extends BaseComponent
             $q->lockForUpdate();
         }
 
-        return $q->first();
+        $stock = $q->first();
+
+        // Fallback: if no stock row exists yet for current shift type, use today's latest stock row for this product
+        if (! $stock) {
+            $fallbackQ = ProductStock::query()
+                ->whereDate('stock_date', Carbon::today())
+                ->where('product_id', $productId);
+
+            if ($hasDepartmentColumn) {
+                $fallbackQ->whereIn('department_id', $departmentIds)
+                    ->orderByRaw('department_id = ? DESC', [(int) $this->departmentId]);
+            }
+
+            $fallbackQ->orderByDesc('id');
+
+            if ($forUpdate) {
+                $fallbackQ->lockForUpdate();
+            }
+
+            $stock = $fallbackQ->first();
+        }
+
+        return $stock;
     }
 
     protected function toBaseQty(Product $product, float $salesQty): float
@@ -1450,7 +1480,7 @@ class Index extends BaseComponent
             })
             ->select(['products.id', 'products.name', 'products.price', 'products.sku', 'products.uom_id', 'products.sales_uom_id'])
             ->with(['unitOfMeasure:id,symbol', 'salesUom:id,symbol'])
-            ->orderBy('name');
+            ->orderBy('products.name');
 
         $hasDepartmentColumn = Schema::hasColumn('product_stocks', 'department_id');
         $departmentIdsForStock = [];
@@ -1466,9 +1496,8 @@ class Index extends BaseComponent
         $hasReservedColumn = Schema::hasColumn('product_stocks', 'quantity_reserved');
 
         $latestStockIds = ProductStock::query()
-            ->selectRaw('MAX(id) as id, product_id')
+            ->selectRaw('SUBSTRING_INDEX(GROUP_CONCAT(id ORDER BY (shift_type = ?) DESC, id DESC), ",", 1) as id, product_id', [$this->getProductStockShiftType()])
             ->whereDate('stock_date', Carbon::today())
-            ->where('shift_type', $this->getProductStockShiftType())
             ->when($hasDepartmentColumn && ! empty($departmentIdsForStock), function ($query) use ($departmentIdsForStock) {
                 $query->whereIn('department_id', $departmentIdsForStock);
             })
@@ -1480,12 +1509,15 @@ class Index extends BaseComponent
             })
             ->groupBy('product_id');
 
-        $q->joinSub($latestStockIds, 'latest_stock', function ($join) {
+        $q->leftJoinSub($latestStockIds, 'latest_stock', function ($join) {
             $join->on('products.id', '=', 'latest_stock.product_id');
         })
-            ->join('product_stocks as ps', 'ps.id', '=', 'latest_stock.id')
+            ->leftJoin('product_stocks as ps', 'ps.id', '=', 'latest_stock.id')
             ->when($hasBranchColumn && $this->branchId, function ($query) {
-                $query->where('ps.branch_id', $this->branchId);
+                $query->where(function ($sub) {
+                    $sub->whereNull('ps.id')
+                        ->orWhere('ps.branch_id', $this->branchId);
+                });
             })
             ->where(function ($query) use ($hasReservedColumn) {
                 $closingExpr = $hasReservedColumn
@@ -1493,22 +1525,17 @@ class Index extends BaseComponent
                     : 'COALESCE(ps.closing_quantity, (ps.opening_quantity + ps.addition_quantity - ps.callback_quantity - ps.redress_quantity - ps.transfer_quantity - ps.glovo_quantity - ps.quantity_sold))';
 
                 if ($this->stockFilter === 'in_stock') {
-                    $query->whereRaw("$closingExpr > 0");
+                    $query->whereRaw("COALESCE($closingExpr, 0) > 0");
                 } elseif ($this->stockFilter === 'out_of_stock') {
-                    $query->whereRaw("$closingExpr <= 0");
-                } else {
-                    // 'all': show everything with a stock record today (including zero stock)
-                    $query->whereRaw("$closingExpr > 0");
-                    if (Schema::hasColumn('product_stocks', 'stock_date')) {
-                        $query->orWhereDate('ps.stock_date', Carbon::today());
-                    }
+                    $query->whereRaw("COALESCE($closingExpr, 0) <= 0");
                 }
+                // 'all': show all assigned products (in stock and out of stock)
             });
 
         if (strlen($this->search)) {
             $q->where(function ($query) {
-                $query->where('name', 'like', '%'.$this->search.'%')
-                    ->orWhere('sku', 'like', '%'.$this->search.'%');
+                $query->where('products.name', 'like', '%'.$this->search.'%')
+                    ->orWhere('products.sku', 'like', '%'.$this->search.'%');
             });
         }
 
@@ -1605,11 +1632,17 @@ class Index extends BaseComponent
         }
 
         $availability = [];
+        foreach ($productIds as $pid) {
+            $availability[(string) $pid] = 0.0;
+        }
+
+        $seen = [];
         foreach ($stockQuery->get() as $stock) {
             $productId = (string) $stock->product_id;
-            if (isset($availability[$productId])) {
+            if (isset($seen[$productId])) {
                 continue;
             }
+            $seen[$productId] = true;
 
             $available = $stock->closing_quantity !== null
                 ? (float) $stock->closing_quantity

@@ -347,13 +347,18 @@ class Add extends Component
                 throw new \Exception("Invalid unit of measure: {$this->uom}");
             }
 
-            // Convert ingredient UOM strings to IDs
+            // Convert ingredient UOM strings to IDs and sanitize numeric fields
             $ingredientsWithUomIds = array_map(function ($ingredient) {
                 $ingredientUomId = UnitOfMeasure::where('symbol', $ingredient['uom'])->first()?->id;
                 if (!$ingredientUomId) {
                     throw new \Exception("Invalid unit of measure for ingredient: {$ingredient['uom']}");
                 }
                 $ingredient['uom_id'] = $ingredientUomId;
+                $ingredient['quantity'] = (float) ($ingredient['quantity'] ?? 0);
+                $ingredient['cost_per_unit'] = (float) ($ingredient['cost_per_unit'] ?? 0);
+                $ingredient['waste_percentage'] = (float) ($ingredient['waste_percentage'] ?? 0);
+                $ingredient['notes'] = !empty($ingredient['notes']) ? $ingredient['notes'] : null;
+                $ingredient['preparation_notes'] = !empty($ingredient['preparation_notes']) ? $ingredient['preparation_notes'] : null;
                 return $ingredient;
             }, $this->ingredients);
 
@@ -363,13 +368,13 @@ class Add extends Component
                 'sku' => strtoupper($this->sku),
                 'department_id' => $this->department_id,
                 'product_type_id' => $this->product_type,  // Store the ID
-                'cost_per_unit' => $costPerUnit,
+                'cost_per_unit' => (float) $costPerUnit,
                 'uom_id' => $uomId,
-                'yield_quantity' => $this->yield_quantity,
-                'preparation_time' => $this->preparation_time,
+                'yield_quantity' => (float) $this->yield_quantity,
+                'preparation_time' => !empty($this->preparation_time) ? (int) $this->preparation_time : null,
                 'instructions' => !empty($this->instructions) ? json_encode(array_values($this->instructions)) : null,
                 'status' => $this->status,
-                'is_wip' => $this->is_wip,
+                'is_wip' => (bool) $this->is_wip,
                 'is_active' => true,
                 'ingredients' => $ingredientsWithUomIds,
             ];
@@ -405,7 +410,6 @@ class Add extends Component
                 'trace' => $e->getTraceAsString(),
             ]);
             $this->toast()->error('Error: ' . $e->getMessage())->send();
-            throw $e;
         }
     }
 
@@ -461,17 +465,15 @@ class Add extends Component
                     $itemId = $ingredient['item_id'];
                     $isWip = $ingredient['is_wip'] ?? false;
                     
-                    $notes = $ingredient['notes'] ?? null;
-                    
                     RecipeIngredient::create([
                         'recipe_id' => $recipe->id,
                         'item_id' => $itemId,
-                        'quantity' => $ingredient['quantity'],
+                        'quantity' => (float) ($ingredient['quantity'] ?? 0),
                         'uom_id' => $ingredient['uom_id'],
-                        'cost_per_unit' => $ingredient['cost_per_unit'],
-                        'waste_percentage' => $ingredient['waste_percentage'] ?? 0,
-                        'notes' => $notes,
-                        'preparation_notes' => $ingredient['preparation_notes'] ?? null,
+                        'cost_per_unit' => (float) ($ingredient['cost_per_unit'] ?? 0),
+                        'waste_percentage' => (float) ($ingredient['waste_percentage'] ?? 0),
+                        'notes' => !empty($ingredient['notes']) ? $ingredient['notes'] : null,
+                        'preparation_notes' => !empty($ingredient['preparation_notes']) ? $ingredient['preparation_notes'] : null,
                         'is_wip' => $isWip ? 1 : 0,
                     ]);
                 }
@@ -488,7 +490,6 @@ class Add extends Component
                 'trace' => $e->getTraceAsString(),
             ]);
             $this->toast()->error('Failed to create recipe: ' . $e->getMessage())->send();
-            throw $e;
         }
     }
 

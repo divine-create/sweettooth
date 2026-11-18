@@ -27,14 +27,13 @@ class ApAgingReport extends Component
      */
     private function buildBuckets(Carbon $asOf): array
     {
-        $branchId = session('selected_branch_id');
+        $branchId = session('selected_branch_id') ?? current_branch_id();
 
         $unpaid = Purchase::query()
-            ->where('branch_id', $branchId)
-            ->whereIn('payment_status', ['unpaid', 'partial'])
-            ->whereNotNull('due_date')
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereIn('payment_status', ['unpaid', 'pending', 'partial'])
             ->with('supplier')
-            ->orderBy('due_date')
+            ->orderBy('purchase_date')
             ->get();
 
         $buckets = [
@@ -46,10 +45,11 @@ class ApAgingReport extends Component
         ];
 
         foreach ($unpaid as $purchase) {
-            $due = Carbon::parse($purchase->due_date);
+            $baseDate = $purchase->purchase_date ? Carbon::parse($purchase->purchase_date) : Carbon::parse($purchase->created_at);
+            $due = $purchase->due_date ? Carbon::parse($purchase->due_date) : $baseDate->copy()->addDays(30);
             $daysOverdue = $due->lt($asOf) ? $due->diffInDays($asOf) : 0;
 
-            $balance = (float) ($purchase->total_cost ?? 0);
+            $balance = (float) ($purchase->landing_cost ?: ($purchase->total_cost ?: $purchase->calculateTotalCost()));
 
             if ($daysOverdue === 0) {
                 $key = 'current';
@@ -63,6 +63,7 @@ class ApAgingReport extends Component
                 $key = 'over_90';
             }
 
+            $purchase->due_date = $due;
             $purchase->days_overdue = $daysOverdue;
             $purchase->outstanding_balance = $balance;
             $buckets[$key]['items']->push($purchase);

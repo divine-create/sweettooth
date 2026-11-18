@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Department;
 use App\Models\Item;
 use App\Models\MaterialRequest;
+use App\Models\MaterialRequestDetail;
 use App\Services\MaterialRequestService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -42,7 +43,7 @@ class MaterialRequests extends Component
 
     public ?int $targetDepartmentId = null;
     
-    public ?int $requestedById = null;
+    public ?string $requestedById = null;
 
     public function mount()
     {
@@ -128,7 +129,7 @@ class MaterialRequests extends Component
     {
         $this->validate([
             'targetDepartmentId' => 'required|integer|exists:departments,id',
-            'requestedById' => 'required|integer|exists:users,id',
+            'requestedById' => 'required|string|exists:users,id',
             'newRequestDate' => 'required|date',
             'newShift' => 'required|in:morning,afternoon',
             'newItems' => 'required|array|min:1',
@@ -180,9 +181,53 @@ class MaterialRequests extends Component
                 'quantity_approved' => $detail->quantity_approved,
                 'quantity_dispatched' => $detail->quantity_dispatched,
                 'uom_symbol' => $detail->unitOfMeasure?->symbol ?? 'N/A',
+                'can_be_deleted' => $detail->canBeDeleted(),
             ];
         })->toArray();
         $this->showDetailModal = true;
+    }
+
+    public function deleteRequest(int $requestId)
+    {
+        try {
+            $request = MaterialRequest::where('branch_id', $this->getBranchId())
+                ->findOrFail($requestId);
+
+            $service = app(MaterialRequestService::class);
+            $service->deleteRequest($request);
+
+            if ($this->selectedRequest?->id === $requestId) {
+                $this->closeModal();
+            }
+
+            $this->toast()->success('Material request deleted successfully')->send();
+        } catch (\Exception $e) {
+            $this->toast()->error($e->getMessage())->send();
+        }
+    }
+
+    public function deleteItem(int $detailId)
+    {
+        try {
+            $detail = MaterialRequestDetail::whereHas('request', function ($query) {
+                $query->where('branch_id', $this->getBranchId());
+            })->findOrFail($detailId);
+
+            $requestId = $detail->request_id;
+            $service = app(MaterialRequestService::class);
+            $service->deleteRequestItem($detail);
+
+            $freshRequest = MaterialRequest::find($requestId);
+            if ($freshRequest) {
+                $this->viewDetail($freshRequest);
+            } else {
+                $this->closeModal();
+            }
+
+            $this->toast()->success('Item removed from material request')->send();
+        } catch (\Exception $e) {
+            $this->toast()->error($e->getMessage())->send();
+        }
     }
 
     public function closeModal()

@@ -29,7 +29,8 @@ class QuickProduceFinishedGood extends Component
 
     public function getRecipes()
     {
-        return Recipe::where('branch_id', $this->getBranchId())
+        return Recipe::whereHas('product')
+            ->where('branch_id', $this->getBranchId())
             ->where('department_id', $this->department->id)
             ->where('is_active', true)
             ->where('is_wip', false)

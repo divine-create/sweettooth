@@ -97,6 +97,7 @@ class AppServiceProvider extends ServiceProvider
         CreditNote::observe(CreditNoteObserver::class);
         DebitNote::observe(DebitNoteObserver::class);
         ProductionOrder::observe(ProductionOrderObserver::class);
+        \App\Models\ProductionStoreMovement::observe(\App\Observers\ProductionStoreMovementObserver::class);
         InventoryAdjustment::observe(InventoryAdjustmentObserver::class);
         Payroll::observe(PayrollObserver::class);
         PurchasePayment::observe(PurchasePaymentObserver::class);

@@ -28,7 +28,22 @@ class InventoryStockMovementReportService extends ReportService
             ]);
 
         if ($this->departmentId) {
-            $query->where('department_id', $this->departmentId);
+            $deptId = $this->departmentId;
+            $isStore = \App\Models\Department::where('id', $deptId)
+                ->where(function ($q) {
+                    $q->where('name', 'like', '%inventory%')
+                      ->orWhere('name', 'like', '%store%')
+                      ->orWhere('name', 'like', '%warehouse%');
+                })->exists();
+
+            if ($isStore) {
+                $query->where(function ($q) use ($deptId) {
+                    $q->whereNull('department_id')
+                      ->orWhere('department_id', $deptId);
+                });
+            } else {
+                $query->where('department_id', $deptId);
+            }
         }
 
         $movements = $query->orderBy('movement_date', 'desc')->get();

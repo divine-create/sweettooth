@@ -2,21 +2,29 @@
 
 namespace App\Livewire\BranchDashboard\Production\ShiftClosing;
 
-use App\Livewire\BaseComponent;
-use App\Models\Shift;
-use App\Models\ProductionRecord;
-use App\Models\DailyProduce;
 use App\Models\Branch;
+use App\Models\DailyProduce;
 use App\Models\Department;
+use App\Models\Item;
 use App\Models\ItemRequest;
+use App\Models\Product;
+use App\Models\ProductionRecord;
+use App\Models\ProductionStore;
+use App\Models\ProductionStoreDailyStock;
+use App\Models\ProductionStoreStock;
+use App\Models\Shift;
+use App\Services\ProductionStockService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
-use Carbon\Carbon;
+use Livewire\Component;
 use TallStackUi\Traits\Interactions;
 
 #[Layout('components.layouts.app.branch-dashboard')]
-class Index extends BaseComponent
+class Index extends Component
 {
     use Interactions;
 
@@ -26,104 +34,213 @@ class Index extends BaseComponent
     #[Url(keep: true)]
     public ?string $deptSlug = null;
 
-    public ?string $branchId = null;
     public ?int $departmentId = null;
+    public ?Department $department = null;
+    public ?ProductionStore $store = null;
+    public ?Shift $currentShift = null;
+    public ?string $currentShiftId = null;
+
     public string $departmentName = '';
     public string $branchName = '';
-    public ?string $currentShiftId = null;
     public $shiftDate;
     public $shiftType = 'morning';
 
-    // Closing data
+    // Tabs: finished, wip, raw
+    public string $activeTab = 'finished';
+    public string $search = '';
+
+    // Stock items categorized
+    public array $stockItems = [
+        'finished' => [],
+        'wip' => [],
+        'raw' => [],
+    ];
+    public array $closingCounts = [];
+    public array $itemNotes = [];
+
+    // Closing state
+    public bool $isClosed = false;
+    public ?string $closedAt = null;
+    public string $notes = '';
+
+    // Production metrics
     public array $productionSummary = [];
     public array $rawMaterialUsage = [];
     public array $materialVariances = [];
-    public bool $isVerified = false;
-    public $notes = '';
     public $totalMaterialEfficiency = 0;
 
-    protected function getModelClass(): string
+    public function mount($deptSlug = null)
     {
-        return Shift::class;
-    }
-
-    protected function getAllSelectableIds(): array
-    {
-        return [];
-    }
-
-    public function mount()
-    {
-        $this->mountBase();
-        $this->loadBranchAndDepartment();
+        $this->deptSlug = $deptSlug ?? request()->route('deptSlug') ?? $this->deptSlug;
+        $this->b_id = request()->query('b_id', $this->b_id) ?? session('selected_branch_id');
         $this->shiftDate = Carbon::today()->format('Y-m-d');
+
+        $this->loadDepartmentAndStore();
         $this->loadCurrentShift();
+        $this->loadClosingStockItems();
         $this->loadProductionClosingData();
     }
 
-    protected function loadBranchAndDepartment(): void
+    protected function loadDepartmentAndStore(): void
     {
-        $this->branchId = request('b_id');
-        if ($this->branchId) {
-            $branch = Branch::find($this->branchId);
+        $branchId = $this->b_id ?? current_branch_id();
+        if ($branchId) {
+            $branch = Branch::find($branchId);
             $this->branchName = $branch?->name ?? 'Unknown Branch';
         }
 
+        $query = Department::query();
         if ($this->deptSlug) {
-            $department = Department::where('slug', $this->deptSlug)
-                ->where('branch_id', $this->branchId)
-                ->first();
-
-            if (!$department) {
-                $department = Department::where('slug', $this->deptSlug)
-                    ->whereNull('branch_id')
-                    ->first();
-            }
-
-            if ($department) {
-                $this->departmentId = $department->id;
-                $this->departmentName = $department->name;
-            }
+            $query->where('slug', $this->deptSlug);
+        } else {
+            $query->whereHas('category', fn ($q) => $q->whereRaw('LOWER(name) = ?', ['production']));
         }
+
+        $this->department = $query->first();
+
+        if (!$this->department) {
+            abort(404, 'Production Department not found.');
+        }
+
+        $this->departmentId = $this->department->id;
+        $this->departmentName = $this->department->name;
+        $this->deptSlug = $this->department->slug;
+        $this->store = ProductionStore::getOrCreateForDepartment($this->departmentId);
     }
 
-    protected function loadCurrentShift()
+    protected function loadCurrentShift(): void
     {
-        $employee = auth()->user();
+        $employee = Auth::user();
+        $today = Carbon::today()->toDateString();
 
-        // Get active shift for this production department
-        $activeShift = Shift::where('employee_id', $employee->id)
-            ->where('department_id', $this->departmentId)
-            ->where('shift_date', Carbon::today())
+        // 1. Check for active shift for this department
+        $activeShift = Shift::where('department_id', $this->departmentId)
+            ->where('shift_date', $today)
             ->where('status', 'active')
+            ->whereNull('clock_out')
+            ->latest('clock_in')
             ->first();
 
+        // 2. Fallback to employee's active shift
+        if (!$activeShift && $employee) {
+            $activeShift = Shift::where('employee_id', $employee->id)
+                ->where('shift_date', $today)
+                ->where('status', 'active')
+                ->whereNull('clock_out')
+                ->latest('clock_in')
+                ->first();
+        }
+
+        // 3. Fallback to today's closed shift (to view closing records)
+        if (!$activeShift) {
+            $activeShift = Shift::where('department_id', $this->departmentId)
+                ->where('shift_date', $today)
+                ->where('status', 'closed')
+                ->latest('clock_out')
+                ->first();
+        }
+
         if ($activeShift) {
-            $this->currentShiftId = $activeShift->id;
+            $this->currentShift = $activeShift;
+            $this->currentShiftId = (string) $activeShift->id;
             $this->shiftType = $activeShift->shift_type ?? 'morning';
+
+            if ($activeShift->status === 'closed') {
+                $this->isClosed = true;
+                $this->closedAt = $activeShift->shift_closed_at
+                    ? $activeShift->shift_closed_at->format('M d, Y h:i A')
+                    : ($activeShift->clock_out ? $activeShift->clock_out->format('M d, Y h:i A') : 'Completed');
+            }
         }
     }
 
-    /**
-     * Load production closing data
-     *
-     * TODO: Enhance this method to:
-     * - Summarize all production batches created during shift
-     * - Calculate total yield produced vs expected
-     * - Track all raw materials used vs planned
-     * - Show wastage/callbacks recorded
-     * - Calculate production efficiency percentage
-     * - Show products dispatched to sales departments
-     * - Display quality control results
-     */
-    public function loadProductionClosingData()
+    public function loadClosingStockItems(): void
+    {
+        if (!$this->store || !$this->department) {
+            return;
+        }
+
+        $stockService = app(ProductionStockService::class);
+
+        // Ensure shift daily stocks exist
+        if ($this->currentShift && !$this->isClosed) {
+            $stockService->initializeShiftDailyStock($this->store, $this->department, $this->currentShift);
+        }
+
+        $categories = $stockService->getTrackableItemsForStore($this->store, $this->department);
+        $today = Carbon::today()->toDateString();
+        $shiftId = $this->currentShift?->id;
+
+        $dailyRecords = ProductionStoreDailyStock::where('store_id', $this->store->id)
+            ->where('stock_date', $today)
+            ->when($shiftId, fn ($q) => $q->where('shift_id', $shiftId))
+            ->get()
+            ->keyBy('item_id');
+
+        $this->stockItems = [
+            'finished' => [],
+            'wip' => [],
+            'raw' => [],
+        ];
+
+        foreach (['finished', 'wip', 'raw'] as $cat) {
+            foreach ($categories[$cat] as $entity) {
+                $itemId = (string) $entity->id;
+                $daily = $dailyRecords->get($itemId);
+
+                $opening = $daily ? (float) $daily->opening_quantity : 0.0;
+                $added = $daily ? (float) $daily->addition_quantity : 0.0;
+                $used = $daily ? (float) $daily->quantity_used : 0.0;
+                $theoretical = max(0, $opening + $added - $used);
+
+                $actualClosing = $daily && $daily->workflow_step === 'closing_completed'
+                    ? (float) $daily->closing_quantity
+                    : $theoretical;
+
+                $this->stockItems[$cat][$itemId] = [
+                    'id' => $itemId,
+                    'daily_id' => $daily?->id,
+                    'name' => $entity->name,
+                    'sku' => $entity->sku ?? 'N/A',
+                    'uom' => $entity->unitOfMeasure?->symbol ?? ($cat === 'raw' ? ($entity->uom ?? 'units') : 'pcs'),
+                    'opening' => $opening,
+                    'added' => $added,
+                    'used' => $used,
+                    'theoretical' => $theoretical,
+                    'verified' => $daily ? (bool) $daily->is_workflow_verified : false,
+                ];
+
+                if (!isset($this->closingCounts[$itemId])) {
+                    $this->closingCounts[$itemId] = $actualClosing;
+                }
+                if (!isset($this->itemNotes[$itemId])) {
+                    $this->itemNotes[$itemId] = $daily?->notes ?? '';
+                }
+            }
+        }
+    }
+
+    public function setTab(string $tab): void
+    {
+        $this->activeTab = $tab;
+    }
+
+    public function matchAllTheoretical(): void
+    {
+        $currentItems = $this->stockItems[$this->activeTab] ?? [];
+        foreach ($currentItems as $itemId => $item) {
+            $this->closingCounts[$itemId] = $item['theoretical'];
+        }
+        $this->toast()->info('Populated all items in ' . strtoupper($this->activeTab) . ' with theoretical counts.')->send();
+    }
+
+    public function loadProductionClosingData(): void
     {
         if (!$this->currentShiftId) {
             $this->productionSummary = [];
             return;
         }
 
-        // BASIC IMPLEMENTATION: Get production records for this shift
         $dailyProduces = DailyProduce::where('shift_id', $this->currentShiftId)
             ->with(['recipe', 'productionRecords'])
             ->get();
@@ -148,15 +265,10 @@ class Index extends BaseComponent
         }
 
         $this->productionSummary = $summary;
-
-        // Load raw material usage data
         $this->loadRawMaterialUsage();
     }
 
-    /**
-     * Load raw material usage data with planned vs actual comparison
-     */
-    public function loadRawMaterialUsage()
+    public function loadRawMaterialUsage(): void
     {
         if (!$this->currentShiftId) {
             $this->rawMaterialUsage = [];
@@ -168,7 +280,6 @@ class Index extends BaseComponent
         $shift = Shift::find($this->currentShiftId);
         if (!$shift) return;
 
-        // Get all daily produces for this shift
         $dailyProduces = DailyProduce::where('shift_id', $this->currentShiftId)
             ->with(['recipe.ingredients.item', 'productionRecords'])
             ->get();
@@ -181,11 +292,9 @@ class Index extends BaseComponent
             $recipe = $produce->recipe;
             if (!$recipe) continue;
 
-            // Calculate total batches produced
             $totalProduced = $produce->productionRecords->sum('quantity_produced');
             $batchesProduced = $totalProduced > 0 ? ceil($totalProduced / ($recipe->yield_quantity ?: 1)) : 0;
 
-            // Calculate expected material usage based on recipe
             foreach ($recipe->ingredients as $ingredient) {
                 $item = $ingredient->item;
                 if (!$item) continue;
@@ -219,7 +328,6 @@ class Index extends BaseComponent
             }
         }
 
-        // Get actual material usage from item requests for this shift
         $itemRequests = ItemRequest::where('department_id', $this->departmentId)
             ->where('shift', $this->shiftType)
             ->whereDate('request_date', $this->shiftDate)
@@ -241,7 +349,6 @@ class Index extends BaseComponent
                     $materialUsageByItem[$itemId]['actual_cost'] += $actualCost;
                     $totalActualCost += $actualCost;
                 } else {
-                    // Material was used but not planned (variance alert!)
                     $materialUsageByItem[$itemId] = [
                         'item_id' => $itemId,
                         'item_name' => $item->name,
@@ -261,20 +368,17 @@ class Index extends BaseComponent
             }
         }
 
-        // Calculate variances and efficiency for each item
         $significantVariances = [];
         foreach ($materialUsageByItem as $itemId => &$usage) {
             $usage['variance'] = $usage['actual_quantity'] - $usage['planned_quantity'];
             $usage['cost_variance'] = $usage['actual_cost'] - $usage['planned_cost'];
 
-            // Calculate efficiency (100% = perfect match, >100% = waste, <100% = under-usage)
             if ($usage['planned_quantity'] > 0) {
                 $usage['efficiency_percentage'] = ($usage['actual_quantity'] / $usage['planned_quantity']) * 100;
             } else {
                 $usage['efficiency_percentage'] = $usage['actual_quantity'] > 0 ? 999 : 100;
             }
 
-            // Flag significant variances (>5% or >$50 cost variance)
             $variancePercentage = $usage['planned_quantity'] > 0
                 ? abs($usage['variance'] / $usage['planned_quantity']) * 100
                 : 0;
@@ -291,7 +395,6 @@ class Index extends BaseComponent
                 ];
             }
 
-            // Round for display
             $usage['variance'] = round($usage['variance'], 2);
             $usage['efficiency_percentage'] = round($usage['efficiency_percentage'], 2);
             $usage['planned_quantity'] = round($usage['planned_quantity'], 2);
@@ -299,112 +402,147 @@ class Index extends BaseComponent
             $usage['recipes_used_in'] = array_unique($usage['recipes_used_in']);
         }
 
-        // Calculate overall material efficiency
         $this->totalMaterialEfficiency = $totalPlannedCost > 0
             ? round(($totalActualCost / $totalPlannedCost) * 100, 2)
             : 100;
-
-        // Sort by cost variance (highest first)
-        usort($materialUsageByItem, function($a, $b) {
-            return abs($b['cost_variance']) <=> abs($a['cost_variance']);
-        });
-
-        // Sort variances by severity
-        usort($significantVariances, function($a, $b) {
-            if ($a['severity'] !== $b['severity']) {
-                return $a['severity'] === 'high' ? -1 : 1;
-            }
-            return abs($b['cost_variance']) <=> abs($a['cost_variance']);
-        });
 
         $this->rawMaterialUsage = array_values($materialUsageByItem);
         $this->materialVariances = $significantVariances;
     }
 
-    /**
-     * Save production shift closing
-     *
-     * TODO: Implement full closing logic:
-     * - Finalize all production records (lock from editing)
-     * - Update raw material stocks based on actual usage
-     * - Calculate shift production metrics
-     * - Generate shift performance report
-     * - Close the active shift
-     * - Create production_shift_summary record
-     * - Notify production manager
-     * - Calculate employee productivity metrics
-     */
-    public function saveShiftClosing()
+    public function saveShiftClosing(): void
     {
-        if (!$this->currentShiftId) {
-            $this->toast()->error('No active shift found.')->send();
+        if (!$this->currentShift) {
+            $this->toast()->error('No active shift found. Please clock in first.')->send();
             return;
         }
 
+        if ($this->isClosed) {
+            $this->toast()->warning('This shift is already closed.')->send();
+            return;
+        }
+
+        $this->validate([
+            'closingCounts.*' => 'required|numeric|min:0',
+            'itemNotes.*' => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:2000',
+        ], [
+            'closingCounts.*.required' => 'Please enter a count for each item.',
+            'closingCounts.*.numeric' => 'Count must be a valid number.',
+            'closingCounts.*.min' => 'Count cannot be negative.',
+        ]);
+
         DB::beginTransaction();
         try {
-            $shift = Shift::find($this->currentShiftId);
-            if (!$shift) {
-                throw new \Exception('Shift not found');
+            $now = Carbon::now();
+            $userId = Auth::id();
+            $today = Carbon::today()->toDateString();
+
+            // 1. Update closing counts and variances on daily stocks
+            foreach ($this->closingCounts as $itemId => $count) {
+                $actualClosing = (float) $count;
+                $note = $this->itemNotes[$itemId] ?? null;
+
+                $dailyStock = ProductionStoreDailyStock::firstOrNew([
+                    'store_id' => $this->store->id,
+                    'item_id' => (string) $itemId,
+                    'stock_date' => $today,
+                    'shift_id' => $this->currentShift->id,
+                ]);
+
+                $theoretical = (float) $dailyStock->opening_quantity + (float) $dailyStock->addition_quantity - (float) $dailyStock->quantity_used;
+                $dailyStock->closing_quantity = $actualClosing;
+                $dailyStock->variance = $actualClosing - $theoretical;
+                $dailyStock->workflow_step = 'closing_completed';
+                $dailyStock->is_workflow_verified = true;
+                $dailyStock->verified_at = $now;
+                $dailyStock->verified_by = $userId;
+                $dailyStock->notes = $note;
+                $dailyStock->save();
+
+                // 2. Synchronize master ProductionStoreStock balance to the verified physical closing count
+                ProductionStoreStock::updateOrCreate(
+                    [
+                        'store_id' => $this->store->id,
+                        'item_id' => (string) $itemId,
+                    ],
+                    [
+                        'quantity_available' => $actualClosing,
+                    ]
+                );
             }
 
-            // 1. Prepare shift summary data
+            // 3. Prepare summary metadata
             $shiftSummary = [
                 'production_summary' => $this->productionSummary,
                 'raw_material_usage' => $this->rawMaterialUsage,
                 'material_variances' => $this->materialVariances,
                 'material_efficiency' => $this->totalMaterialEfficiency,
-                'total_batches_produced' => collect($this->productionSummary)->sum('batches_produced'),
-                'total_quantity_produced' => collect($this->productionSummary)->sum('total_produced'),
-                'total_quantity_approved' => collect($this->productionSummary)->sum('total_approved'),
-                'total_quantity_rejected' => collect($this->productionSummary)->sum('total_rejected'),
                 'user_notes' => $this->notes,
-                'closed_at' => now()->toDateTimeString(),
+                'closed_at' => $now->toDateTimeString(),
+                'closed_by' => $userId,
             ];
 
-            // 2. Update shift status and store summary
-            $shift->status = 'closed';
-            $shift->clock_out = now();
-            $shift->notes = json_encode($shiftSummary);
-            $shift->save();
+            // 4. Close the shift
+            $this->currentShift->status = 'closed';
+            $this->currentShift->clock_out = $now;
+            $this->currentShift->shift_closed_at = $now;
+            $this->currentShift->workflow_state = 'completed';
+            $this->currentShift->notes = $this->notes ?: json_encode($shiftSummary);
+            $this->currentShift->save();
 
-            // 3. Lock all ProductionRecord entries for this shift
-            ProductionRecord::whereHas('dailyProduce', function($q) {
-                $q->where('shift_id', $this->currentShiftId);
+            // 5. Finalize DailyProduce and lock ProductionRecords
+            ProductionRecord::whereHas('dailyProduce', function ($q) {
+                $q->where('shift_id', $this->currentShift->id);
             })->update(['is_locked' => true]);
 
-            // 4. Finalize DailyProduce records
-            DailyProduce::where('shift_id', $this->currentShiftId)
+            DailyProduce::where('shift_id', $this->currentShift->id)
                 ->update(['status' => 'finalized']);
 
-            // 5. Update ItemRequest status to completed
+            // 6. Update ItemRequest status to completed
             ItemRequest::where('department_id', $this->departmentId)
                 ->where('shift', $this->shiftType)
                 ->whereDate('request_date', $this->shiftDate)
                 ->where('status', 'dispatched')
                 ->update(['status' => 'completed']);
 
-            // TODO for next iteration:
-            // - Update inventory stocks based on actual material usage
-            // - Create inventory adjustment records for significant variances
-            // - Generate PDF report
-            // - Send notifications to production manager
-            // - Calculate employee productivity metrics
-
             DB::commit();
-            $this->toast()->success('Production shift closed successfully!')->send();
-            $this->isVerified = true;
 
-            // Reload data to reflect closed status
+            $this->isClosed = true;
+            $this->closedAt = $now->format('M d, Y h:i A');
+
+            $this->toast()->success('Production shift closed and final physical stock synchronized successfully!')->send();
+
+            // Refresh data
+            $this->loadClosingStockItems();
             $this->loadProductionClosingData();
-        } catch (\Exception $e) {
+
+        } catch (\Throwable $e) {
             DB::rollBack();
+            Log::error('Error closing production shift: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
             $this->toast()->error('Error closing shift: ' . $e->getMessage())->send();
         }
     }
 
     public function render()
     {
-        return view('livewire.branch-dashboard.production.shift-closing.index');
+        $filteredItems = [];
+        $search = trim($this->search);
+        $currentTabItems = $this->stockItems[$this->activeTab] ?? [];
+
+        foreach ($currentTabItems as $itemId => $item) {
+            if ($search === '' || stripos($item['name'], $search) !== false || stripos($item['sku'], $search) !== false) {
+                $filteredItems[$itemId] = $item;
+            }
+        }
+
+        return view('livewire.branch-dashboard.production.shift-closing.index', [
+            'filteredItems' => $filteredItems,
+            'finishedCount' => count($this->stockItems['finished'] ?? []),
+            'wipCount' => count($this->stockItems['wip'] ?? []),
+            'rawCount' => count($this->stockItems['raw'] ?? []),
+        ]);
     }
 }

@@ -433,6 +433,15 @@ class Purchases extends Component
             throw new \RuntimeException("Purchase UOM is required for item '{$item->name}'.");
         }
 
+        $baseSymbol = $item->unitOfMeasure?->symbol;
+        $baseCode = $item->unitOfMeasure?->code;
+        if (
+            ($baseSymbol && strcasecmp($purchaseUom, $baseSymbol) === 0) ||
+            ($baseCode && strcasecmp($purchaseUom, $baseCode) === 0)
+        ) {
+            return $quantity;
+        }
+
         $converted = $item->convertToBaseUom($quantity, $purchaseUom);
         if ($converted === null) {
             $baseUom = $item->unitOfMeasure?->symbol ?? 'item base UOM';

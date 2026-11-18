@@ -163,7 +163,7 @@ class ValidateSalesWorkflow
     protected function redirectToClockIn(Request $request): Response
     {
         $branchId = $request->query('b_id') ?? current_branch_id();
-        return redirect()->route('branch-dashboard.clock-in-board.today', [
+        return redirect()->route('branch-dashboard.select_shift', [
             'b_id' => $branchId
         ])->with('error', 'Please clock in to start your shift.');
     }
@@ -177,7 +177,7 @@ class ValidateSalesWorkflow
         $departmentSlug = $this->getEmployeeDepartmentSlug($employee);
 
         $redirectRoute = match($currentState) {
-            'clock_in' => route('branch-dashboard.clock-in-board.today', ['b_id' => $branchId]),
+            'clock_in' => route('branch-dashboard.select_shift', ['b_id' => $branchId]),
             'stock_opening' => route('branch-dashboard.sales-dashboard.stock-opening.index', [
                 'salesDeptSlug' => $departmentSlug,
                 'b_id' => $branchId

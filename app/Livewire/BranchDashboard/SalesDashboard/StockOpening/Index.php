@@ -427,7 +427,10 @@ class Index extends BaseComponent
                 'dispatch_date',
                 'dispatch_time',
                 'received_at',
+                'shift_type',
+                'sales_shift_id',
                 'created_at',
+                'updated_at',
             ]);
         $dispatchRowsByProduct = [];
         foreach ($dispatchRows as $dispatchRow) {
@@ -482,30 +485,19 @@ class Index extends BaseComponent
             }
 
             $previousDate = $previousStock?->stock_date?->format('Y-m-d');
-            $cutoffTimestamp = $previousDate === $stockDate
-                ? ($previousStock?->created_at ?? null)
+            $prevClosedAt = ($previousStock && $previousStock->stock_date?->isToday())
+                ? ($previousStock->shift?->shift_closed_at ?? $previousStock->shift?->clock_out ?? $previousStock->updated_at ?? null)
                 : null;
 
             $todayAdditions = 0.0;
             $dispatchCount = 0;
             $productDispatches = $dispatchRowsByProduct[$productId] ?? [];
             foreach ($productDispatches as $dispatchRow) {
-                // If previous stock record is from TODAY, we must be careful not to double-count
-                if ($previousStock && $previousStock->stock_date?->isToday()) {
-                    // Skip if dispatch was for a different shift type (likely already captured in previous stock)
-                    if ($dispatchRow->shift_type && $dispatchRow->shift_type !== $this->getProductStockShiftType()) {
-                        continue;
-                    }
-
-                    // Secondary safety: use cutoff timestamp if shift_type is null or ambiguous
+                // If previous stock record is from TODAY, only skip dispatches that were received
+                // before or when the previous shift closed (already captured in its closing stock).
+                if ($prevClosedAt) {
                     $dispatchTimestamp = $dispatchRow->received_at ?? $dispatchRow->dispatch_time ?? $dispatchRow->created_at;
-                    if ($dispatchTimestamp && $previousStock->created_at && Carbon::parse($dispatchTimestamp)->lte($previousStock->created_at)) {
-                        continue;
-                    }
-                } elseif ($cutoffTimestamp) {
-                    // Fallback to cutoff for non-today previous stocks if applicable (usually null)
-                    $dispatchTimestamp = $dispatchRow->received_at ?? $dispatchRow->dispatch_time ?? $dispatchRow->created_at;
-                    if ($dispatchTimestamp && Carbon::parse($dispatchTimestamp)->lte($cutoffTimestamp)) {
+                    if ($dispatchTimestamp && Carbon::parse($dispatchTimestamp)->lte($prevClosedAt)) {
                         continue;
                     }
                 }
@@ -920,39 +912,48 @@ class Index extends BaseComponent
                 $additionsAlreadyCounted = max(0.0, $actualOpening - $yesterdayClosing);
                 $remainingAdditions = max(0.0, $todayAdditions - $additionsAlreadyCounted);
 
-                // Use shift_id from shifts table (sales department shift)
-                // sales_shift_id can be null since we're using the general shifts table
-                // addition_quantity represents the total quantity yield (approved quantity sent from production)
+                // Unique key for stock record: (department_id, product_id, stock_date, shift_type)
                 $lookup = [
                     'product_id' => $stockOpening['product_id'],
                     'stock_date' => $this->stockDate,
                     'shift_type' => $this->getProductStockShiftType(),
-                    'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                 ];
 
                 if ($hasDepartmentColumn) {
                     $lookup['department_id'] = $primarySalesDepartmentId;
                 }
 
-                $productStock = ProductStock::updateOrCreate(
-                    $lookup,
-                    [
-                        'sales_shift_id' => null, // Nullable - we use shifts table instead
-                        'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
-                        'department_id' => $hasDepartmentColumn
-                            ? $primarySalesDepartmentId
-                            : null,
-                        'opening_quantity' => $actualOpening,
-                        'addition_quantity' => $remainingAdditions, // prevent double-counting additions
-                        'production_date' => $stockOpening['production_date'],
-                        'expiry_date' => $stockOpening['expiry_date'],
-                        'notes' => $stockOpening['notes'],
-                        'is_workflow_verified' => true,
-                        'verified_at' => now(),
-                        'verified_by' => auth()->id(),
-                        'workflow_step' => 'opening_verified',
-                    ]
-                );
+                $existingStock = ProductStock::where($lookup)->first();
+                $existingAdditions = (float) ($existingStock?->addition_quantity ?? 0);
+
+                // Never wipe out additions that were already booked from received dispatches
+                $finalAdditions = max($remainingAdditions, max(0.0, $existingAdditions - $additionsAlreadyCounted));
+
+                $shiftId = $this->currentShiftId ? (int) $this->currentShiftId : ($existingStock?->shift_id ?? null);
+                $stockPayload = [
+                    'sales_shift_id' => null,
+                    'shift_id' => $shiftId,
+                    'opening_quantity' => $actualOpening,
+                    'addition_quantity' => $finalAdditions,
+                    'production_date' => $stockOpening['production_date'],
+                    'expiry_date' => $stockOpening['expiry_date'],
+                    'notes' => $stockOpening['notes'],
+                    'is_workflow_verified' => true,
+                    'verified_at' => now(),
+                    'verified_by' => auth()->id(),
+                    'workflow_step' => 'opening_verified',
+                ];
+
+                if ($hasDepartmentColumn) {
+                    $stockPayload['department_id'] = $primarySalesDepartmentId;
+                }
+
+                if ($existingStock) {
+                    $existingStock->update($stockPayload);
+                    $productStock = $existingStock;
+                } else {
+                    $productStock = ProductStock::create(array_merge($lookup, $stockPayload));
+                }
 
                 // Record opening variance when actual differs from expected
                 $expectedOpening = (float) ($stockOpening['expected_opening'] ?? 0);
@@ -1011,7 +1012,6 @@ class Index extends BaseComponent
                     'product_id' => $product->id,
                     'stock_date' => $this->stockDate,
                     'shift_type' => $this->getProductStockShiftType(),
-                    'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                 ];
 
                 if ($hasDepartmentColumn) {
@@ -1048,6 +1048,16 @@ class Index extends BaseComponent
                             'workflow_step' => 'opening_verified',
                         ])
                     );
+                } else {
+                    // Record already exists (e.g. created by dispatch reception).
+                    // Just link the shift and mark opening verified without wiping out its additions!
+                    $existingStock->update([
+                        'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : $existingStock->shift_id,
+                        'is_workflow_verified' => true,
+                        'verified_at' => now(),
+                        'verified_by' => auth()->id(),
+                        'workflow_step' => 'opening_verified',
+                    ]);
                 }
             }
 

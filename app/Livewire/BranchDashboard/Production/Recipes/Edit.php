@@ -285,6 +285,19 @@ class Edit extends Component
         });
         $costPerUnit = $totalCost / max((float) $this->yield_quantity, 0.01);
 
+        $uomId = UnitOfMeasure::where('symbol', $this->uom)->first()?->id;
+
+        $ingredientsWithUomIds = array_map(function ($ingredient) {
+            $ingredientUomId = isset($ingredient['uom']) ? UnitOfMeasure::where('symbol', $ingredient['uom'])->first()?->id : ($ingredient['uom_id'] ?? null);
+            $ingredient['uom_id'] = $ingredientUomId;
+            $ingredient['quantity'] = (float) ($ingredient['quantity'] ?? 0);
+            $ingredient['cost_per_unit'] = (float) ($ingredient['cost_per_unit'] ?? 0);
+            $ingredient['waste_percentage'] = (float) ($ingredient['waste_percentage'] ?? 0);
+            $ingredient['notes'] = !empty($ingredient['notes']) ? $ingredient['notes'] : null;
+            $ingredient['preparation_notes'] = !empty($ingredient['preparation_notes']) ? $ingredient['preparation_notes'] : null;
+            return $ingredient;
+        }, $this->ingredients);
+
         $recipeData = [
             'id' => $this->recipe_id,
             'product_id' => $this->product_id,
@@ -292,15 +305,15 @@ class Edit extends Component
             'sku' => strtoupper($this->sku),
             'department_id' => $this->department_id,
             'product_type_id' => $this->product_type_id,
-            'cost_per_unit' => $costPerUnit,
-            'uom' => $this->uom,
-            'yield_quantity' => $this->yield_quantity,
-            'preparation_time' => $this->preparation_time,
+            'cost_per_unit' => (float) $costPerUnit,
+            'uom_id' => $uomId,
+            'yield_quantity' => (float) $this->yield_quantity,
+            'preparation_time' => !empty($this->preparation_time) ? (int) $this->preparation_time : null,
             'instructions' => ! empty($this->instructions) ? json_encode(array_values($this->instructions)) : null,
             'status' => $this->status,
-            'is_wip' => $this->is_wip,
+            'is_wip' => (bool) $this->is_wip,
             'is_active' => true,
-            'ingredients' => $this->ingredients,
+            'ingredients' => $ingredientsWithUomIds,
         ];
 
         // Bypass approval (super admin, or approvals disabled) - save directly
@@ -360,22 +373,17 @@ class Edit extends Component
                     $itemId = $ingredient['item_id'];
                     $isWip = $ingredient['is_wip'] ?? false;
                     
-                    $notes = $ingredient['notes'] ?? null;
-                    if ($isWip && !is_numeric($itemId)) {
-                        $notes = $ingredient['notes'] ?? null;
-                    }
-                    
-                    $uomId = UnitOfMeasure::where('symbol', $ingredient['uom'])->first()?->id;
+                    $uomId = $ingredient['uom_id'] ?? (isset($ingredient['uom']) ? UnitOfMeasure::where('symbol', $ingredient['uom'])->first()?->id : null);
                     
                     RecipeIngredient::create([
                         'recipe_id' => $recipe->id,
                         'item_id' => $itemId,
-                        'quantity' => $ingredient['quantity'],
+                        'quantity' => (float) ($ingredient['quantity'] ?? 0),
                         'uom_id' => $uomId,
-                        'cost_per_unit' => $ingredient['cost_per_unit'],
-                        'waste_percentage' => $ingredient['waste_percentage'] ?? 0,
-                        'notes' => $notes,
-                        'preparation_notes' => $ingredient['preparation_notes'] ?? null,
+                        'cost_per_unit' => (float) ($ingredient['cost_per_unit'] ?? 0),
+                        'waste_percentage' => (float) ($ingredient['waste_percentage'] ?? 0),
+                        'notes' => !empty($ingredient['notes']) ? $ingredient['notes'] : null,
+                        'preparation_notes' => !empty($ingredient['preparation_notes']) ? $ingredient['preparation_notes'] : null,
                         'is_wip' => $isWip ? 1 : 0,
                     ]);
                 }

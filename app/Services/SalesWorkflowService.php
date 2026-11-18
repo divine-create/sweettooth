@@ -262,7 +262,7 @@ class SalesWorkflowService
     public function getRedirectRouteForState(string $state, ?string $departmentSlug, ?string $branchId): string
     {
         return match($state) {
-            'clock_in' => route('branch-dashboard.clock-in-board.today', ['b_id' => $branchId]),
+            'clock_in' => route('branch-dashboard.select_shift', ['b_id' => $branchId]),
             'stock_opening' => route('branch-dashboard.sales-dashboard.stock-opening.index', [
                 'salesDeptSlug' => $departmentSlug,
                 'b_id' => $branchId

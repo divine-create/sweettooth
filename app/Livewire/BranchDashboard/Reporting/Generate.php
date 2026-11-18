@@ -72,7 +72,37 @@ class Generate extends Component
             'accounting' => 'Support',
         ];
 
-        if (isset($categoryNameMap[$category])) {
+        if ($category === 'inventory') {
+            $invDepts = Department::where(function ($q) {
+                    $q->whereHas('category', fn ($c) => $c->where('name', 'Support'))
+                      ->orWhereHas('category', fn ($c) => $c->where('name', 'Inventory'));
+                })
+                ->where(function ($q) {
+                    $q->where('name', 'like', '%inventory%')
+                      ->orWhere('name', 'like', '%store%')
+                      ->orWhere('name', 'like', '%warehouse%');
+                })
+                ->where(function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+                })
+                ->where('is_active', true)
+                ->with('category')
+                ->orderBy('name')
+                ->get()
+                ->values()
+                ->all();
+
+            $this->availableDepartments = !empty($invDepts) ? $invDepts : Department::whereHas('category', fn ($q) => $q->where('name', 'Support'))
+                ->where(function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+                })
+                ->where('is_active', true)
+                ->with('category')
+                ->orderBy('name')
+                ->get()
+                ->values()
+                ->all();
+        } elseif (isset($categoryNameMap[$category])) {
             $categoryName = $categoryNameMap[$category];
             $this->availableDepartments = Department::whereHas('category', fn ($q) => $q->where('name', $categoryName))
                 ->where(function ($q) use ($branchId) {
@@ -226,7 +256,8 @@ class Generate extends Component
         if ($category === 'inventory') {
             return $departments->filter(function ($department) {
                 $categoryName = strtolower($department->category?->name ?? '');
-                return $categoryName === 'support';
+                $deptName = strtolower($department->name ?? '');
+                return $categoryName === 'inventory' || str_contains($deptName, 'inventory') || str_contains($deptName, 'store') || str_contains($deptName, 'warehouse') || $categoryName === 'support';
             });
         }
 

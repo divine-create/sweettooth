@@ -48,10 +48,10 @@ class SalesInvoiceNotification extends Notification implements ShouldQueue
         $businessPhone = Settings::businessConfiguration('business_phone', '');
 
         $saleItems = $this->sale->saleItems()
-            ->with('product')
+            ->with(['product', 'item'])
             ->get()
             ->map(fn ($item) => [
-                'name' => $item->product->name ?? 'Product',
+                'name' => $item->name,
                 'qty' => number_format($item->quantity, 2),
                 'unit_price' => $currencyService->format($item->unit_price),
                 'total' => $currencyService->format($item->total),

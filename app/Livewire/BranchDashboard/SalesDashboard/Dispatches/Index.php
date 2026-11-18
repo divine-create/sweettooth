@@ -377,13 +377,20 @@ class Index extends BaseComponent
             // Update or create ProductStock record
             // Use receive day for POS availability; production date remains tracked separately.
             $stockDate = Carbon::today();
-            $shiftType = (string) ($currentShift?->shift_type ?: $dispatch->shift_type ?: 'morning');
+            $salesDepartmentId = (int) ($this->departmentId ?: $dispatch->sales_department_id);
+            $shiftType = (string) (
+                $currentShift?->shift_type
+                ?: $activeSalesShift?->shift_type
+                ?: Shift::where('department_id', $salesDepartmentId)
+                    ->where('shift_date', Carbon::today())
+                    ->where('status', 'active')
+                    ->value('shift_type')
+                ?: ($stockDate->isToday() && now()->hour >= 14 ? 'afternoon' : 'morning')
+            );
             if (! in_array($shiftType, ['morning', 'afternoon', 'night'], true)) {
                 $shiftType = 'morning';
             }
             $hasDepartmentColumn = Schema::hasColumn('product_stocks', 'department_id');
-            // Use current sales context first so stock is visible to this department in POS.
-            $salesDepartmentId = (int) ($this->departmentId ?: $dispatch->sales_department_id);
 
             if ($hasDepartmentColumn && $salesDepartmentId <= 0) {
                 throw new \RuntimeException('Sales department is required for stock receiving.');
@@ -402,6 +409,9 @@ class Index extends BaseComponent
                 $productStock->addition_quantity = ($productStock->addition_quantity ?? 0) + $this->receivedQuantity;
                 $productStock->production_date = $productionDate;
                 $productStock->expiry_date = $expiryDate;
+                if (! $productStock->shift_id && $currentShift?->id) {
+                    $productStock->shift_id = $currentShift->id;
+                }
                 if ($hasDepartmentColumn) {
                     $productStock->department_id = $salesDepartmentId;
                 }
@@ -410,6 +420,7 @@ class Index extends BaseComponent
                 // Create new stock record
                 $payload = [
                     'sales_shift_id' => $activeSalesShift?->id ?? null,
+                    'shift_id' => $currentShift?->id ?? null,
                     'product_id' => $dispatch->product_id,
                     'stock_date' => $stockDate->format('Y-m-d'),
                     'shift_type' => $shiftType,

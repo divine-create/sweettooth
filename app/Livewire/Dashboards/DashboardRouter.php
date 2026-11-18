@@ -41,7 +41,7 @@ class DashboardRouter extends Component
                 ->exists();
 
             if (!$clockedInToday) {
-                return redirect()->route('branch-dashboard.clock-in-board.today', ['b_id' => $branchId]);
+                return redirect()->route('branch-dashboard.select_shift', ['b_id' => $branchId]);
             }
         }
 

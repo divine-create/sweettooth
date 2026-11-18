@@ -148,7 +148,22 @@ class DailyProduce extends Model
                 ->first();
         }
 
-        return $previousShift ? (float) $previousShift->closing_quantity : 0;
+        if ($previousShift && (float) $previousShift->closing_quantity > 0) {
+            return (float) $previousShift->closing_quantity;
+        }
+
+        // Fallback: check today's verified opening stock from production_store_daily_stocks for this product
+        $recipe = Recipe::find($recipeId);
+        if ($recipe && $recipe->product_id) {
+            $dailyStock = \App\Models\ProductionStoreDailyStock::where('item_id', (string) $recipe->product_id)
+                ->whereDate('stock_date', $currentShiftDate)
+                ->first();
+            if ($dailyStock && (float) $dailyStock->opening_quantity > 0) {
+                return (float) $dailyStock->opening_quantity;
+            }
+        }
+
+        return 0;
     }
 
     /**

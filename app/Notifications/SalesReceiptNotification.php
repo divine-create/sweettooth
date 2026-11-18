@@ -43,10 +43,10 @@ class SalesReceiptNotification extends Notification implements ShouldQueue
         $businessName = Settings::businessConfiguration('business_name', config('app.name'));
 
         $receiptItems = $this->receipt->sale->saleItems()
-            ->with('product')
+            ->with(['product', 'item'])
             ->get()
             ->map(fn ($item) => [
-                'name' => $item->product->name ?? 'Product',
+                'name' => $item->name,
                 'qty' => number_format($item->quantity, 2),
                 'unit_price' => $currencyService->format($item->unit_price),
                 'total' => $currencyService->format($item->total),

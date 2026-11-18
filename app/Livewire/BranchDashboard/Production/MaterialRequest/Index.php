@@ -5,6 +5,7 @@ namespace App\Livewire\BranchDashboard\Production\MaterialRequest;
 use App\Models\Department;
 use App\Models\Item;
 use App\Models\MaterialRequest;
+use App\Models\MaterialRequestDetail;
 use App\Models\Shift;
 use App\Services\MaterialRequestService;
 use Illuminate\Support\Facades\Log;
@@ -61,24 +62,33 @@ class Index extends Component
 
     private function resolveCurrentShift(): string
     {
-        $activeShift = Shift::where('employee_id', auth()->id())
-            ->where('shift_date', today())
+        $activeShift = Shift::where('shift_date', today())
             ->where('status', 'active')
+            ->where(function ($q) {
+                $q->where('employee_id', auth()->id())
+                  ->orWhere('department_id', $this->department?->id);
+            })
+            ->latest('clock_in')
             ->value('shift_type');
 
         return in_array($activeShift, ['morning', 'afternoon', 'night']) ? $activeShift : 'morning';
     }
 
-    public function getBranchId()
+    public function getBranchId(): ?string
     {
-        return $this->b_id ? $this->b_id : request()->query('b_id');
+        return $this->b_id 
+            ?: (request()->query('b_id') 
+            ?: (current_branch_id() 
+            ?: (session('selected_branch_id') 
+            ?: auth()->user()?->branch_id)));
     }
 
     public function render()
     {
         $branchId = $this->getBranchId();
 
-        $query = MaterialRequest::forBranch($branchId)
+        $query = MaterialRequest::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->forDepartment($this->department->id)
             ->with('details.item', 'details.unitOfMeasure')
             ->orderBy('created_at', 'desc');
@@ -104,6 +114,7 @@ class Index extends Component
         $this->newRequestDate = now()->format('Y-m-d');
         $this->newShift = $this->resolveCurrentShift();
         $this->newNotes = '';
+        $this->addItem();
         $this->showCreateModal = true;
     }
 
@@ -117,12 +128,23 @@ class Index extends Component
         ];
     }
 
-    public function updatedNewItems($index, $value)
+    public function updatedNewItems($value, $key = null)
     {
-        if (isset($this->newItems[$index]) && isset($value) && $value !== '') {
-            $item = Item::find($value);
+        // Livewire 3 passes ($value, $key) e.g. ($value, '0.item_id')
+        if (is_string($key) && str_contains($key, 'item_id')) {
+            $parts = explode('.', $key);
+            $index = $parts[0];
+            if (isset($this->newItems[$index]) && !empty($value)) {
+                $item = Item::find($value);
+                if ($item && $item->uom_id) {
+                    $this->newItems[$index]['uom_id'] = $item->uom_id;
+                }
+            }
+        } elseif (is_numeric($value) && isset($this->newItems[$value])) {
+            // Fallback if legacy parameter order was ($index, $value)
+            $item = Item::find($key);
             if ($item && $item->uom_id) {
-                $this->newItems[$index]['uom_id'] = $item->uom_id;
+                $this->newItems[$value]['uom_id'] = $item->uom_id;
             }
         }
     }
@@ -151,28 +173,36 @@ class Index extends Component
                 'newRequestDate' => 'required|date',
                 'newShift' => 'required|in:morning,afternoon,night',
                 'newItems' => 'required|array|min:1',
-                'newItems.*.item_id' => 'required|integer',
+                'newItems.*.item_id' => 'required|integer|exists:items,id',
                 'newItems.*.quantity' => 'required|numeric|min:0.01',
             ]);
 
-            $actor = current_actor();
+            $branchId = $this->getBranchId();
+            if (!$branchId) {
+                throw new \Exception('Branch context is required to create a material request.');
+            }
+
+            $actor = current_actor() ?? auth()->user();
 
             $items = array_map(function ($item) {
+                $itemModel = Item::find($item['item_id']);
+                $uomId = !empty($item['uom_id']) ? (int) $item['uom_id'] : ($itemModel?->uom_id ?: null);
+
                 return [
-                    'item_id' => $item['item_id'],
-                    'quantity' => $item['quantity'],
-                    'uom_id' => $item['uom_id'],
+                    'item_id' => (int) $item['item_id'],
+                    'quantity' => (float) $item['quantity'],
+                    'uom_id' => $uomId,
                     'notes' => $item['notes'] ?? null,
                 ];
             }, $this->newItems);
 
             $service = app(MaterialRequestService::class);
             $service->createRequest([
-                'branch_id' => $this->getBranchId(),
+                'branch_id' => $branchId,
                 'department_id' => $this->department->id,
                 'department_code' => strtoupper(substr($this->department->slug, 0, 3)),
                 'requested_by_id' => $actor?->id,
-                'requested_by_type' => get_class($actor),
+                'requested_by_type' => $actor ? get_class($actor) : null,
                 'request_date' => $this->newRequestDate,
                 'shift' => $this->newShift,
                 'notes' => $this->newNotes,
@@ -181,6 +211,8 @@ class Index extends Component
 
             $this->toast()->success('Material request created successfully')->send();
             $this->showCreateModal = false;
+            $this->newItems = [];
+            $this->newNotes = '';
         } catch (\Exception $e) {
             $this->toast()->error('Error: '.$e->getMessage())->send();
         }
@@ -197,9 +229,55 @@ class Index extends Component
                 'quantity_approved' => $detail->quantity_approved,
                 'quantity_dispatched' => $detail->quantity_dispatched,
                 'uom_symbol' => $detail->unitOfMeasure?->symbol ?? 'N/A',
+                'can_be_deleted' => $detail->canBeDeleted(),
             ];
         })->toArray();
         $this->showDetailModal = true;
+    }
+
+    public function deleteRequest(int $requestId)
+    {
+        try {
+            $request = MaterialRequest::where('branch_id', $this->getBranchId())
+                ->where('department_id', $this->department->id)
+                ->findOrFail($requestId);
+
+            $service = app(MaterialRequestService::class);
+            $service->deleteRequest($request);
+
+            if ($this->selectedRequest?->id === $requestId) {
+                $this->closeModal();
+            }
+
+            $this->toast()->success('Material request deleted successfully')->send();
+        } catch (\Exception $e) {
+            $this->toast()->error($e->getMessage())->send();
+        }
+    }
+
+    public function deleteItem(int $detailId)
+    {
+        try {
+            $detail = MaterialRequestDetail::whereHas('request', function ($query) {
+                $query->where('branch_id', $this->getBranchId())
+                      ->where('department_id', $this->department->id);
+            })->findOrFail($detailId);
+
+            $requestId = $detail->request_id;
+            $service = app(MaterialRequestService::class);
+            $service->deleteRequestItem($detail);
+
+            $freshRequest = MaterialRequest::find($requestId);
+            if ($freshRequest) {
+                $this->viewDetail($freshRequest);
+            } else {
+                $this->closeModal();
+            }
+
+            $this->toast()->success('Item removed from material request')->send();
+        } catch (\Exception $e) {
+            $this->toast()->error($e->getMessage())->send();
+        }
     }
 
     public function closeModal()

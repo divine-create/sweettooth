@@ -146,6 +146,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
         Route::get('opening-stock-status', \App\Livewire\BranchDashboard\MDReports\OpeningStockStatus::class)->name('opening-stock-status');
         Route::get('opening-stock-report', \App\Livewire\BranchDashboard\MDReports\OpeningStockReport::class)->name('opening-stock-report');
         Route::get('closing-stock-report', \App\Livewire\BranchDashboard\MDReports\ClosingStockReport::class)->name('closing-stock-report');
+        Route::get('supply-and-purchase', \App\Livewire\BranchDashboard\MDReports\SupplyAndPurchaseReport::class)->name('supply-and-purchase');
         Route::get('view/{id}', \App\Livewire\BranchDashboard\MDReports\ViewReport\Index::class)->name('view');
     });
 
@@ -181,6 +182,7 @@ Route::middleware(['auth', 'recover-auth', 'setBranchContext', 'branch', 'redire
             Route::get('items', \App\Livewire\BranchDashboard\Inventory\Items::class)->name('items');
             Route::get('item-categories', \App\Livewire\BranchDashboard\Inventory\ItemCategories\Index::class)->name('item-categories');
             Route::get('purchases', \App\Livewire\BranchDashboard\Inventory\Purchases::class)->name('purchases');
+            Route::get('supply-and-purchase', \App\Livewire\BranchDashboard\MDReports\SupplyAndPurchaseReport::class)->name('supply-and-purchase');
             Route::get('stocks', \App\Livewire\BranchDashboard\Inventory\Stocks::class)->name('stocks');
             Route::get('stock-takes', \App\Livewire\BranchDashboard\Inventory\StockTakes::class)->name('stock-takes');
             Route::get('health-checks', \App\Livewire\BranchDashboard\Inventory\HealthChecks::class)->name('health-checks');

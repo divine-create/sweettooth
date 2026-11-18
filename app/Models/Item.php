@@ -141,7 +141,7 @@ class Item extends Model
 
     public function isSellable(): bool
     {
-        return $this->sell_price !== null && (float) $this->sell_price > 0;
+        return $this->sell_price !== null && (float) $this->sell_price >= 0;
     }
 
     /**
@@ -195,6 +195,30 @@ class Item extends Model
     {
         if (! $this->uom_id) {
             return null;
+        }
+
+        // Direct identity shortcut if fromUom matches this item's base UOM
+        if ($fromUom instanceof UnitOfMeasure && (int) $fromUom->id === (int) $this->uom_id) {
+            return $quantity;
+        }
+
+        if ((is_int($fromUom) || ctype_digit((string) $fromUom)) && (int) $fromUom === (int) $this->uom_id) {
+            return $quantity;
+        }
+
+        $trimmed = trim((string) ($fromUom instanceof UnitOfMeasure ? $fromUom->symbol : $fromUom));
+        if ($trimmed !== '') {
+            $baseSymbol = $this->unitOfMeasure?->symbol;
+            $baseCode = $this->unitOfMeasure?->code;
+            $baseName = $this->unitOfMeasure?->name;
+
+            if (
+                ($baseSymbol && strcasecmp($trimmed, $baseSymbol) === 0) ||
+                ($baseCode && strcasecmp($trimmed, $baseCode) === 0) ||
+                ($baseName && strcasecmp($trimmed, $baseName) === 0)
+            ) {
+                return $quantity;
+            }
         }
 
         return app(UomConversionService::class)->tryConvert(

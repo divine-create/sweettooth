@@ -184,27 +184,28 @@ class Index extends BaseComponent
 
         // Get previous shift's closing - the most recent closing before current shift
         $primaryDeptId = ! empty($salesDepartmentIds) ? reset($salesDepartmentIds) : null;
-        $previousClosingQuery = ProductStock::query()
+        $previousClosingSub = ProductStock::query()
             ->whereIn('product_id', $selectedProductIds)
             ->whereNotNull('closing_quantity');
 
         if (! empty($salesDepartmentIds)) {
-            $previousClosingQuery->whereIn('department_id', $salesDepartmentIds);
-            if ($primaryDeptId) {
-                $previousClosingQuery->orderByRaw('department_id = ? DESC', [$primaryDeptId]);
-            }
+            $previousClosingSub->whereIn('department_id', $salesDepartmentIds);
         }
-
-        $previousClosingQuery->orderByDesc('id');
 
         if (! empty($todayStockIds)) {
             $minId = min($todayStockIds);
-            $previousClosingQuery->where('id', '<', $minId);
+            $previousClosingSub->where('id', '<', $minId);
         }
 
-        $previousStocks = $previousClosingQuery
+        $latestPreviousIds = $previousClosingSub
+            ->groupBy('product_id')
+            ->selectRaw('MAX(id) as id')
+            ->pluck('id');
+
+        $previousStocks = ProductStock::query()
+            ->whereIn('id', $latestPreviousIds)
+            ->with('shift:id,shift_closed_at,clock_out')
             ->get()
-            ->unique('product_id')
             ->keyBy('product_id');
 
         // Get today's dispatches (additions)
@@ -233,12 +234,18 @@ class Index extends BaseComponent
             $todayAdditions = 0;
             $productDispatches = $dispatchRowsByProduct[$productId] ?? [];
 
+            $prevClosedAt = ($previousStock && $previousStock->stock_date?->isToday())
+                ? ($previousStock->shift?->shift_closed_at ?? $previousStock->shift?->clock_out ?? $previousStock->updated_at ?? null)
+                : null;
+
             foreach ($productDispatches as $dispatchRow) {
-                // When the previous shift closed today, its closing_quantity already incorporates
-                // every dispatch received during that shift. Counting them again here would
-                // inflate expected_opening and produce a false variance.
-                if ($previousStock && $previousStock->stock_date?->isToday()) {
-                    continue;
+                // When the previous shift closed today, only skip dispatches that were
+                // received before or at the time that shift closed.
+                if ($prevClosedAt) {
+                    $dispatchTime = $dispatchRow->received_at ?? $dispatchRow->dispatch_time ?? $dispatchRow->created_at;
+                    if ($dispatchTime && Carbon::parse($dispatchTime)->lte($prevClosedAt)) {
+                        continue;
+                    }
                 }
 
                 $qty = (float) ($dispatchRow->received_quantity ?? $dispatchRow->quantity);
@@ -308,10 +315,13 @@ class Index extends BaseComponent
                 ->where('shift_type', $this->shiftType)
                 ->first();
 
+            $existingAdditions = (float) ($existingStock?->addition_quantity ?? 0);
+            $finalAdditions = max($existingAdditions, (float)($entry['today_additions'] ?? 0));
+
             $updateData = [
                 'shift_id' => $this->currentShiftId ? (int) $this->currentShiftId : null,
                 'opening_quantity' => (float)($entry['actual_opening'] ?? 0),
-                'addition_quantity' => (float)($entry['today_additions'] ?? 0),
+                'addition_quantity' => $finalAdditions,
                 'production_date' => ! empty($entry['production_date']) ? Carbon::parse($entry['production_date']) : null,
                 'expiry_date' => ! empty($entry['expiry_date']) ? Carbon::parse($entry['expiry_date']) : null,
                 'notes' => $entry['notes'] ?? '',

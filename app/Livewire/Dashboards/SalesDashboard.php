@@ -52,7 +52,7 @@ class SalesDashboard extends BaseDashboard
 
         // No active shift - redirect to clock-in
         if (!$activeShift) {
-            $this->redirect(route('branch-dashboard.clock-in-board.today', ['b_id' => $branchId]));
+            $this->redirect(route('branch-dashboard.select_shift', ['b_id' => $branchId]));
             return;
         }
 
@@ -144,16 +144,14 @@ class SalesDashboard extends BaseDashboard
         return $this->remember('total_sales', function () {
             $range = $this->getDateRange();
             
-            // Check if transactions table exists
-            if (!$this->tableExists('transactions')) {
+            if (!$this->tableExists('sales')) {
                 return 0;
             }
             
-            // Query from sales/transactions table if exists
-            return DB::table('transactions')
+            return DB::table('sales')
                 ->where('branch_id', $this->getBranchId())
                 ->whereBetween('created_at', [$range['from'], $range['to']])
-                ->sum('total_amount') ?? 0;
+                ->sum('total') ?? 0;
         });
     }
 
@@ -163,13 +161,13 @@ class SalesDashboard extends BaseDashboard
     public function getTransactionCount(): int
     {
         return $this->remember('transaction_count', function () {
-            if (!$this->tableExists('transactions')) {
+            if (!$this->tableExists('sales')) {
                 return 0;
             }
             
             $range = $this->getDateRange();
             
-            return DB::table('transactions')
+            return DB::table('sales')
                 ->where('branch_id', $this->getBranchId())
                 ->whereBetween('created_at', [$range['from'], $range['to']])
                 ->count();
@@ -181,14 +179,14 @@ class SalesDashboard extends BaseDashboard
      */
     public function getTodaySales(): float
     {
-        if (!$this->tableExists('transactions')) {
+        if (!$this->tableExists('sales')) {
             return 0;
         }
         
-        return DB::table('transactions')
+        return DB::table('sales')
             ->where('branch_id', $this->getBranchId())
             ->whereDate('created_at', Carbon::today())
-            ->sum('total_amount') ?? 0;
+            ->sum('total') ?? 0;
     }
 
     /**
@@ -196,11 +194,11 @@ class SalesDashboard extends BaseDashboard
      */
     public function getTodayTransactionCount(): int
     {
-        if (!$this->tableExists('transactions')) {
+        if (!$this->tableExists('sales')) {
             return 0;
         }
         
-        return DB::table('transactions')
+        return DB::table('sales')
             ->where('branch_id', $this->getBranchId())
             ->whereDate('created_at', Carbon::today())
             ->count();
@@ -225,16 +223,17 @@ class SalesDashboard extends BaseDashboard
     public function getTopSellingItems($limit = 10)
     {
         return $this->remember('top_selling_items_' . $limit, function () use ($limit) {
-            if (!$this->tableExists('transaction_items')) {
+            if (!$this->tableExists('sale_items')) {
                 return [];
             }
             
-            return DB::table('transaction_items')
-                ->join('products', 'transaction_items.product_id', '=', 'products.id')
-                ->where('transaction_items.branch_id', $this->getBranchId())
-                ->whereDate('transaction_items.created_at', Carbon::today())
-                ->groupBy('transaction_items.product_id', 'products.name')
-                ->selectRaw('products.name, SUM(transaction_items.quantity) as total_qty, SUM(transaction_items.total_amount) as total_sales')
+            return DB::table('sale_items')
+                ->join('products', 'sale_items.product_id', '=', 'products.id')
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->where('sales.branch_id', $this->getBranchId())
+                ->whereDate('sales.created_at', Carbon::today())
+                ->groupBy('sale_items.product_id', 'products.name')
+                ->selectRaw('products.name, SUM(sale_items.quantity) as total_qty, SUM(sale_items.total) as total_sales')
                 ->orderByDesc('total_qty')
                 ->limit($limit)
                 ->get();
@@ -247,11 +246,11 @@ class SalesDashboard extends BaseDashboard
     public function getRecentTransactions($limit = 10)
     {
         return $this->remember('recent_transactions_' . $limit, function () use ($limit) {
-            if (!$this->tableExists('transactions')) {
+            if (!$this->tableExists('sales')) {
                 return [];
             }
             
-            return DB::table('transactions')
+            return DB::table('sales')
                 ->where('branch_id', $this->getBranchId())
                 ->whereDate('created_at', Carbon::today())
                 ->orderBy('created_at', 'desc')
@@ -266,14 +265,14 @@ class SalesDashboard extends BaseDashboard
     public function getSalesByHour()
     {
         return $this->remember('sales_by_hour', function () {
-            if (!$this->tableExists('transactions')) {
+            if (!$this->tableExists('sales')) {
                 return [];
             }
             
-            return DB::table('transactions')
+            return DB::table('sales')
                 ->where('branch_id', $this->getBranchId())
                 ->whereDate('created_at', Carbon::today())
-                ->selectRaw("DATE_FORMAT(created_at, '%H:00') as hour, COUNT(*) as transactions, SUM(total_amount) as sales")
+                ->selectRaw("DATE_FORMAT(created_at, '%H:00') as hour, COUNT(*) as transactions, SUM(total) as sales")
                 ->groupBy('hour')
                 ->orderBy('hour', 'asc')
                 ->get();

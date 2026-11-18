@@ -19,12 +19,27 @@ Route::prefix('production')->name('production.')->middleware(['department.scope'
             Route::get('/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Request\SalesRequests::class)->name('index');
         });
 
-        // Production Records
-        Route::get('records/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Records\Index::class)->name('records.index');
+        // Stock Opening - Production (department-based)
+        Route::prefix('stock-opening')->name('stock-opening.')->group(function () {
+            Route::get('/{deptSlug?}', \App\Livewire\BranchDashboard\Production\StockOpening\Index::class)->name('index');
+        });
 
         // Shift Closing - Production (department-based)
         Route::prefix('shift-closing')->name('shift-closing.')->group(function () {
-            Route::get('/{deptSlug}', \App\Livewire\BranchDashboard\Production\ShiftClosing\Index::class)->name('index');
+            Route::get('/{deptSlug?}', \App\Livewire\BranchDashboard\Production\ShiftClosing\Index::class)->name('index');
+        });
+
+        // Material Requests - accessible anytime so kitchen can requisition ingredients from inventory
+        Route::get('material-request/{deptSlug}', App\Livewire\BranchDashboard\Production\MaterialRequest\Index::class)->name('material-request');
+
+        // Operational Production Routes - strictly gated by opening stock verification
+        Route::middleware(['validate-production-workflow'])->group(function () {
+            Route::get('records/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Records\Index::class)->name('records.index');
+            Route::get('finished-goods/{deptSlug?}', App\Livewire\BranchDashboard\Production\FinishedGoods\Index::class)->name('finished-goods.index');
+            Route::get('quick-produce/finished-good/{deptSlug}', App\Livewire\BranchDashboard\Production\QuickProduceFinishedGood::class)->name('quick-produce.finished-good');
+            Route::get('quick-produce/wip/{deptSlug}', App\Livewire\BranchDashboard\Production\QuickProduceWip::class)->name('quick-produce.wip');
+            Route::get('/material-returns/create/{deptSlug?}', \App\Livewire\BranchDashboard\Production\MaterialReturns\Create::class)->name('material-returns.create');
+            Route::get('store-transfers/{deptSlug?}', \App\Livewire\BranchDashboard\Production\StoreTransfers\Index::class)->name('store-transfers.index');
         });
 
         // Recipes
@@ -36,20 +51,8 @@ Route::prefix('production')->name('production.')->middleware(['department.scope'
         // Production Store
         Route::get('store/{deptSlug}', App\Livewire\BranchDashboard\Production\Store\Stock::class)->name('store.stock');
 
-        // Finished Goods - Daily Sheet (Opening / Produced / Sent out / Closing)
-        Route::get('finished-goods/{deptSlug?}', App\Livewire\BranchDashboard\Production\FinishedGoods\Index::class)->name('finished-goods.index');
-
-        // Quick Produce - Finished Goods
-        Route::get('quick-produce/finished-good/{deptSlug}', App\Livewire\BranchDashboard\Production\QuickProduceFinishedGood::class)->name('quick-produce.finished-good');
-
-        // Quick Produce - WIP
-        Route::get('quick-produce/wip/{deptSlug}', App\Livewire\BranchDashboard\Production\QuickProduceWip::class)->name('quick-produce.wip');
-
         // WIP Recipe Page (for adding/editing recipe to a product)
         Route::get('wip-recipe/{deptSlug}/{productId}', App\Livewire\BranchDashboard\Production\WipProductRecipe::class)->name('wip-recipe');
-
-        // Material Request
-        Route::get('material-request/{deptSlug}', App\Livewire\BranchDashboard\Production\MaterialRequest\Index::class)->name('material-request');
 
         // Product Assignments
         Route::get('product-assignments/{deptSlug?}', \App\Livewire\BranchDashboard\Production\ProductAssignments::class)->name('product-assignments');
@@ -57,12 +60,8 @@ Route::prefix('production')->name('production.')->middleware(['department.scope'
         // Raw Material Tracking
         Route::get('raw-material-tracking', \App\Livewire\BranchDashboard\Production\RawMaterialTracking::class)->name('raw-material-tracking');
 
-        // Material Returns to Inventory
-        Route::get('/material-returns/create/{deptSlug?}', \App\Livewire\BranchDashboard\Production\MaterialReturns\Create::class)->name('material-returns.create');
+        // Material Returns List
         Route::get('/material-returns/list/{deptSlug?}', \App\Livewire\BranchDashboard\Production\MaterialReturns\Index::class)->name('material-returns.history');
-
-        // Store-to-Store Transfers (raw materials between production departments)
-        Route::get('store-transfers/{deptSlug?}', \App\Livewire\BranchDashboard\Production\StoreTransfers\Index::class)->name('store-transfers.index');
 
         // Sales Return Callbacks — production side approval/receipt workflow
         Route::get('/callbacks/{deptSlug?}', \App\Livewire\BranchDashboard\Production\Callbacks\ApproveCallbacks::class)->name('callbacks.approve');
